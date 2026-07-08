@@ -1,0 +1,23 @@
+# ===== Unreal Engine — generated build output (never commit; rebuilt locally) =====
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+
+# ===== Visual Studio / IDE user + cache files =====
+.vs/
+*.VC.db
+*.VC.opendb
+*.opensdf
+*.opendb
+*.sdf
+*.suo
+*.userprefs
+.idea/
+*.iml
+
+# ===== OS cruft =====
+.DS_Store
+Thumbs.db
+Desktop.ini
