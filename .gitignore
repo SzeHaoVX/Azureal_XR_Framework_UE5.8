@@ -17,6 +17,11 @@ Build/
 .idea/
 *.iml
 
+# ===== Generated VS solution / project config (regenerated via GenerateProjectFiles) =====
+*.sln
+*.slnx
+.vsconfig
+
 # ===== OS cruft =====
 .DS_Store
 Thumbs.db
