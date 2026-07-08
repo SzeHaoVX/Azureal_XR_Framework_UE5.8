@@ -1,0 +1,15 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\private\\azr_handaniminstance.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\github\\azureal_xr_v2\\intermediate\\build\\win64\\x64\\azureal_xr_v2editor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\azurealxr\\definitions.azurealxr.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\public\\azr_handaniminstance.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealxr\\uht\\azr_handaniminstance.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

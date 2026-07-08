@@ -1,0 +1,37 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\private\\azr_highlight.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\github\\azureal_xr_v2\\intermediate\\build\\win64\\x64\\azureal_xr_v2editor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\azurealxr\\definitions.azurealxr.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\public\\azr_highlight.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\public\\materials\\materialparametercollection.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\materialparametercollection.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\public\\azr_types.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealxr\\uht\\azr_types.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealxr\\uht\\azr_highlight.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\kismet\\gameplaystatics.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\kismet\\kismetsystemlibrary.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\coreuobject\\public\\uobject\\propertyaccessutil.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\coreuobject\\uht\\propertyaccessutil.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\kismetsystemlibrary.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\sound\\dialoguetypes.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\dialoguetypes.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\kismet\\gameplaystaticstypes.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\gameplaystaticstypes.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\gameplaystatics.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\kismet\\kismetmateriallibrary.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\kismetmateriallibrary.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\public\\azr_interactable.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\components\\boxcomponent.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\components\\shapecomponent.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\shapecomponent.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\boxcomponent.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealxr\\uht\\azr_interactable.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

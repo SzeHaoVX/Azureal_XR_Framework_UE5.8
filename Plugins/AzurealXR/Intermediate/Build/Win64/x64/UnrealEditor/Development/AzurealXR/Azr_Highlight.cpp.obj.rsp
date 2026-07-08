@@ -1,0 +1,14 @@
+"C:/GitHub/Azureal_XR_V2/Plugins/AzurealXR/Source/AzurealXR/Private/Azr_Highlight.cpp"
+@"C:/GitHub/Azureal_XR_V2/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/AzurealXR.Shared.rsp"
+/FI"C:/GitHub/Azureal_XR_V2/Intermediate/Build/Win64/x64/Azureal_XR_V2Editor/Development/UnrealEd/SharedPCH.UnrealEd.Project.ValApi.ValExpApi.Cpp20.h"
+/FI"C:/GitHub/Azureal_XR_V2/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Definitions.AzurealXR.h"
+/Yu"C:/GitHub/Azureal_XR_V2/Intermediate/Build/Win64/x64/Azureal_XR_V2Editor/Development/UnrealEd/SharedPCH.UnrealEd.Project.ValApi.ValExpApi.Cpp20.h"
+/Fp"C:/GitHub/Azureal_XR_V2/Intermediate/Build/Win64/x64/Azureal_XR_V2Editor/Development/UnrealEd/SharedPCH.UnrealEd.Project.ValApi.ValExpApi.Cpp20.h.pch"
+/Fo"C:/GitHub/Azureal_XR_V2/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Azr_Highlight.cpp.obj"
+/experimental:log "C:/GitHub/Azureal_XR_V2/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Azr_Highlight.cpp.sarif"
+/sourceDependencies "C:/GitHub/Azureal_XR_V2/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Azr_Highlight.cpp.dep.json"
+/nologo
+/TP
+/GR-
+/std:c++20
+/wd5054

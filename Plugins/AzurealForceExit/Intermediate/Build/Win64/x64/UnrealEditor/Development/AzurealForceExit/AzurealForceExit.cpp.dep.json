@@ -1,0 +1,14 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\source\\azurealforceexit\\private\\azurealforceexit.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\github\\azureal_xr_v2\\intermediate\\build\\win64\\x64\\azureal_xr_v2editor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\azurealforceexit\\definitions.azurealforceexit.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\source\\azurealforceexit\\public\\azurealforceexit.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

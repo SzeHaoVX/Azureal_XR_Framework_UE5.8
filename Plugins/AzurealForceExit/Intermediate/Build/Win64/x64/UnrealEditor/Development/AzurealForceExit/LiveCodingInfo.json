@@ -1,0 +1,12 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.AzurealForceExit.cpp.obj": [
+			"AzurealForceExit.init.gen.cpp.obj",
+			"Azureal_ExitForceKill.gen.cpp.obj",
+			"PerModuleInline.gen.cpp.obj",
+			"AzurealForceExit.cpp.obj",
+			"Azureal_ExitForceKill.cpp.obj"
+		]
+	}
+}

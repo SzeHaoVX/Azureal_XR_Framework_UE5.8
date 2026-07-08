@@ -1,0 +1,15 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UnrealEditor-AzurealXR.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:/GitHub/Azureal_XR-Framework/Intermediate/Build/Win64/x64/Azureal_XR_FrameworkEditor/Development/UnrealEd/SharedPCH.UnrealEd.Project.ValApi.ValExpApi.Cpp20.h.obj"
+"C:/GitHub/Azureal_XR-Framework/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Module.AzurealXR.1.cpp.obj"
+"C:/GitHub/Azureal_XR-Framework/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Module.AzurealXR.2.cpp.obj"
+"C:/GitHub/Azureal_XR-Framework/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Module.AzurealXR.3.cpp.obj"
+"C:/GitHub/Azureal_XR-Framework/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Module.AzurealXR.4.cpp.obj"
+"C:/GitHub/Azureal_XR-Framework/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/Default.rc2.res"
+/OUT:"C:/GitHub/Azureal_XR-Framework/Plugins/AzurealXR/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealXR/UnrealEditor-AzurealXR.lib"

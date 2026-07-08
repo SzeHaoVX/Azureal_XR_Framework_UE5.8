@@ -1,0 +1,23 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\source\\azureal_csm\\private\\chaptersubsystem.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\github\\azureal_xr_v2\\intermediate\\build\\win64\\x64\\azureal_xr_v2editor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\azureal_csm\\definitions.azureal_csm.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\source\\azureal_csm\\public\\chaptersubsystem.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\source\\azureal_csm\\public\\chapterbundle.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\source\\azureal_csm\\public\\trainingcurriculum.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\source\\azureal_csm\\public\\trainingtypes.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\intermediate\\build\\win64\\unrealeditor\\inc\\azureal_csm\\uht\\trainingtypes.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\intermediate\\build\\win64\\unrealeditor\\inc\\azureal_csm\\uht\\trainingcurriculum.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\intermediate\\build\\win64\\unrealeditor\\inc\\azureal_csm\\uht\\chapterbundle.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\intermediate\\build\\win64\\unrealeditor\\inc\\azureal_csm\\uht\\chaptersubsystem.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\source\\azureal_csm\\public\\explanationflowlibrary.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azureal_csm\\intermediate\\build\\win64\\unrealeditor\\inc\\azureal_csm\\uht\\explanationflowlibrary.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

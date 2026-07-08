@@ -1,0 +1,14 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/experimental:deterministic
+/DEF
+/NAME:"UnrealEditor-AzurealForceExit.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:/GitHub/Azureal_XR_V2/Intermediate/Build/Win64/x64/Azureal_XR_V2Editor/Development/UnrealEd/SharedPCH.UnrealEd.Project.ValApi.ValExpApi.Cpp20.h.obj"
+"C:/GitHub/Azureal_XR_V2/Plugins/AzurealForceExit/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealForceExit/Module.AzurealForceExit.cpp.obj"
+"C:/GitHub/Azureal_XR_V2/Plugins/AzurealForceExit/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealForceExit/AzurealForceExit.cpp.obj"
+"C:/GitHub/Azureal_XR_V2/Plugins/AzurealForceExit/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealForceExit/Azureal_ExitForceKill.cpp.obj"
+/OUT:"C:/GitHub/Azureal_XR_V2/Plugins/AzurealForceExit/Intermediate/Build/Win64/x64/UnrealEditor/Development/AzurealForceExit/UnrealEditor-AzurealForceExit.lib"

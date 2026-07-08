@@ -1,0 +1,69 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+/*===========================================================================
+	Generated code exported from UnrealHeaderTool.
+	DO NOT modify this manually! Edit the corresponding .h files instead!
+===========================================================================*/
+
+// IWYU pragma: private, include "Azr_Teleport.h"
+
+#ifdef AZUREALXR_Azr_Teleport_generated_h
+#error "Azr_Teleport.generated.h already included, missing '#pragma once' in Azr_Teleport.h"
+#endif
+#define AZUREALXR_Azr_Teleport_generated_h
+
+#include "UObject/ObjectMacros.h"
+#include "UObject/ReflectedTypeAccessors.h"
+#include "UObject/ScriptMacros.h"
+
+PRAGMA_DISABLE_DEPRECATION_WARNINGS
+class USceneComponent;
+
+// ********** Begin Class UAzr_Teleport ************************************************************
+#define FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h_15_RPC_WRAPPERS_NO_PURE_DECLS \
+	DECLARE_FUNCTION(execDisableTeleport); \
+	DECLARE_FUNCTION(execEnableTeleport); \
+	DECLARE_FUNCTION(execTeleportToLocation); \
+	DECLARE_FUNCTION(execHandleTeleportInput);
+
+
+struct Z_Construct_UClass_UAzr_Teleport_Statics;
+AZUREALXR_API UClass* Z_Construct_UClass_UAzr_Teleport(ETypeConstructPhase);
+
+#define FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h_15_INCLASS_NO_PURE_DECLS \
+private: \
+	friend struct ::Z_Construct_UClass_UAzr_Teleport_Statics; \
+	friend AZUREALXR_API UClass* ::Z_Construct_UClass_UAzr_Teleport(ETypeConstructPhase); \
+public: \
+	DECLARE_CLASS2(UAzr_Teleport, UActorComponent, COMPILED_IN_FLAGS(0 | CLASS_Config), CASTCLASS_None, TEXT("/Script/AzurealXR"), Z_Construct_UClass_UAzr_Teleport) \
+	DECLARE_SERIALIZER(UAzr_Teleport)
+
+
+#define FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h_15_ENHANCED_CONSTRUCTORS \
+	/** Deleted move- and copy-constructors, should never be used */ \
+	UAzr_Teleport(UAzr_Teleport&&) = delete; \
+	UAzr_Teleport(const UAzr_Teleport&) = delete; \
+	DECLARE_VTABLE_PTR_HELPER_CTOR(NO_API, UAzr_Teleport); \
+	DEFINE_VTABLE_PTR_HELPER_CTOR_CALLER(UAzr_Teleport); \
+	DEFINE_DEFAULT_CONSTRUCTOR_CALL(UAzr_Teleport) \
+	NO_API virtual ~UAzr_Teleport();
+
+
+#define FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h_12_PROLOG
+#define FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h_15_GENERATED_BODY \
+PRAGMA_DISABLE_DEPRECATION_WARNINGS \
+public: \
+	FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h_15_RPC_WRAPPERS_NO_PURE_DECLS \
+	FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h_15_INCLASS_NO_PURE_DECLS \
+	FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h_15_ENHANCED_CONSTRUCTORS \
+private: \
+PRAGMA_ENABLE_DEPRECATION_WARNINGS
+
+
+class UAzr_Teleport;
+
+// ********** End Class UAzr_Teleport **************************************************************
+
+#undef CURRENT_FILE_ID
+#define CURRENT_FILE_ID FID_GitHub_Azureal_XR_V2_Plugins_AzurealXR_Source_AzurealXR_Public_Azr_Teleport_h
+
+PRAGMA_ENABLE_DEPRECATION_WARNINGS

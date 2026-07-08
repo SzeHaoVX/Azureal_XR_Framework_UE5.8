@@ -1,0 +1,31 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\private\\azr_azurealupdate.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\github\\azureal_xr_v2\\intermediate\\build\\win64\\x64\\azureal_xr_v2editor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\azurealxr\\definitions.azurealxr.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\public\\azr_azurealupdate.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\kismet\\blueprintasyncactionbase.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\blueprintasyncactionbase.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealxr\\uht\\azr_azurealupdate.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\source\\azurealxr\\public\\azr_sessionsubsystem.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\online\\http\\public\\interfaces\\ihttprequest.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\online\\http\\public\\interfaces\\ihttpbase.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealxr\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealxr\\uht\\azr_sessionsubsystem.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\kismet\\gameplaystatics.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\kismet\\kismetsystemlibrary.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\coreuobject\\public\\uobject\\propertyaccessutil.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\coreuobject\\uht\\propertyaccessutil.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\kismetsystemlibrary.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\sound\\dialoguetypes.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\dialoguetypes.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\engine\\classes\\kismet\\gameplaystaticstypes.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\gameplaystaticstypes.generated.h",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\intermediate\\build\\win64\\unrealeditor\\inc\\engine\\uht\\gameplaystatics.generated.h"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

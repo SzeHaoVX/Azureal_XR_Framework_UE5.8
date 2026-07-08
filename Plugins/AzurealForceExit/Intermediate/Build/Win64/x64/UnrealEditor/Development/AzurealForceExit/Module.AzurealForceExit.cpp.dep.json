@@ -1,0 +1,19 @@
+{
+    "Version": "1.2",
+    "Data": {
+        "Source": "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\azurealforceexit\\module.azurealforceexit.cpp",
+        "ProvidedModule": "",
+        "PCH": "c:\\github\\azureal_xr_v2\\intermediate\\build\\win64\\x64\\azureal_xr_v2editor\\development\\unrealed\\sharedpch.unrealed.project.valapi.valexpapi.cpp20.h.pch",
+        "Includes": [
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\azurealforceexit\\definitions.azurealforceexit.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealforceexit\\uht\\azurealforceexit.init.gen.cpp",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealforceexit\\uht\\azureal_exitforcekill.gen.cpp",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\source\\azurealforceexit\\public\\azureal_exitforcekill.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\intermediate\\build\\win64\\unrealeditor\\inc\\azurealforceexit\\uht\\azureal_exitforcekill.generated.h",
+            "c:\\github\\azureal_xr_v2\\plugins\\azurealforceexit\\intermediate\\build\\win64\\x64\\unrealeditor\\development\\azurealforceexit\\permoduleinline.gen.cpp",
+            "c:\\program files\\epic games\\ue_5.8\\engine\\source\\runtime\\core\\public\\hal\\permoduleinline.inl"
+        ],
+        "ImportedModules": [],
+        "ImportedHeaderUnits": []
+    }
+}

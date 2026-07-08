@@ -1,0 +1,12 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.ManualVRPlugin.cpp.obj": [
+			"ManualVRPlugin.init.gen.cpp.obj",
+			"ManualVRPluginBPLibrary.gen.cpp.obj",
+			"PerModuleInline.gen.cpp.obj",
+			"ManualVRPlugin.cpp.obj",
+			"ManualVRPluginBPLibrary.cpp.obj"
+		]
+	}
+}

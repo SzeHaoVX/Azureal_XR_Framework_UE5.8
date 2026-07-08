@@ -1,0 +1,14 @@
+"C:/GitHub/Azureal_XR_V2/Plugins/Azureal_CSM/Source/Azureal_CSM/Private/StepSequencerInterface.cpp"
+@"C:/GitHub/Azureal_XR_V2/Plugins/Azureal_CSM/Intermediate/Build/Win64/x64/UnrealEditor/Development/Azureal_CSM/Azureal_CSM.Shared.rsp"
+/FI"C:/GitHub/Azureal_XR_V2/Intermediate/Build/Win64/x64/Azureal_XR_V2Editor/Development/UnrealEd/SharedPCH.UnrealEd.Project.ValApi.ValExpApi.Cpp20.h"
+/FI"C:/GitHub/Azureal_XR_V2/Plugins/Azureal_CSM/Intermediate/Build/Win64/x64/UnrealEditor/Development/Azureal_CSM/Definitions.Azureal_CSM.h"
+/Yu"C:/GitHub/Azureal_XR_V2/Intermediate/Build/Win64/x64/Azureal_XR_V2Editor/Development/UnrealEd/SharedPCH.UnrealEd.Project.ValApi.ValExpApi.Cpp20.h"
+/Fp"C:/GitHub/Azureal_XR_V2/Intermediate/Build/Win64/x64/Azureal_XR_V2Editor/Development/UnrealEd/SharedPCH.UnrealEd.Project.ValApi.ValExpApi.Cpp20.h.pch"
+/Fo"C:/GitHub/Azureal_XR_V2/Plugins/Azureal_CSM/Intermediate/Build/Win64/x64/UnrealEditor/Development/Azureal_CSM/StepSequencerInterface.cpp.obj"
+/experimental:log "C:/GitHub/Azureal_XR_V2/Plugins/Azureal_CSM/Intermediate/Build/Win64/x64/UnrealEditor/Development/Azureal_CSM/StepSequencerInterface.cpp.sarif"
+/sourceDependencies "C:/GitHub/Azureal_XR_V2/Plugins/Azureal_CSM/Intermediate/Build/Win64/x64/UnrealEditor/Development/Azureal_CSM/StepSequencerInterface.cpp.dep.json"
+/nologo
+/TP
+/GR-
+/std:c++20
+/wd5054
