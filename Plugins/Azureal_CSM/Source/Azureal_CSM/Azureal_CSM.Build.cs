@@ -46,7 +46,8 @@ public class Azureal_CSM : ModuleRules
                 "SlateCore",
                 "InputCore",
                 "UMG",
-				// ... add private dependencies that you statically link with here ...	
+                "AzurealXR", // Language port: FAzr_MultiLangText (Azr_Types.h) + UAzr_SessionSubsystem
+				// ... add private dependencies that you statically link with here ...
 			}
             );
 

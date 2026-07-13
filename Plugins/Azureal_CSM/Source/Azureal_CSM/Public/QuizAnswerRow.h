@@ -6,7 +6,8 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
-#include "Components/Image.h" 
+#include "Components/Image.h"
+#include "TrainingTypes.h" // For FAzr_MultiLangText
 #include "QuizAnswerRow.generated.h"
 
 class UTrainingStepPage;
@@ -35,7 +36,7 @@ public:
 
     // Called by C++ to build the widget
     UFUNCTION(BlueprintCallable, Category = "Quiz Logic")
-    void SetupRow(int32 InIndex, FText InAnswerText, UTrainingStepPage* InParent);
+    void SetupRow(int32 InIndex, FAzr_MultiLangText InAnswerText, UTrainingStepPage* InParent);
 
     // Called by C++ to change the color/icon
     UFUNCTION(BlueprintCallable, Category = "Quiz Logic")

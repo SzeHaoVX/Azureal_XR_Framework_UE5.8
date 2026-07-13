@@ -147,6 +147,25 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Setup")
     TSubclassOf<class UQuizAnswerRow> QuizButtonClass;
 
+    // --- LOCALIZATION: UI TEXT (English seeded in C++ if left blank) ---
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_ButtonNext; // e.g. "Next"
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_ButtonConfirm; // e.g. "Confirm"
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_ButtonNextChapter; // e.g. "Next Chapter"
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_ButtonCompleted; // e.g. "Completed"
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_TimeMinutes; // e.g. "m"
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_TimeSeconds; // e.g. "sec"
+
     // Internal memory of the spawned rows (Exposed so Blueprint can register rows)
     UPROPERTY(BlueprintReadWrite, Category = "Quiz Internal")
     TArray<UQuizAnswerRow*> SpawnedQuizRows;

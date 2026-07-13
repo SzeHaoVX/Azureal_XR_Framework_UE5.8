@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 #include "TrainingCurriculum.h" // Your steps data asset
+#include "TrainingTypes.h"      // For FAzr_MultiLangText
 #include "ChapterBundle.generated.h"
 
 USTRUCT(BlueprintType)
@@ -13,7 +14,7 @@ struct FChapterDef
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Content")
-    FText ChapterTitle;
+    FAzr_MultiLangText ChapterTitle;
 
     // Map Picker
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Content")

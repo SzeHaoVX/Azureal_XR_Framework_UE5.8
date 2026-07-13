@@ -35,6 +35,22 @@ enum class EAzr_TetherPos : uint8
 	Back
 };
 
+// --- NEW STRUCT: The 3-Box Localization Twin for AzurealXR ---
+USTRUCT(BlueprintType)
+struct FAzr_MultiLangText
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal Localization", meta = (MultiLine = true))
+	FString English;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal Localization", meta = (MultiLine = true))
+	FString Malay;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal Localization", meta = (MultiLine = true))
+	FString Tamil;
+};
+
 // --- SHARED TETHER CONFIGURATION ---
 USTRUCT(BlueprintType)
 struct FAzr_TetherConfig
@@ -108,8 +124,9 @@ struct FAzr_ExplainStep
 	FName WidgetName = "ExplainWidget";
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Step", meta = (MultiLine = true))
-	FText ExplainText;
+	// --- 3-Box Localization (English / Malay / Tamil) ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Step")
+	FAzr_MultiLangText ExplainText;
 
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Step")

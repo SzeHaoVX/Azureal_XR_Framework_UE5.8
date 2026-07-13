@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Azr_Types.h" // For FAzr_MultiLangText
 #include "Azr_Label.generated.h"
 
 // Forward Declarations
@@ -20,9 +21,9 @@ struct FAzr_LabelPayload
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Label Payload")
 	FName WidgetName = NAME_None;
 
-	// The text you want to inject into that specific widget
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Label Payload", meta = (MultiLine = true))
-	FText LabelText;
+	// The 3-box (English / Malay / Tamil) text to inject into that specific widget
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Label Payload")
+	FAzr_MultiLangText LabelText;
 };
 
 /**

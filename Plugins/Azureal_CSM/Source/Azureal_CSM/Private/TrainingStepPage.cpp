@@ -5,6 +5,7 @@
 #include "TrainingCurriculum.h"
 #include "ExplanationFlowLibrary.h"
 #include "TrainingSubStepRow.h"
+#include "MyBlueprintFunctionLibrary.h" // Language resolver
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Engine.h"
 #include "Sound/SoundBase.h"
@@ -16,6 +17,14 @@
 
 void UTrainingStepPage::InitializePageData()
 {
+    // Seed English fallbacks for the localized chrome strings if left blank in the inspector
+    if (Text_ButtonNext.English.IsEmpty())        Text_ButtonNext.English = TEXT("Next");
+    if (Text_ButtonConfirm.English.IsEmpty())     Text_ButtonConfirm.English = TEXT("Confirm");
+    if (Text_ButtonNextChapter.English.IsEmpty()) Text_ButtonNextChapter.English = TEXT("Next Chapter");
+    if (Text_ButtonCompleted.English.IsEmpty())   Text_ButtonCompleted.English = TEXT("Completed");
+    if (Text_TimeMinutes.English.IsEmpty())       Text_TimeMinutes.English = TEXT("m");
+    if (Text_TimeSeconds.English.IsEmpty())       Text_TimeSeconds.English = TEXT("sec");
+
     InitRetryCount = 0;
     TryInitializeData();
 }
@@ -274,13 +283,13 @@ void UTrainingStepPage::UpdateNextButtonState()
     // NEW: Hijack the button text if waiting for an answer
     if (bIsAwaitingQuizConfirm)
     {
-        NextButtonText->SetText(FText::FromString("Confirm"));
+        NextButtonText->SetText(UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, Text_ButtonConfirm));
         return;
     }
 
     if (CurrentViewingIndex < TotalStepsCount)
     {
-        NextButtonText->SetText(FText::FromString("Next"));
+        NextButtonText->SetText(UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, Text_ButtonNext));
         return;
     }
 
@@ -293,12 +302,12 @@ void UTrainingStepPage::UpdateNextButtonState()
         int32 NextUnplayed = Subsystem->GetNextUnplayedChapterIndex();
         if (NextUnplayed != -1)
         {
-            NextButtonText->SetText(FText::FromString("Next Chapter"));
+            NextButtonText->SetText(UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, Text_ButtonNextChapter));
             return;
         }
     }
 
-    NextButtonText->SetText(FText::FromString("Completed"));
+    NextButtonText->SetText(UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, Text_ButtonCompleted));
 }
 
 bool UTrainingStepPage::IsNextButtonEnabled() const
@@ -571,7 +580,12 @@ FString UTrainingStepPage::GetMasterProgressText() const {
 FString UTrainingStepPage::GetSessionTimeText() const {
     float Dur = bSessionFinished ? FinalSessionDuration : (GetWorld() ? GetWorld()->GetTimeSeconds() - SessionStartTime : 0.0f);
     int32 T = FMath::FloorToInt(Dur);
-    return FString::Printf(TEXT("%d m %d sec"), T / 60, T % 60);
+
+    // Filter the localization structs down to strings and format them dynamically
+    FString LocMin = UMyBlueprintFunctionLibrary::GetActiveLanguageText(const_cast<UTrainingStepPage*>(this), Text_TimeMinutes).ToString();
+    FString LocSec = UMyBlueprintFunctionLibrary::GetActiveLanguageText(const_cast<UTrainingStepPage*>(this), Text_TimeSeconds).ToString();
+
+    return FString::Printf(TEXT("%d %s %d %s"), T / 60, *LocMin, T % 60, *LocSec);
 }
 
 bool UTrainingStepPage::IsBackButtonEnabled() const { return CurrentViewingIndex > 0; }

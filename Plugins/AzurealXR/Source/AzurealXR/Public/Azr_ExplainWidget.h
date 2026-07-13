@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Azr_Types.h" // For FAzr_MultiLangText
 #include "Azr_ExplainWidget.generated.h"
 
 // Forward Declarations
@@ -53,9 +54,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Explain API")
 	void InitializeStep(EAzr_ExplainStepType InStepType);
 
-	// NEW: Allows the logic component to inject the paragraph text
+	// NEW: Allows the logic component to inject the paragraph text (3-box localized)
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Explain API")
-	void SetExplainText(const FText& NewText);
+	void SetExplainText(const FAzr_MultiLangText& NewText);
 
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Explain API")
 	void SetAudioProgress(float Progress);
@@ -85,6 +86,19 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Azureal|UI", meta = (BindWidget))
 	UProgressBar* AudioProgressBar;
 
+	// --- LOCALIZATION CONFIGURATION (button captions per language; defaults seeded in C++) ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_PlayAudio;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_PlayingAudio;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_Confirm;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_Continue;
+
 private:
 	UFUNCTION()
 	void OnInteractionButtonClicked();
@@ -96,6 +110,9 @@ private:
 	void OnInteractionButtonUnhovered();
 
 	void UpdateButtonVisuals();
+
+	// Resolves a 3-box struct to the session's active language (falls back to English).
+	FText GetLocalizedText(const FAzr_MultiLangText& MultiLangText) const;
 
 	// --- STATE TRACKING ---
 	EAzr_ExplainStepType CurrentStepType;

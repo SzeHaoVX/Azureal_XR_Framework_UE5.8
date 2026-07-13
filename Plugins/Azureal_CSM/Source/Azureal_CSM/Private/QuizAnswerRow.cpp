@@ -1,7 +1,8 @@
 
 
 #include "QuizAnswerRow.h"
-#include "TrainingStepPage.h" 
+#include "TrainingStepPage.h"
+#include "MyBlueprintFunctionLibrary.h" // Language resolver
 
 void UQuizAnswerRow::NativeConstruct()
 {
@@ -44,14 +45,15 @@ void UQuizAnswerRow::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
     }
 }
 
-void UQuizAnswerRow::SetupRow(int32 InIndex, FText InAnswerText, UTrainingStepPage* InParent)
+void UQuizAnswerRow::SetupRow(int32 InIndex, FAzr_MultiLangText InAnswerText, UTrainingStepPage* InParent)
 {
     AnswerIndex = InIndex;
     ParentPage = InParent;
 
     if (AnswerText)
     {
-        AnswerText->SetText(InAnswerText);
+        FText TranslatedText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, InAnswerText);
+        AnswerText->SetText(TranslatedText);
     }
 
     SetRowState(EQuizAnswerState::Idle);

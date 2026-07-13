@@ -1,14 +1,19 @@
 
 
 #include "ChapterSelectRow.h"
+#include "MyBlueprintFunctionLibrary.h" // Language resolver
 
-void UChapterSelectRow::SetupSpecificRow(int32 Index, FText Title, int32 CurrentSteps, int32 MaxSteps, bool bIsComplete, bool bIsCurrentLocation)
+void UChapterSelectRow::SetupSpecificRow(int32 Index, FAzr_MultiLangText Title, int32 CurrentSteps, int32 MaxSteps, bool bIsComplete, bool bIsCurrentLocation)
 {
     AssignedIndex = Index;
 
     // 1. Setup Texts
     if (ChapterNumberText) ChapterNumberText->SetText(FText::AsNumber(Index + 1));
-    if (ChapterTitleText) ChapterTitleText->SetText(Title);
+    if (ChapterTitleText)
+    {
+        FText TranslatedText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, Title);
+        ChapterTitleText->SetText(TranslatedText);
+    }
 
     if (ProgressText) {
         FString ProgressStr = FString::Printf(TEXT("%d / %d"), CurrentSteps, MaxSteps);

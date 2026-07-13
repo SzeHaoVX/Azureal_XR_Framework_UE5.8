@@ -79,9 +79,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action Settings|Custom Timer", meta = (EditCondition = "ActionMode == EAzr_ActionMode::Custom", EditConditionHides))
 	float CustomDuration = 3.0f;
 
-	// NEW: The written explanation text to display on the UI
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action Settings|Visuals", meta = (MultiLine = true))
-	FText ActionDescription;
+	// The written explanation text to display on the UI (3-box: English / Malay / Tamil)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action Settings|Visuals")
+	FAzr_MultiLangText ActionDescription;
 
 	// --- VISUAL SETUP ---
 

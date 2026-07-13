@@ -44,8 +44,8 @@ struct FAzr_GrabConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
 	FAzr_TetherConfig TetherSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config", meta = (MultiLine = true))
-	FText Description;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
+	FAzr_MultiLangText Description;
 
 	// --- DISTANCE GRAB ---
 	// NOTE: Only honored for Grab, Grab Attach and Grab Remove. Ignored for Grab Trigger.

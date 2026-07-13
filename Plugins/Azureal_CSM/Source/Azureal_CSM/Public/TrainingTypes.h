@@ -3,7 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "TrainingTypes.generated.h" 
+#include "Azr_Types.h" // For FAzr_MultiLangText (AzurealXR module)
+#include "TrainingTypes.generated.h"
 
 // --- ENUMS ---
 
@@ -38,7 +39,7 @@ struct FSubStepData
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
-    FText Description;
+    FAzr_MultiLangText Description;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
     EStepType Type = EStepType::Interaction;
@@ -51,7 +52,7 @@ struct FQuizAnswerData
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (DisplayName = "Answer Option Text"))
-    FText AnswerText;
+    FAzr_MultiLangText AnswerText;
 };
 
 USTRUCT(BlueprintType)
@@ -66,7 +67,7 @@ struct FStepData
     // STANDARD STEP PROPERTIES (Only visible if Standard Instructions is chosen)
     // =========================================================================
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (EditCondition = "StepType == EMasterStepType::Standard", EditConditionHides))
-    FText StepTitle;
+    FAzr_MultiLangText StepTitle;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (EditCondition = "StepType == EMasterStepType::Standard", EditConditionHides))
     TArray<FSubStepData> SubSteps;
@@ -75,7 +76,7 @@ struct FStepData
     // QUIZ STEP PROPERTIES (Only visible if Multiple Choice Quiz is chosen)
     // =========================================================================
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (DisplayName = "Quiz Question", EditCondition = "StepType == EMasterStepType::Quiz", EditConditionHides))
-    FText QuizTitle;
+    FAzr_MultiLangText QuizTitle;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", meta = (DisplayName = "Correct Answer Index", EditCondition = "StepType == EMasterStepType::Quiz", EditConditionHides))
     int32 CorrectAnswerIndex = 0;
@@ -97,7 +98,7 @@ struct FRuntimeStep
     int32 DisplayNumber;
 
     UPROPERTY(BlueprintReadOnly, Category = "Data")
-    FText StepTitle;
+    FAzr_MultiLangText StepTitle;
 
     UPROPERTY(BlueprintReadOnly, Category = "Data")
     int32 CorrectAnswerIndex;

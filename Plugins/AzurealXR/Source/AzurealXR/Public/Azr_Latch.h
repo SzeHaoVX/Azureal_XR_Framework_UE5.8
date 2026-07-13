@@ -138,8 +138,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	FAzr_TetherConfig TetherSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup", meta = (MultiLine = true))
-	FText LatchDescription;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
+	FAzr_MultiLangText LatchDescription;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	float HighlightSpeed = 0.8f;

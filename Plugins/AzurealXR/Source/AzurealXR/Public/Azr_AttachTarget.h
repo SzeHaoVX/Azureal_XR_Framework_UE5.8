@@ -49,8 +49,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Config")
 	FAzr_TetherConfig TetherSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Visuals", meta = (MultiLine = true))
-	FText AttachDescription;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Visuals")
+	FAzr_MultiLangText AttachDescription;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Visuals")
 	UMaterialInterface* GhostMaterial;

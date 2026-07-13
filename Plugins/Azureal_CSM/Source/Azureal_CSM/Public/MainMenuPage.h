@@ -9,6 +9,7 @@
 #include "Components/Button.h"
 #include "ChapterBundle.h"
 #include "ChapterSelectRow.h"
+#include "TrainingTypes.h" // For FAzr_MultiLangText
 #include "MainMenuPage.generated.h"
 
 UCLASS()
@@ -112,6 +113,16 @@ protected:
 
     UPROPERTY(EditAnywhere, Category = "Setup")
     TSubclassOf<UChapterSelectRow> ChapterRowClass;
+
+    // --- LOCALIZATION: UI TEXT (printf-style {0}/{1} placeholders; English seeded in C++ if blank) ---
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_ModuleCompletion;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_CurrentChapterRestart;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Localization")
+    FAzr_MultiLangText Text_SelectedChapterRestart;
 
     UPROPERTY()
     TArray<UChapterSelectRow*> SpawnedRows;

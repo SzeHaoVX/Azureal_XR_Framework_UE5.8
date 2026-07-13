@@ -81,7 +81,7 @@ public:
 
     // --- INFO HELPERS ---
     UFUNCTION(BlueprintPure, Category = "Chapter System")
-    void GetCurrentChapterInfo(int32& OutChapterNumber, FText& OutChapterTitle) const;
+    void GetCurrentChapterInfo(int32& OutChapterNumber, FAzr_MultiLangText& OutChapterTitle) const;
 
     // --- STATISTICS ---
     UFUNCTION(BlueprintPure, Category = "Chapter System")

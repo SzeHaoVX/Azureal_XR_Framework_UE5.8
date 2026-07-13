@@ -2,6 +2,7 @@
 
 #include "MainMenuPage.h"
 #include "ChapterSubsystem.h"
+#include "MyBlueprintFunctionLibrary.h" // Language resolver
 #include "Components/ScrollBox.h"
 #include "Components/ScrollBoxSlot.h"
 #include "Components/VerticalBoxSlot.h"
@@ -13,6 +14,14 @@
 void UMainMenuPage::NativeConstruct()
 {
     Super::NativeConstruct();
+
+    // --- Seed English fallback templates if left blank (Malay/Tamil fall back to English) ---
+    if (Text_ModuleCompletion.English.IsEmpty())
+        Text_ModuleCompletion.English = TEXT("You have completed {0}/{1} chapters.\n\nAre you sure you want to restart the\nentire module?");
+    if (Text_CurrentChapterRestart.English.IsEmpty())
+        Text_CurrentChapterRestart.English = TEXT("You are currently at Chapter {0}.\n\nAre you sure you want to restart this\nchapter?");
+    if (Text_SelectedChapterRestart.English.IsEmpty())
+        Text_SelectedChapterRestart.English = TEXT("You have completed Chapter {0}.\n\nAre you sure you want to restart this chapter?");
 
     UGameInstance* GI = GetGameInstance();
     UChapterSubsystem* Subsystem = nullptr;
@@ -147,10 +156,12 @@ FText UMainMenuPage::GetModuleCompletionText() const
         int32 Total = 0;
         Subsystem->GetModuleCompletionStatus(Completed, Total);
 
-        FString FormatStr = TEXT("You have completed {0}/{1} chapters.\n\nAre you sure you want to restart the\nentire module?");
-        return FText::Format(FText::FromString(FormatStr), Completed, Total);
+        FText TranslatedBaseText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(const_cast<UMainMenuPage*>(this), Text_ModuleCompletion);
+        return FText::Format(TranslatedBaseText, Completed, Total);
     }
-    return FText::FromString("You have completed 0/0 chapters.\n\nAre you sure you want to restart the\nentire module?");
+    // Fallback if subsystem is unavailable
+    FText FallbackText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(const_cast<UMainMenuPage*>(this), Text_ModuleCompletion);
+    return FText::Format(FallbackText, 0, 0);
 }
 
 FText UMainMenuPage::GetCurrentChapterRestartText() const
@@ -165,10 +176,12 @@ FText UMainMenuPage::GetCurrentChapterRestartText() const
     if (Subsystem)
     {
         int32 CurrentNum = Subsystem->GetCurrentChapterIndex() + 1;
-        FString FormatStr = TEXT("You are currently at Chapter {0}.\n\nAre you sure you want to restart this\nchapter?");
-        return FText::Format(FText::FromString(FormatStr), CurrentNum);
+        FText TranslatedBaseText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(const_cast<UMainMenuPage*>(this), Text_CurrentChapterRestart);
+        return FText::Format(TranslatedBaseText, CurrentNum);
     }
-    return FText::FromString("You are currently at Chapter 0.\n\nAre you sure you want to restart this\nchapter?");
+    // Fallback if subsystem is unavailable
+    FText FallbackText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(const_cast<UMainMenuPage*>(this), Text_CurrentChapterRestart);
+    return FText::Format(FallbackText, 0);
 }
 
 bool UMainMenuPage::IsAllChaptersCompleted() const
@@ -311,8 +324,9 @@ void UMainMenuPage::ProceedToSelectedChapter()
         if (SelectChapterPanel) SelectChapterPanel->SetVisibility(ESlateVisibility::Collapsed);
         if (RestartChapterCompletedPanel) RestartChapterCompletedPanel->SetVisibility(ESlateVisibility::Visible);
         if (RestartMessageText) {
-            FString Msg = FString::Printf(TEXT("You have completed Chapter %d.\n\nAre you sure you want to restart this chapter?"), SelectedChapterIndex + 1);
-            RestartMessageText->SetText(FText::FromString(Msg));
+            FText TranslatedBaseText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, Text_SelectedChapterRestart);
+            FText FormattedMsg = FText::Format(TranslatedBaseText, SelectedChapterIndex + 1);
+            RestartMessageText->SetText(FormattedMsg);
         }
     }
     else

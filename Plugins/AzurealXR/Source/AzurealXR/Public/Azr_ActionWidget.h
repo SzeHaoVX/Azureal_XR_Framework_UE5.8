@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Azr_Types.h" // For FAzr_MultiLangText
 #include "Azr_ActionWidget.generated.h"
 
 // Forward Declarations
@@ -63,9 +64,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Action API")
 	void SetHoveredByRightHand(bool bIsHovering);
 
-	// NEW: Allows the logic component to inject the paragraph text
+	// NEW: Allows the logic component to inject the paragraph text (3-box localized)
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Action API")
-	void SetActionDescription(const FText& NewText);
+	void SetActionDescription(const FAzr_MultiLangText& NewText);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -84,6 +85,22 @@ protected:
 	UPROPERTY(BlueprintReadWrite, Category = "Azureal|UI", meta = (BindWidget))
 	UTextBlock* ActionDescriptionBlock;
 
+	// --- LOCALIZATION PARAMETERS (button captions per language; sensible defaults seeded in C++) ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_Teleport;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_StartAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_Start;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_Processing;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Localization")
+	FAzr_MultiLangText Text_Completed;
+
 private:
 	UFUNCTION()
 	void OnActionButtonClicked();
@@ -95,6 +112,9 @@ private:
 	void OnActionButtonUnhovered();
 
 	void UpdateButtonVisuals();
+
+	// Resolves a 3-box struct to the session's active language (falls back to English).
+	FText GetLocalizedText(const FAzr_MultiLangText& MultiLangText) const;
 
 	// --- STATE TRACKING ---
 	EAzr_ActionMode CurrentMode;

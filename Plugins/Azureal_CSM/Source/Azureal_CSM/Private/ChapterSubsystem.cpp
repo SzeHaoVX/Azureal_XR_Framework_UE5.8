@@ -171,12 +171,16 @@ TSubclassOf<AActor> UChapterSubsystem::GetCurrentChapterGameManagerClass() const
 
 // --- INFO & STATS ---
 
-void UChapterSubsystem::GetCurrentChapterInfo(int32& OutChapterNumber, FText& OutChapterTitle) const
+void UChapterSubsystem::GetCurrentChapterInfo(int32& OutChapterNumber, FAzr_MultiLangText& OutChapterTitle) const
 {
     int32 SafeIndex = (CurrentIndex == -1) ? 0 : CurrentIndex;
     OutChapterNumber = SafeIndex + 1;
-    OutChapterTitle = FText::FromString("Unknown Chapter");
 
+    FAzr_MultiLangText FallbackText;
+    FallbackText.English = TEXT("Unknown Chapter");
+    OutChapterTitle = FallbackText;
+
+    // Pass the 3-box struct from the bundle (caller resolves it via GetActiveLanguageText)
     if (ActiveBundle && ActiveBundle->AllChapters.IsValidIndex(SafeIndex))
         OutChapterTitle = ActiveBundle->AllChapters[SafeIndex].ChapterTitle;
 }

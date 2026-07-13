@@ -5,7 +5,9 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
-#include "TimerManager.h" 
+#include "Engine/GameInstance.h"
+#include "Azr_SessionSubsystem.h"
+#include "TimerManager.h"
 #include "Engine/World.h" 
 
 void UAzr_ActionWidget::NativeConstruct()
@@ -17,6 +19,33 @@ void UAzr_ActionWidget::NativeConstruct()
 		ActionButton->OnClicked.AddDynamic(this, &UAzr_ActionWidget::OnActionButtonClicked);
 		ActionButton->OnHovered.AddDynamic(this, &UAzr_ActionWidget::OnActionButtonHovered);
 		ActionButton->OnUnhovered.AddDynamic(this, &UAzr_ActionWidget::OnActionButtonUnhovered);
+	}
+
+	// --- ASSIGN FALLBACK DEFAULTS IF LEFT BLANK IN INSPECTOR ---
+	if (Text_Teleport.English.IsEmpty()) {
+		Text_Teleport.English = TEXT("TELEPORT");
+		Text_Teleport.Malay = TEXT("TELEPORT");
+		Text_Teleport.Tamil = TEXT("டெலிபோர்ட்");
+	}
+	if (Text_StartAction.English.IsEmpty()) {
+		Text_StartAction.English = TEXT("START ACTION");
+		Text_StartAction.Malay = TEXT("MULAKAN TINDAKAN");
+		Text_StartAction.Tamil = TEXT("செயலைத் தொடங்கு");
+	}
+	if (Text_Start.English.IsEmpty()) {
+		Text_Start.English = TEXT("START");
+		Text_Start.Malay = TEXT("MULA");
+		Text_Start.Tamil = TEXT("தொடங்கு");
+	}
+	if (Text_Processing.English.IsEmpty()) {
+		Text_Processing.English = TEXT("ACTION ON GOING...");
+		Text_Processing.Malay = TEXT("TINDAKAN SEDANG BERJALAN...");
+		Text_Processing.Tamil = TEXT("செயல்பாட்டில் உள்ளது...");
+	}
+	if (Text_Completed.English.IsEmpty()) {
+		Text_Completed.English = TEXT("COMPLETED");
+		Text_Completed.Malay = TEXT("SELESAI");
+		Text_Completed.Tamil = TEXT("முடிந்தது");
 	}
 
 	CurrentState = EAzr_ActionWidgetState::Idle;
@@ -37,11 +66,12 @@ void UAzr_ActionWidget::InitializeAction(EAzr_ActionMode InMode)
 	UpdateButtonVisuals();
 }
 
-void UAzr_ActionWidget::SetActionDescription(const FText& NewText)
+// --- UPDATED: Injects pre-translated text blocks directly into the UMG UI text field ---
+void UAzr_ActionWidget::SetActionDescription(const FAzr_MultiLangText& NewText)
 {
 	if (ActionDescriptionBlock)
 	{
-		ActionDescriptionBlock->SetText(NewText);
+		ActionDescriptionBlock->SetText(GetLocalizedText(NewText));
 	}
 }
 
@@ -179,27 +209,52 @@ void UAzr_ActionWidget::UpdateButtonVisuals()
 
 		if (CurrentMode == EAzr_ActionMode::Teleport)
 		{
-			ActionText->SetText(FText::FromString(TEXT("TELEPORT")));
+			ActionText->SetText(GetLocalizedText(Text_Teleport));
 		}
 		else if (CurrentMode == EAzr_ActionMode::Animation)
 		{
-			ActionText->SetText(FText::FromString(TEXT("START ACTION")));
+			ActionText->SetText(GetLocalizedText(Text_StartAction));
 		}
 		else
 		{
-			ActionText->SetText(FText::FromString(TEXT("START")));
+			ActionText->SetText(GetLocalizedText(Text_Start));
 		}
 		break;
 
 	case EAzr_ActionWidgetState::Processing:
 		ActionButton->SetIsEnabled(false);
-		ActionText->SetText(FText::FromString(TEXT("ACTION ON GOING...")));
+		ActionText->SetText(GetLocalizedText(Text_Processing));
 		break;
 
 	case EAzr_ActionWidgetState::Completed:
 		// UNLOCK the button so the player can press it to dismiss the UI
 		ActionButton->SetIsEnabled(true);
-		ActionText->SetText(FText::FromString(TEXT("COMPLETED")));
+		ActionText->SetText(GetLocalizedText(Text_Completed));
 		break;
 	}
+}
+
+// --- TRANSLATION FILTER: resolves a 3-box struct to the session's active language ---
+FText UAzr_ActionWidget::GetLocalizedText(const FAzr_MultiLangText& MultiLangText) const
+{
+	FString ActiveLanguage = TEXT("English");
+
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (UAzr_SessionSubsystem* SessionSubsystem = GI->GetSubsystem<UAzr_SessionSubsystem>())
+		{
+			ActiveLanguage = SessionSubsystem->GetSessionLanguage();
+		}
+	}
+
+	if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ms"), ESearchCase::IgnoreCase))
+	{
+		return FText::FromString(MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay);
+	}
+	else if (ActiveLanguage.Equals(TEXT("Tamil"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ta"), ESearchCase::IgnoreCase))
+	{
+		return FText::FromString(MultiLangText.Tamil.IsEmpty() ? MultiLangText.English : MultiLangText.Tamil);
+	}
+
+	return FText::FromString(MultiLangText.English);
 }

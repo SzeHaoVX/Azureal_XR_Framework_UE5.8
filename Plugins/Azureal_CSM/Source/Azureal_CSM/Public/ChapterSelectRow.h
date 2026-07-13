@@ -6,7 +6,8 @@
 #include "Blueprint/UserWidget.h"
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
-#include "Components/Button.h" 
+#include "Components/Button.h"
+#include "TrainingTypes.h" // For FAzr_MultiLangText
 #include "ChapterSelectRow.generated.h"
 
 // The 3 Distinct Navigation States (Interaction)
@@ -43,7 +44,7 @@ public:
 
     // --- SETUP ---
     UFUNCTION(BlueprintCallable, Category = "Setup")
-    void SetupSpecificRow(int32 Index, FText Title, int32 CurrentSteps, int32 MaxSteps, bool bIsComplete, bool bIsCurrentLocation);
+    void SetupSpecificRow(int32 Index, FAzr_MultiLangText Title, int32 CurrentSteps, int32 MaxSteps, bool bIsComplete, bool bIsCurrentLocation);
 
     // --- INTERACTION ---
     UFUNCTION(BlueprintCallable, Category = "Interaction")

@@ -5,8 +5,10 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
-#include "TimerManager.h" 
-#include "Engine/World.h" 
+#include "Engine/GameInstance.h"
+#include "Azr_SessionSubsystem.h"
+#include "TimerManager.h"
+#include "Engine/World.h"
 
 void UAzr_ExplainWidget::NativeConstruct() {
     Super::NativeConstruct();
@@ -17,7 +19,27 @@ void UAzr_ExplainWidget::NativeConstruct() {
         InteractionButton->OnUnhovered.AddDynamic(this, &UAzr_ExplainWidget::OnInteractionButtonUnhovered);
     }
 
-    
+    // --- ASSIGN FALLBACK DEFAULTS IF BLANK ---
+    if (Text_PlayAudio.English.IsEmpty()) {
+        Text_PlayAudio.English = TEXT("PLAY AUDIO");
+        Text_PlayAudio.Malay = TEXT("MAIN AUDIO");
+        Text_PlayAudio.Tamil = TEXT("ஆடியோவை இயக்கு");
+    }
+    if (Text_PlayingAudio.English.IsEmpty()) {
+        Text_PlayingAudio.English = TEXT("PLAYING AUDIO...");
+        Text_PlayingAudio.Malay = TEXT("AUDIO SEDANG DIMAINKAN...");
+        Text_PlayingAudio.Tamil = TEXT("ஆடியோ இயக்கப்படுகிறது...");
+    }
+    if (Text_Confirm.English.IsEmpty()) {
+        Text_Confirm.English = TEXT("CONFIRM");
+        Text_Confirm.Malay = TEXT("SAHKAN");
+        Text_Confirm.Tamil = TEXT("உறுதிப்படுத்து");
+    }
+    if (Text_Continue.English.IsEmpty()) {
+        Text_Continue.English = TEXT("CONTINUE");
+        Text_Continue.Malay = TEXT("TERUSKAN");
+        Text_Continue.Tamil = TEXT("தொடரவும்");
+    }
 
     CurrentState = EAzr_ExplainWidgetState::Idle;
     bIsLeftHandHovering = false;
@@ -35,10 +57,10 @@ void UAzr_ExplainWidget::InitializeStep(EAzr_ExplainStepType InStepType) {
     UpdateButtonVisuals();
 }
 
-// --- NEW: INJECTS THE DEV TEXT INTO THE UI ---
-void UAzr_ExplainWidget::SetExplainText(const FText& NewText) {
+// --- INJECTS THE DEV TEXT INTO THE UI (resolved to the active language) ---
+void UAzr_ExplainWidget::SetExplainText(const FAzr_MultiLangText& NewText) {
     if (ExplainTextBlock) {
-        ExplainTextBlock->SetText(NewText);
+        ExplainTextBlock->SetText(GetLocalizedText(NewText));
     }
 }
 
@@ -147,12 +169,12 @@ void UAzr_ExplainWidget::UpdateButtonVisuals() {
     switch (CurrentState) {
     case EAzr_ExplainWidgetState::Idle:
         InteractionButton->SetIsEnabled(true);
-        ActionText->SetText(FText::FromString(TEXT("PLAY AUDIO")));
+        ActionText->SetText(GetLocalizedText(Text_PlayAudio));
         break;
 
     case EAzr_ExplainWidgetState::Playing:
         InteractionButton->SetIsEnabled(false);
-        ActionText->SetText(FText::FromString(TEXT("PLAYING AUDIO...")));
+        ActionText->SetText(GetLocalizedText(Text_PlayingAudio));
         break;
 
     case EAzr_ExplainWidgetState::Completed:
@@ -160,11 +182,31 @@ void UAzr_ExplainWidget::UpdateButtonVisuals() {
 
         if (CurrentStepType == EAzr_ExplainStepType::Single ||
             CurrentStepType == EAzr_ExplainStepType::End) {
-            ActionText->SetText(FText::FromString(TEXT("CONFIRM")));
+            ActionText->SetText(GetLocalizedText(Text_Confirm));
         }
         else {
-            ActionText->SetText(FText::FromString(TEXT("CONTINUE")));
+            ActionText->SetText(GetLocalizedText(Text_Continue));
         }
         break;
     }
+}
+
+// --- VISUAL TRANSLATOR ROUTING ---
+FText UAzr_ExplainWidget::GetLocalizedText(const FAzr_MultiLangText& MultiLangText) const {
+    FString ActiveLanguage = TEXT("English");
+
+    if (UGameInstance* GI = GetGameInstance()) {
+        if (UAzr_SessionSubsystem* SessionSubsystem = GI->GetSubsystem<UAzr_SessionSubsystem>()) {
+            ActiveLanguage = SessionSubsystem->GetSessionLanguage();
+        }
+    }
+
+    if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ms"), ESearchCase::IgnoreCase)) {
+        return FText::FromString(MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay);
+    }
+    else if (ActiveLanguage.Equals(TEXT("Tamil"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ta"), ESearchCase::IgnoreCase)) {
+        return FText::FromString(MultiLangText.Tamil.IsEmpty() ? MultiLangText.English : MultiLangText.Tamil);
+    }
+
+    return FText::FromString(MultiLangText.English);
 }

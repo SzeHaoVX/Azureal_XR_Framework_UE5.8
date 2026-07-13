@@ -55,8 +55,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup")
 	FAzr_TetherConfig TetherSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup", meta = (MultiLine = true))
-	FText TouchDescription;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup")
+	FAzr_MultiLangText TouchDescription;
 
 	// --- HAPTICS ---
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Haptics")
