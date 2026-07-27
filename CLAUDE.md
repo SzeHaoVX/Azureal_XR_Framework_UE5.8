@@ -78,9 +78,29 @@ Multi-language text uses **`FAzr_MultiLangText`** (`Azr_Types.h`) — a struct o
 - `UAzr_SessionSubsystem` (AzurealXR): env-var configured (`AZUREAL_TOKEN`, `AZUREAL_API_URL`, …), session types Training/Event/Course choose REST path prefixes (`/training-sessions`, `/event-sessions`, `/course-sessions`). Blueprints use the async nodes `Azureal - Start Session` / `Record Action` / `Quiz Update` / `End Session` / `Record Time` (`Azr_StartSessionAction`, `Azr_AzurealUpdate` — the latter is *not* an auto-updater despite the name). Only HTTP 200 counts as success; no retry/queueing.
 - `ManualVRPluginBPLibrary`: command-line configured, `/api/app/training-session/*` routes, state in file-scope C++ globals. Which system a given product build uses is decided in Blueprints.
 
+### Authoring a CSM course — the setup workflow
+
+How a downstream product (e.g. the "Westport WFH" safety course, UE 5.7) builds a curriculum on this framework. **Terminology:** a *Procedure* = a Master Step (`FStepData`); a *Sub-Procedure* = a Sub-Step (`FSubStepData`). Shape: **Module → Chapters → Master Steps → Sub-Steps / Quiz**. Pipeline: **chapter doc → instruction sheet (CSV) → built blueprints**.
+
+**Scaffold (per module)** — duplicate three plugin templates into consumer content (typically `/Game/CSM`; `Azureal_CSM` is a project plugin so its assets are yours to copy). Use the plugin's `WBP_MainMenu`/`WBP_StepPage` **directly** — don't copy the widgets (copying forces painful widget-class retyping):
+1. `Module_1` (once) → the `UChapterBundle` chapter registry.
+2. `DA_Chapter<n>` (per chapter) → the `UTrainingCurriculum` steps.
+3. `GM_C<n>` (per chapter) → the step sequencer.
+
+**Then wire it up:**
+- **Populate `DA_Chapter<n>`:** `MasterSteps[]` = one `FStepData` per Procedure (`StepType` Standard/Quiz, `StepTitle`, `SubSteps[]` — each `Description` + `Type` Interaction/Explanation), 1:1 from the CSV's `No / Procedure / Sub-No / Sub-Procedure` columns.
+- **Wire `Module_1`:** `AllChapters[]` = one `FChapterDef` per chapter — `ChapterTitle`, `ChapterLevel` (map), `StepData → DA_Chapter<n>`, `ChapterGameManagerClass → GM_C<n>`.
+- **`BP_CSM` (menu actor):** parent `AAzr_Interactable` + a `WidgetComponent` (Scale 0.1, Widget Class `WBP_MainMenu`, *Draw at Desired Size* ON, collision preset **`Azr_Collision`** so the laser can hit it). Graph: `BeginPlay → Get widget → SetVisibility(true) → EnablePointer(Target = the widget component)` (`EnablePointer` inherited from `AAzr_Interactable`; left null the laser aims at `SceneRoot`, not the menu).
+- **The one required wiring step:** on `WBP_MainMenu`, point `Initialize Chapters → Master List` (Chapter Subsystem) and `Generate Chapter List → Data Asset` (Main Menu Page) at **your** `Module_1` — otherwise the menu shows the plugin's demo chapters and edits to your copies silently do nothing. (This is the data source `UMainMenuPage::GenerateChapterList` reads.)
+
+**Per-chapter runtime pieces (dev-owned, not auto-generated):**
+- **`GM_C<n>`** is the real sequencer — its `IStepSequencerInterface::RunStepsOrder()` graph enables the step's interaction(s), binds their completion delegates, and calls `AdvanceProgress` (often hundreds of nodes; a ~256-node reference lives in Westport's `Test_Chapter/GM_C1`). **`BP_C<n>_CSM`** is only a *thin placed actor* (~3 nodes) — don't hunt for logic there.
+- **`BP_C<n>_*`** interactable actors (Azr components) + **`BP_C<n>_*_Ghost`** placement guides (`M_Ghost` shows the correct target spot, e.g. where a hook belongs — a content convention, distinct from `UAzr_AttachTarget`'s auto ghost). Consumer content is usually split `/Game/CSM` (curriculum + menu) vs `/Game/MCP` (interactables).
+- **Progress/score reporting is opt-in — CSM never auto-reports.** The `Azureal - Record Action` / `Quiz Update` / `End Session` nodes live in **AzurealXR** (`UAzr_SessionSubsystem`); CSM's C++ only touches that subsystem for `GetSessionLanguage()`. So `GM_C<n>` **must call the record/quiz/end nodes** per sub-step/quiz, or nothing reaches the LMS.
+
 ## Conventions
 
-- **Naming:** everything in AzurealXR is prefixed `Azr_` (`AAzr_`/`UAzr_`/`FAzr_`/`EAzr_`); CSM classes are unprefixed. UFUNCTION/UPROPERTY categories are namespaced `Azureal|…` (Logic, Settings, Events, Components). Components are `UCLASS(ClassGroup=(AzurealXR), meta=(BlueprintSpawnableComponent))`. Standard asset prefixes: `BP_`, `WBP_`, `IA_`/`IMC_`, `DA_`, `GM_`, `M_`/`MPC_`, `SC_`, `SM_`.
+- **Naming:** everything in AzurealXR is prefixed `Azr_` (`AAzr_`/`UAzr_`/`FAzr_`/`EAzr_`); CSM classes are unprefixed. UFUNCTION/UPROPERTY categories are namespaced `Azureal|…` (Logic, Settings, Events, Components). Components are `UCLASS(ClassGroup=(AzurealXR), meta=(BlueprintSpawnableComponent))`. Standard asset prefixes: `BP_`, `WBP_`, `IA_`/`IMC_`, `DA_`, `GM_`, `M_`/`MI_`/`MPC_`, `SC_`, `SM_`/`SK_`, `T_`, `ABP_`. Downstream **content** conventions: per-chapter prefix `C1`…`C5` (e.g. `BP_C3_LeftHook`), and `*_Ghost` (`M_Ghost`) placement-guide assets.
 - **Lifecycle idiom** ("sleepy" components): `bCanEverTick=true` + `bStartWithTickEnabled=false`, tick enabled only while active; `Enable*/Disable*` pairs guarded by a bool; timer lambdas capture `TWeakObjectPtr`, never `this`.
 - **Delegates:** `DECLARE_DYNAMIC_MULTICAST_DELEGATE*`, `BlueprintAssignable`, bound with `RemoveDynamic`-then-`AddDynamic`; async BP nodes unbind and `SetReadyToDestroy` on first callback.
 - Blueprint-facing indices are 1-based (chapter/step/option numbers); internals 0-based.
