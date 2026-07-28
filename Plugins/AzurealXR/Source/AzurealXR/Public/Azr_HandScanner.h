@@ -50,6 +50,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Config")
 	float DistanceCapsuleLength = 100.0f;
 
+	// Aim of the distance-grab capsule, as an offset from the hand's forward (+X) direction.
+	// Zero = straight forward (the original behaviour); Pitch tilts it up/down, Yaw swings it
+	// left/right. TUNE THE BEAM DIRECTION HERE — do NOT rotate the HandScanner component itself:
+	// the scanner's transform is also the frame Azr_Grab snaps held objects to, so rotating the
+	// scanner rotates every grabbed object away from its authored ghost-hand pose.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Config")
+	FRotator DistanceCapsuleAim = FRotator::ZeroRotator;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Debug")
 	bool bShowDebugVisuals;
 

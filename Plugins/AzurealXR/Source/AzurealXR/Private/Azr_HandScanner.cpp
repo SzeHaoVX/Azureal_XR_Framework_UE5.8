@@ -63,11 +63,23 @@ void UAzr_HandScanner::UpdateDistanceCapsuleShape()
 {
 	if (!DistanceGrabCapsule) return;
 
-	// Keep whatever size is set on the capsule's Shape (Half Height / Radius); just aim it along the
-	// hand's forward axis (+X) and push it out so the capsule starts at the hand and extends forward.
+	// Keep whatever size is set on the capsule's Shape (Half Height / Radius); just aim it and push
+	// it out so the capsule starts at the hand and extends along its aim.
+	//
+	// The aim is applied HERE, on the capsule itself, never by rotating the scanner: the scanner's
+	// transform doubles as the frame Azr_Grab snaps held objects to (SnapActorToHand passes `this`),
+	// so rotating the scanner to steer this beam also rotates every grabbed object off its authored
+	// ghost-hand pose. DistanceCapsuleAim keeps the two independent.
 	const float HalfLen = DistanceGrabCapsule->GetUnscaledCapsuleHalfHeight();
-	DistanceGrabCapsule->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
-	DistanceGrabCapsule->SetRelativeLocation(FVector(HalfLen, 0.0f, 0.0f));
+
+	// Default (+X, hand forward) rotated by the tunable aim.
+	const FVector Dir = DistanceCapsuleAim.RotateVector(FVector::ForwardVector).GetSafeNormal();
+	if (Dir.IsNearlyZero()) return;
+
+	// A capsule's long axis is its local +Z, so build a rotation whose Z lies along Dir, then push
+	// the capsule out by half its length so it starts at the hand instead of straddling it.
+	DistanceGrabCapsule->SetRelativeRotation(FRotationMatrix::MakeFromZ(Dir).Rotator());
+	DistanceGrabCapsule->SetRelativeLocation(Dir * HalfLen);
 }
 
 void UAzr_HandScanner::BeginPlay()
