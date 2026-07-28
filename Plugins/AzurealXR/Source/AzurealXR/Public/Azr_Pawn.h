@@ -241,6 +241,10 @@ protected:
     // NEW: Unified Ambidextrous Logic
     void ProcessStickInput(FVector2D AxisInput, UMotionControllerComponent* HandController, bool bIsLeftHand);
 
+    // Gate for backward blink-step / smooth-move. Defers to the teleport component so backward
+    // locomotion honours Azr_TeleportArea volumes (or the NavMesh) exactly like the teleport arc.
+    bool IsBackwardDestinationAllowed(const FVector& TargetLocation) const;
+
     void Move(const FInputActionValue& Value);
     void RightStickInput(const FInputActionValue& Value);
     void Look(const FInputActionValue& Value);

@@ -543,6 +543,23 @@ void AAzr_Pawn::RightStickInput(const FInputActionValue& Value) {
     ProcessStickInput(Value.Get<FVector2D>(), RightMotionController, false);
 }
 
+bool AAzr_Pawn::IsBackwardDestinationAllowed(const FVector& TargetLocation) const {
+    // Single source of truth: whatever the teleport component accepts (Azr_TeleportArea volumes, or
+    // the NavMesh) is what backward locomotion accepts too.
+    if (CachedTeleportComp) {
+        return CachedTeleportComp->IsDestinationValid(TargetLocation);
+    }
+
+    // No teleport component: fall back to the NavMesh if the level has one...
+    if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld())) {
+        FNavLocation ProjectedLoc;
+        return NavSys->ProjectPointToNavigation(TargetLocation, ProjectedLoc, FVector(50.0f, 50.0f, 250.0f));
+    }
+
+    // ...and if the level has neither, don't silently kill backward movement.
+    return true;
+}
+
 void AAzr_Pawn::ProcessStickInput(FVector2D AxisInput, UMotionControllerComponent* HandController, bool bIsLeftHand) {
     if (!bIsLocomotionEnabled || !bIsVRMode) return;
 
@@ -621,26 +638,23 @@ void AAzr_Pawn::ProcessStickInput(FVector2D AxisInput, UMotionControllerComponen
         }
     }
     else if (AxisInput.Y < -0.5f) {
-        // --- EMERGENCY BUG FIX: NAVMESH VALIDATION ---
-        UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
-
+        // Backward moves are validated through the teleport component so they obey whatever the
+        // project uses (Azr_TeleportArea volumes or the NavMesh) — see IsBackwardDestinationAllowed.
         if (BackwardInput == EBackBehavior::BlinkStep && bReadyToSnapTurn && CachedTeleportComp) {
             FVector TargetLoc = GetActorLocation() - (ViewDir * BlinkStepDistance);
-            FNavLocation ProjectedLoc;
 
-            // Only teleport if the destination is safely inside the NavMesh
-            if (NavSys && NavSys->ProjectPointToNavigation(TargetLoc, ProjectedLoc, FVector(100.0f, 100.0f, 250.0f))) {
+            if (IsBackwardDestinationAllowed(TargetLoc)) {
                 CachedTeleportComp->TeleportToLocation(TargetLoc);
+                // Only spend the shared step/turn lock on a step that actually happened; a rejected
+                // blink used to swallow it and eat the player's next snap turn.
+                bReadyToSnapTurn = false;
             }
-            bReadyToSnapTurn = false;
         }
         else if (BackwardInput == EBackBehavior::SmoothMove) {
             FVector DeltaMove = ViewDir * AxisInput.Y * SmoothMoveSpeed * DeltaTime;
             FVector TargetLoc = GetActorLocation() + DeltaMove;
-            FNavLocation ProjectedLoc;
 
-            // Only allow the micro-step backward if they are still on the NavMesh
-            if (NavSys && NavSys->ProjectPointToNavigation(TargetLoc, ProjectedLoc, FVector(50.0f, 50.0f, 250.0f))) {
+            if (IsBackwardDestinationAllowed(TargetLoc)) {
                 AddActorWorldOffset(DeltaMove, true);
             }
         }

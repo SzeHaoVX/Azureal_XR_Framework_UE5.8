@@ -4,7 +4,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/StaticMeshComponent.h"
 #include "Camera/PlayerCameraManager.h"
-#include "NavigationSystem.h" 
+#include "NavigationSystem.h"
+#include "Azr_TeleportArea.h"
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 #include "Azr_Pawn.h"
@@ -140,6 +141,45 @@ void UAzr_Teleport::StopAiming(bool bExecuteTeleport)
 	if (bExecuteTeleport) PerformTeleport();
 }
 
+bool UAzr_Teleport::IsDestinationValid(FVector Location) const
+{
+	FVector Unused;
+	// Taller navmesh probe than the arc uses: locomotion steps happen on uneven ground.
+	return ValidateDestination(Location, Unused, FVector(50.0f, 50.0f, 250.0f));
+}
+
+bool UAzr_Teleport::ValidateDestination(const FVector& HitPoint, FVector& OutLocation, const FVector& NavQueryExtent) const
+{
+	const UWorld* World = GetWorld();
+
+	// Areas win when explicitly selected, or in Auto as soon as the level actually has one — so
+	// existing NavMesh levels keep working untouched until an Azr_TeleportArea is placed.
+	const bool bUseAreas =
+		(ValidationMode == EAzr_TeleportValidation::TeleportAreas) ||
+		(ValidationMode == EAzr_TeleportValidation::Auto && AAzr_TeleportArea::HasAnyArea(World));
+
+	if (bUseAreas)
+	{
+		if (AAzr_TeleportArea::IsPointInAnyArea(World, HitPoint))
+		{
+			OutLocation = HitPoint; // land exactly where aimed, no navmesh snapping
+			return true;
+		}
+		return false;
+	}
+
+	FNavLocation NavLoc;
+	if (UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(const_cast<UWorld*>(World)))
+	{
+		if (NavSys->ProjectPointToNavigation(HitPoint, NavLoc, NavQueryExtent))
+		{
+			OutLocation = NavLoc.Location;
+			return true;
+		}
+	}
+	return false;
+}
+
 void UAzr_Teleport::UpdateArc()
 {
 	if (!CurrentController) return;
@@ -160,7 +200,39 @@ void UAzr_Teleport::UpdateArc()
 	FPredictProjectilePathResult Result;
 	bool bHit = UGameplayStatics::PredictProjectilePath(this, Params, Result);
 
-	if (bHit && Result.HitResult.bBlockingHit)
+	TArray<FVector> PathPoints;
+	for (const FPredictProjectilePathPointData& PointData : Result.PathData)
+	{
+		PathPoints.Add(PointData.Location);
+	}
+
+	// Landing-surface areas are hit by the arc ITSELF (they have no collision, so the world trace
+	// flies straight through them). Checked first: if the arc crosses one, it lands there rather
+	// than continuing to whatever floor is underneath.
+	FVector AreaLanding;
+	int32 LandingSegment = INDEX_NONE;
+	const bool bLandedOnArea = AAzr_TeleportArea::FindArcLanding(GetWorld(), PathPoints, AreaLanding, LandingSegment);
+
+	if (bLandedOnArea)
+	{
+		bHasValidLocation = true;
+		ValidTeleportLocation = AreaLanding;
+
+		if (ReticleComponent)
+		{
+			ReticleComponent->SetWorldLocation(AreaLanding);
+			ReticleComponent->SetWorldRotation(FQuat::Identity); // flat: the surface is level by definition
+			ReticleComponent->SetVisibility(true);
+		}
+
+		// Trim the beam so it stops at the surface instead of carrying on to the floor.
+		if (PathPoints.IsValidIndex(LandingSegment))
+		{
+			PathPoints.SetNum(LandingSegment + 1);
+			PathPoints.Add(AreaLanding);
+		}
+	}
+	else if (bHit && Result.HitResult.bBlockingHit)
 	{
 		if (ReticleComponent)
 		{
@@ -173,29 +245,12 @@ void UAzr_Teleport::UpdateArc()
 			ReticleComponent->SetVisibility(true);
 		}
 
-		FNavLocation NavLoc;
-		UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
-
-		if (NavSys && NavSys->ProjectPointToNavigation(Result.HitResult.Location, NavLoc, FVector(50, 50, 50)))
-		{
-			bHasValidLocation = true;
-			ValidTeleportLocation = NavLoc.Location;
-		}
-		else
-		{
-			bHasValidLocation = false;
-		}
+		bHasValidLocation = ValidateDestination(Result.HitResult.Location, ValidTeleportLocation);
 	}
 	else
 	{
 		bHasValidLocation = false;
 		if (ReticleComponent) ReticleComponent->SetVisibility(false);
-	}
-
-	TArray<FVector> PathPoints;
-	for (const FPredictProjectilePathPointData& PointData : Result.PathData)
-	{
-		PathPoints.Add(PointData.Location);
 	}
 
 	DrawBeam(PathPoints);
