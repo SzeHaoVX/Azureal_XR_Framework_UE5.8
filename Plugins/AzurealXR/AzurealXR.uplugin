@@ -23,6 +23,14 @@
         "Win64",
         "Android"
       ]
+    },
+    {
+      "Name": "AzurealXREditor",
+      "Type": "Editor",
+      "LoadingPhase": "PostEngineInit",
+      "PlatformAllowList": [
+        "Win64"
+      ]
     }
   ],
   "Plugins": [
