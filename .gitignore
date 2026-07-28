@@ -22,6 +22,9 @@ Build/
 *.slnx
 .vsconfig
 
+# ===== UnrealClaude MCP execute_script scratch (regenerated every run) =====
+Content/UnrealClaude/
+
 # ===== OS cruft =====
 .DS_Store
 Thumbs.db
