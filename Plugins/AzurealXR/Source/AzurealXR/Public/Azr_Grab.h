@@ -23,6 +23,17 @@ enum class EAzr_HandType : uint8
 	Both    UMETA(DisplayName = "Both Hands")
 };
 
+// Which grab mode's settings block to show in the details panel. Display only — the mode used at
+// runtime is decided by which Enable* function the training sequence calls.
+UENUM(BlueprintType)
+enum class EAzr_GrabMode : uint8
+{
+	Normal   UMETA(DisplayName = "Grab"),
+	Attach   UMETA(DisplayName = "Grab Attach"),
+	Remove   UMETA(DisplayName = "Grab Remove"),
+	Trigger  UMETA(DisplayName = "Grab Trigger")
+};
+
 // --- EVENTS ---
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnGrabEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGrabAttachedEvent, int32, SequenceID, UAzr_AttachTarget*, Target);
@@ -115,16 +126,22 @@ public:
 	float SnapThreshold = 3.0f;
 
 	// --- CONFIGS ---
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab Configuration")
+	// Each grab mode has its own settings block. Rather than stacking all four (only one of which
+	// is ever used by a given object), pick the mode here and only its block is shown.
+	// Editor convenience only: the mode actually used at runtime is whichever Enable* you call.
+	UPROPERTY(EditAnywhere, Category = "Grab Configuration", meta = (DisplayName = "Grab Mode"))
+	EAzr_GrabMode GrabMode = EAzr_GrabMode::Normal;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab Configuration", meta = (DisplayName = "Grab Settings", EditCondition = "GrabMode == EAzr_GrabMode::Normal", EditConditionHides))
 	FAzr_GrabConfig Grab;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab Configuration")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab Configuration", meta = (DisplayName = "Grab Attach Settings", EditCondition = "GrabMode == EAzr_GrabMode::Attach", EditConditionHides))
 	FAzr_GrabAttachConfig GrabAttach;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab Configuration")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab Configuration", meta = (DisplayName = "Grab Remove Settings", EditCondition = "GrabMode == EAzr_GrabMode::Remove", EditConditionHides))
 	FAzr_GrabRemoveConfig GrabRemove;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab Configuration")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Grab Configuration", meta = (DisplayName = "Grab Trigger Settings", EditCondition = "GrabMode == EAzr_GrabMode::Trigger", EditConditionHides))
 	FAzr_GrabTriggerConfig GrabTrigger;
 
 	// --- AUDIO ---
@@ -225,6 +242,11 @@ public:
 	// stealing an object that is already grabbed (see SnapActorToHand + UAzr_HandScanner).
 	UFUNCTION(BlueprintPure, Category = "Azureal|State")
 	bool IsHeld() const { return CurrentHand != nullptr; }
+
+	// Which attach sequence this object is currently enabled for (0 = any). A socket compares this
+	// against its own AttachSequenceID so it only ever seats the object meant for it.
+	UFUNCTION(BlueprintPure, Category = "Azureal|State")
+	int32 GetActiveAttachID() const { return ActiveAttachID; }
 
 	// --- DISTANCE GRAB QUERY (read by UAzr_HandScanner & AAzr_Interactable) ---
 	// True only while an enabled Grab / GrabAttach / GrabRemove mode has Distance Grab turned on.

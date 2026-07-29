@@ -27,7 +27,7 @@ UAzr_Grab::UAzr_Grab()
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	StencilID = 252;
-	HighlightSpeed = 1.2f;
+	HighlightSpeed = 0.8f;
 	SnapSpeed = 10.0f;
 	SnapThreshold = 3.0f;
 	LastValue = 0.0f;
@@ -726,6 +726,14 @@ void UAzr_Grab::ReleaseHand()
 		{
 			if (ClosestAttachTarget.IsValid()) ClosestAttachTarget->SetTetherAndWidgetVisibility(false);
 			UpdatePointer(false);
+
+			// Seat the object if it is parked in this socket — i.e. it was already inside when
+			// grab-attach was enabled, so it waits for the player to deliberately let go instead of
+			// snapping in on its own. Ignored in every other case.
+			if (ClosestAttachTarget.IsValid())
+			{
+				ClosestAttachTarget->NotifyGrabReleased(GetOwner());
+			}
 		}
 		else
 		{

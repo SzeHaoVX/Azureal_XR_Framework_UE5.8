@@ -70,6 +70,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
 	void NotifyObjectDetached();
 
+	// Called by UAzr_Grab when the player lets go. Seats an object that was parked because it was
+	// already inside this socket when grab-attach was enabled.
+	void NotifyGrabReleased(AActor* ReleasedActor);
+
 	void SetTetherAndWidgetVisibility(bool bShow);
 	void UpdateTetherVisuals();
 
@@ -118,4 +122,16 @@ private:
 	// Overlap Event
 	UFUNCTION()
 	void OnTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnTriggerEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	// Does the actual seating (detach from hand, parent to the socket, start the snap lerp).
+	void PerformAttach(AActor* OtherActor, class UAzr_Grab* GrabComp);
+
+	// Objects that were already inside the socket when grab-attach was enabled. They do NOT snap on
+	// their own — they seat when the player releases them here, or resume normal auto-snap once they
+	// have been carried out of range and back in.
+	UPROPERTY()
+	TSet<TObjectPtr<AActor>> ManualReleaseActors;
 };

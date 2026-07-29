@@ -32,6 +32,9 @@ UAzr_AttachTarget::UAzr_AttachTarget()
 	SnappingActor = nullptr;
 	CachedCameraManager = nullptr;
 
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GhostMaterialAsset(TEXT("/AzurealXR/Interaction/Pointer/Pointer_M_Ghost_Blue"));
+	if (GhostMaterialAsset.Succeeded()) GhostMaterial = GhostMaterialAsset.Object;
+
 	TetherSettings.TargetWidgetName = FName("AttachWidget");
 	TetherSettings.WidgetGap_Vertical = 0.0f;
 	TetherSettings.WidgetGap_Horizontal = 0.0f;
@@ -86,6 +89,7 @@ void UAzr_AttachTarget::BeginPlay()
 		if (TriggerSphere)
 		{
 			TriggerSphere->OnComponentBeginOverlap.AddDynamic(this, &UAzr_AttachTarget::OnTriggerOverlap);
+			TriggerSphere->OnComponentEndOverlap.AddDynamic(this, &UAzr_AttachTarget::OnTriggerEndOverlap);
 			TriggerSphere->AttachToComponent(this, FAttachmentTransformRules::SnapToTargetIncludingScale);
 		}
 	}
@@ -192,6 +196,30 @@ void UAzr_AttachTarget::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 	}
 }
 
+void UAzr_AttachTarget::OnTriggerEndOverlap(UPrimitiveComponent* /*OverlappedComp*/, AActor* OtherActor, UPrimitiveComponent* /*OtherComp*/, int32 /*OtherBodyIndex*/)
+{
+	// Left the socket, so the next entry is a genuine carry-in and may snap on its own again.
+	if (OtherActor)
+	{
+		ManualReleaseActors.Remove(OtherActor);
+	}
+}
+
+void UAzr_AttachTarget::NotifyGrabReleased(AActor* ReleasedActor)
+{
+	if (bIsFilled || bIsSnapping || !ReleasedActor) return;
+
+	// Only the objects parked by the rule below: they were already sitting in the socket when
+	// grab-attach was enabled, so seating them takes a deliberate release.
+	if (!ManualReleaseActors.Contains(ReleasedActor)) return;
+
+	if (UAzr_Grab* GrabComp = ReleasedActor->FindComponentByClass<UAzr_Grab>())
+	{
+		ManualReleaseActors.Remove(ReleasedActor);
+		PerformAttach(ReleasedActor, GrabComp);
+	}
+}
+
 void UAzr_AttachTarget::OnTriggerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (bIsFilled || bIsSnapping) return;
@@ -200,6 +228,32 @@ void UAzr_AttachTarget::OnTriggerOverlap(UPrimitiveComponent* OverlappedComp, AA
 
 	UAzr_Grab* GrabComp = OtherActor->FindComponentByClass<UAzr_Grab>();
 	if (!GrabComp) return;
+
+	// Only seat the object this socket is actually being asked for. The socket being armed at all
+	// already implies a sequence match, but a socket armed by anything else (a Blueprint showing its
+	// ghost, an earlier step that never disarmed) would otherwise swallow the wrong object.
+	const int32 ActiveAttachRequest = GrabComp->GetActiveAttachID();
+	if (ActiveAttachRequest > 0 && ActiveAttachRequest != AttachSequenceID) return;
+
+	// An overlap with nothing holding the object means it was already sitting in the socket when
+	// grab-attach was switched on — arming the sphere raises BeginOverlap by itself, and so does the
+	// UpdateOverlaps() inside the grab's ApplyConfig. Snapping there would attach the object before
+	// the trainee ever touched it. Park it instead: it now seats on a deliberate release, or resumes
+	// snapping on its own once it has been carried out and back in.
+	if (!GrabComp->IsHeld())
+	{
+		ManualReleaseActors.Add(OtherActor);
+		return;
+	}
+
+	if (ManualReleaseActors.Contains(OtherActor)) return; // waiting for that deliberate release
+
+	PerformAttach(OtherActor, GrabComp);
+}
+
+void UAzr_AttachTarget::PerformAttach(AActor* OtherActor, UAzr_Grab* GrabComp)
+{
+	if (!OtherActor || !GrabComp) return;
 
 	GrabComp->ForceRelease();
 	GrabComp->DisableGrabAttach();
