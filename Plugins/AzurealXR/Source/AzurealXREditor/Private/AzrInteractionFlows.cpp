@@ -2,15 +2,21 @@
 
 #include "AzrInteractionFlows.h"
 
+// Widget classes shipped with the plugin (Interaction/Explain_Action_Tag_Label).
+#define AZR_TAG_WIDGET     TEXT("/AzurealXR/Interaction/Explain_Action_Tag_Label/Tag.Tag_C")
+#define AZR_EXPLAIN_WIDGET TEXT("/AzurealXR/Interaction/Explain_Action_Tag_Label/Explain_Widget.Explain_Widget_C")
+#define AZR_ACTION_WIDGET  TEXT("/AzurealXR/Interaction/Explain_Action_Tag_Label/Action_Widget.Action_Widget_C")
+#define AZR_LABEL_WIDGET   TEXT("/AzurealXR/Interaction/Explain_Action_Tag_Label/Label.Label_C")
+
 // Field order matches FAzrFlowDef:
 //   Id, Group, Label, ClassPath, ComponentVarName,
 //   EnableFunction, DisableFunction, EnableEventLabel, DisableEventLabel, EventDelegates, Tooltip,
-//   TagWidgetName, TetherStructPath
+//   WidgetComponentName, WidgetClassPath, WidgetScale, WidgetNamePaths
 const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 {
 	static const TArray<FAzrFlowDef> Flows =
 	{
-		// ---- Grab (one component, four modes; each mode has its OWN TetherSettings config) ----
+		// ---- Grab (one component, four modes; each mode has its OWN TetherSettings) ----
 		{
 			TEXT("GrabNormal"), TEXT("Grab"), TEXT("Normal"),
 			TEXT("/Script/AzurealXR.Azr_Grab"), TEXT("Azr_Grab"),
@@ -18,7 +24,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Grab"), TEXT("Disable Grab"),
 			{ TEXT("OnGrabbed"), TEXT("OnReleased") },
 			TEXT("Free pick-up grab + On Grabbed / On Released."),
-			TEXT("GrabTag"), { TEXT("Grab"), TEXT("TetherSettings") }
+			TEXT("Grab_Tag"), AZR_TAG_WIDGET, 0.05f,
+			{ TEXT("Grab.TetherSettings.TargetWidgetName") }
 		},
 		{
 			TEXT("GrabAttach"), TEXT("Grab"), TEXT("Attach"),
@@ -27,7 +34,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Grab Attach"), TEXT("Disable Grab Attach"),
 			{ TEXT("OnGrabAttached"), TEXT("OnGrabDetached") },
 			TEXT("Grab that snaps into an Attach Target socket."),
-			TEXT("GrabTag"), { TEXT("GrabAttach"), TEXT("TetherSettings") }
+			TEXT("Grab Attach_Tag"), AZR_TAG_WIDGET, 0.05f,
+			{ TEXT("GrabAttach.TetherSettings.TargetWidgetName") }
 		},
 		{
 			TEXT("GrabRemove"), TEXT("Grab"), TEXT("Remove"),
@@ -36,7 +44,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Grab Remove"), TEXT("Disable Grab Remove"),
 			{ TEXT("OnGrabRemoved") },
 			TEXT("Grab-to-remove (e.g. take a part off)."),
-			TEXT("GrabTag"), { TEXT("GrabRemove"), TEXT("TetherSettings") }
+			TEXT("Grab Remove_Tag"), AZR_TAG_WIDGET, 0.05f,
+			{ TEXT("GrabRemove.TetherSettings.TargetWidgetName") }
 		},
 		{
 			TEXT("GrabTrigger"), TEXT("Grab"), TEXT("Trigger"),
@@ -45,7 +54,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Grab Trigger"), TEXT("Disable Grab Trigger"),
 			{ TEXT("OnGrabTriggered"), TEXT("OnGrabTriggerReleased") },
 			TEXT("Grab + squeeze trigger (analog value)."),
-			TEXT("GrabTag"), { TEXT("GrabTrigger"), TEXT("TetherSettings") }
+			TEXT("Grab Trigger_Tag"), AZR_TAG_WIDGET, 0.05f,
+			{ TEXT("GrabTrigger.TetherSettings.TargetWidgetName") }
 		},
 
 		// ---- Latch (1-DOF; mode Angular/Linear/Rotation is a component property) ----
@@ -56,7 +66,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Latch"), TEXT("Disable Latch"),
 			{ TEXT("OnValueChanged"), TEXT("OnLatched"), TEXT("OnLatchReleased") },
 			TEXT("Lever / slider / valve (set the mode on the component)."),
-			TEXT("LatchTag"), { TEXT("TetherSettings") }
+			TEXT("Latch_Tag"), AZR_TAG_WIDGET, 0.05f,
+			{ TEXT("TetherSettings.TargetWidgetName") }
 		},
 
 		// ---- Touch (detection only) ----
@@ -67,10 +78,11 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Touch"), TEXT("Disable Touch"),
 			{ TEXT("OnTouched"), TEXT("OnUntouched") },
 			TEXT("Hand-proximity detection + On Touched / On Untouched."),
-			TEXT("TouchTag"), { TEXT("TetherSettings") }
+			TEXT("Touch_Tag"), AZR_TAG_WIDGET, 0.05f,
+			{ TEXT("TetherSettings.TargetWidgetName") }
 		},
 
-		// ---- Attach Target (passive receptacle: no enable/disable/events — component + tag widget) ----
+		// ---- Attach Target (passive receptacle: no enable/disable/events) ----
 		{
 			TEXT("AttachTarget"), TEXT("Attach Target"), TEXT(""),
 			TEXT("/Script/AzurealXR.Azr_AttachTarget"), TEXT("Azr_AttachTarget"),
@@ -78,10 +90,11 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT(""), TEXT(""),
 			{},
 			TEXT("Socket/receptacle for Grab-Attach."),
-			TEXT("AttachTargetTag"), { TEXT("TetherSettings") }
+			TEXT("Attach Target_Tag"), AZR_TAG_WIDGET, 0.05f,
+			{ TEXT("TetherSettings.TargetWidgetName") }
 		},
 
-		// ---- Guidance UI (Explain / Explain+ share the one Azr_Explain component; no tag widget) ----
+		// ---- Guidance UI (Explain / Explain+ share the one Azr_Explain component) ----
 		{
 			TEXT("Explain"), TEXT("Explain"), TEXT(""),
 			TEXT("/Script/AzurealXR.Azr_Explain"), TEXT("Azr_Explain"),
@@ -89,7 +102,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Explain"), TEXT("Disable Explain"),
 			{ TEXT("OnExplainStarted"), TEXT("OnExplainCompleted") },
 			TEXT("In-world explanation panel. On Explain Started / Completed."),
-			TEXT(""), {}
+			TEXT("Explain_Widget"), AZR_EXPLAIN_WIDGET, 0.1f,
+			{ TEXT("SingleExplainStep.WidgetName") }
 		},
 		{
 			TEXT("ExplainPlus"), TEXT("Explain+"), TEXT(""),
@@ -98,7 +112,9 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Explain Plus"), TEXT("Disable Explain"),
 			{ TEXT("OnExplainPlusStarted"), TEXT("OnExplainPlusCompleted") },
 			TEXT("Explanation with extra interaction. On Explain Plus Started / Completed."),
-			TEXT(""), {}
+			TEXT("Explain Plus_Widget"), AZR_EXPLAIN_WIDGET, 0.1f,
+			// The chain's start and end steps both point at the same panel; MiddleSteps are authored.
+			{ TEXT("StartStep.WidgetName"), TEXT("EndStep.WidgetName") }
 		},
 		{
 			TEXT("Action"), TEXT("Action"), TEXT(""),
@@ -107,7 +123,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Action"), TEXT("Disable Action"),
 			{ TEXT("OnActionCompleted"), TEXT("OnStartButtonPressed"), TEXT("OnCompletedButtonPressed") },
 			TEXT("Action panel with progress + Start/Completed buttons."),
-			TEXT(""), {}
+			TEXT("Action_Widget"), AZR_ACTION_WIDGET, 0.1f,
+			{ TEXT("WidgetName") }
 		},
 		{
 			TEXT("Label"), TEXT("Label"), TEXT(""),
@@ -116,7 +133,9 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Enable Label"), TEXT("Disable Label"),
 			{},
 			TEXT("Floating world-space label (enable/disable only, no events)."),
-			TEXT(""), {}
+			TEXT("Label_Widget"), AZR_LABEL_WIDGET, 0.05f,
+			// Label keeps its widget name per payload entry; entry 0 is created if the array is empty.
+			{ TEXT("LabelPayloads.WidgetName") }
 		},
 	};
 	return Flows;

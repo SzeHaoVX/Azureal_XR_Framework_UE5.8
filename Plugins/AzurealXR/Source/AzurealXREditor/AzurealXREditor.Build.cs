@@ -29,6 +29,7 @@ public class AzurealXREditor : ModuleRules
                 "SubobjectDataInterface",// USubobjectDataSubsystem (component add)
                 "ToolMenus",             // UToolMenus toolbar button + content-browser entry
                 "ContentBrowser",        // UContentBrowserAssetContextMenuContext
+                "PropertyEditor",        // FAzr_TetherConfig details customization
                 "AzurealXR"              // UAzr_HandScanner (component visualizer)
             }
             );

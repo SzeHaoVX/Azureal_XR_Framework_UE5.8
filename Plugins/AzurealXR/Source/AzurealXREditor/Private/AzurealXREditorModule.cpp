@@ -5,9 +5,11 @@
 #include "AzrGrabHotkeyProcessor.h"
 #include "AzrFlowMenus.h"
 #include "AzrHandScannerVisualizer.h"
+#include "AzrTetherConfigCustomization.h"
 #include "Azr_HandScanner.h"
 #include "UnrealEdGlobals.h"
 #include "Editor/UnrealEdEngine.h"
+#include "PropertyEditorModule.h"
 
 /**
  * Editor-only module for AzurealXR authoring shortcuts.
@@ -40,6 +42,13 @@ public:
 			GUnrealEd->RegisterComponentVisualizer(UAzr_HandScanner::StaticClass()->GetFName(), Visualizer);
 			Visualizer->OnRegister();
 		}
+
+		// Hide FAzr_TetherConfig's TargetWidgetName on the components that ignore it.
+		FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+		PropertyModule.RegisterCustomPropertyTypeLayout(
+			TEXT("Azr_TetherConfig"),
+			FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FAzrTetherConfigCustomization::MakeInstance));
+		PropertyModule.NotifyCustomizationModuleChanged();
 	}
 
 	virtual void ShutdownModule() override
@@ -55,6 +64,13 @@ public:
 		if (GUnrealEd)
 		{
 			GUnrealEd->UnregisterComponentVisualizer(UAzr_HandScanner::StaticClass()->GetFName());
+		}
+
+		if (FModuleManager::Get().IsModuleLoaded("PropertyEditor"))
+		{
+			FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
+			PropertyModule.UnregisterCustomPropertyTypeLayout(TEXT("Azr_TetherConfig"));
+			PropertyModule.NotifyCustomizationModuleChanged();
 		}
 	}
 

@@ -28,10 +28,16 @@ struct FAzrFlowDef
 	TArray<FName>  EventDelegates;     // BlueprintAssignable delegates to add as component-bound events
 	FString        Tooltip;            // menu tooltip
 
-	// --- Optional tether Tag widget ---
-	FString        TagWidgetName;      // base name for the Tag WidgetComponent ("GrabTag"). Empty = no widget.
-	TArray<FName>  TetherStructPath;   // reflective path to the FAzr_TetherConfig, e.g. {"Grab","TetherSettings"}
-	                                   // or {"TetherSettings"}. Its TargetWidgetName is pointed at the widget.
+	// --- Optional widget component (the billboarded Tag / Explain / Action / Label panel) ---
+	FString        WidgetComponentName; // exact component name to create ("Latch_Tag"). Empty = no widget.
+	FString        WidgetClassPath;     // the UMG class the component displays.
+	float          WidgetScale;         // uniform scale for the widget component (panels sit larger than tags).
+
+	// Where the component stores the name of the widget it tethers to. Dot-separated reflective
+	// paths ending in an FName property — the field differs per component, and Explain+ has two
+	// (start and end step). An array member is addressed by its first element, created if missing.
+	// e.g. "Grab.TetherSettings.TargetWidgetName", "WidgetName", "LabelPayloads.WidgetName".
+	TArray<FString> WidgetNamePaths;
 };
 
 class FAzrInteractionFlows

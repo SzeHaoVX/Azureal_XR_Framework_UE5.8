@@ -19,6 +19,7 @@
 
 #include "Kismet2/BlueprintEditorUtils.h"
 #include "Kismet2/KismetEditorUtilities.h"
+#include "BlueprintEditor.h"
 
 #include "SubobjectDataSubsystem.h"
 #include "SubobjectDataHandle.h"
@@ -39,9 +40,6 @@ namespace
 	constexpr int32 GetDropY   = 150;
 	constexpr int32 EventDisableGap = 280;
 	constexpr int32 BoundEventGap   = 170;
-
-	// The billboarded "Tag" tether widget shared across grab/latch/touch/attach-target.
-	const TCHAR* GTagWidgetPath = TEXT("/AzurealXR/Interaction/Explain_Action_Tag_Label/Tag.Tag_C");
 
 	UClass* ResolveClass(const FString& Path)
 	{
@@ -88,41 +86,85 @@ namespace
 	}
 
 	/**
-	 * Reflectively walk StructPath (e.g. {"Grab","TetherSettings"} or {"TetherSettings"}) to the
-	 * FAzr_TetherConfig on the component template, then set TargetWidgetName + enable the tether.
-	 * Reflection avoids #including the (CableComponent-heavy) Azr component headers.
+	 * Reflectively walk a dot-separated path on the component template and write WidgetName into the
+	 * FName property it ends at — e.g. "Grab.TetherSettings.TargetWidgetName", "WidgetName", or
+	 * "LabelPayloads.WidgetName" (an array member resolves to element 0, added if the array is empty).
+	 * Reflection avoids #including the (CableComponent-heavy) Azr component headers, and lets one
+	 * routine serve components that each name this field differently.
+	 * Also switches the tether on wherever the surrounding struct exposes that flag.
 	 */
-	bool SetTetherTargetWidget(UObject* CompTemplate, const TArray<FName>& StructPath, const FName WidgetName)
+	bool SetWidgetNameAtPath(UObject* CompTemplate, const FString& Path, const FName WidgetName)
 	{
-		if (!CompTemplate || StructPath.Num() == 0)
+		if (!CompTemplate || Path.IsEmpty())
+		{
+			return false;
+		}
+
+		TArray<FString> Parts;
+		Path.ParseIntoArray(Parts, TEXT("."));
+		if (Parts.Num() == 0)
 		{
 			return false;
 		}
 
 		void* Container = CompTemplate;
 		UStruct* Owner = CompTemplate->GetClass();
-		for (const FName& Member : StructPath)
+
+		for (int32 Index = 0; Index < Parts.Num() - 1; ++Index)
 		{
-			FStructProperty* StructProp = CastField<FStructProperty>(Owner->FindPropertyByName(Member));
-			if (!StructProp)
+			FProperty* Prop = Owner->FindPropertyByName(FName(*Parts[Index]));
+			if (!Prop)
 			{
 				return false;
 			}
-			Container = StructProp->ContainerPtrToValuePtr<void>(Container);
-			Owner = StructProp->Struct;
+
+			if (FArrayProperty* ArrayProp = CastField<FArrayProperty>(Prop))
+			{
+				FStructProperty* ElementProp = CastField<FStructProperty>(ArrayProp->Inner);
+				if (!ElementProp)
+				{
+					return false;
+				}
+				FScriptArrayHelper Helper(ArrayProp, ArrayProp->ContainerPtrToValuePtr<void>(Container));
+				if (Helper.Num() == 0)
+				{
+					Helper.AddValue(); // give the payload list a first entry to configure
+				}
+				Container = Helper.GetRawPtr(0);
+				Owner = ElementProp->Struct;
+			}
+			else if (FStructProperty* StructProp = CastField<FStructProperty>(Prop))
+			{
+				Container = StructProp->ContainerPtrToValuePtr<void>(Container);
+				Owner = StructProp->Struct;
+			}
+			else
+			{
+				return false;
+			}
 		}
 
-		bool bSet = false;
-		if (FNameProperty* NameProp = CastField<FNameProperty>(Owner->FindPropertyByName(TEXT("TargetWidgetName"))))
+		FNameProperty* NameProp = CastField<FNameProperty>(Owner->FindPropertyByName(FName(*Parts.Last())));
+		if (!NameProp)
 		{
-			NameProp->SetPropertyValue_InContainer(Container, WidgetName);
-			bSet = true;
+			return false;
 		}
-		if (FBoolProperty* BoolProp = CastField<FBoolProperty>(Owner->FindPropertyByName(TEXT("bEnableTether"))))
+		NameProp->SetPropertyValue_InContainer(Container, WidgetName);
+
+		// Enable the tether: either the flag sits beside the name (FAzr_TetherConfig), or the
+		// surrounding struct owns a whole TetherSettings block (Explain step, Action, Label).
+		if (FBoolProperty* Flag = CastField<FBoolProperty>(Owner->FindPropertyByName(TEXT("bEnableTether"))))
 		{
-			BoolProp->SetPropertyValue_InContainer(Container, true);
+			Flag->SetPropertyValue_InContainer(Container, true);
 		}
-		return bSet;
+		else if (FStructProperty* Tether = CastField<FStructProperty>(Owner->FindPropertyByName(TEXT("TetherSettings"))))
+		{
+			if (FBoolProperty* Flag2 = CastField<FBoolProperty>(Tether->Struct->FindPropertyByName(TEXT("bEnableTether"))))
+			{
+				Flag2->SetPropertyValue_InContainer(Tether->ContainerPtrToValuePtr<void>(Container), true);
+			}
+		}
+		return true;
 	}
 }
 
@@ -165,18 +207,18 @@ FAzrFlowBuilder::FResult FAzrFlowBuilder::BuildFlow(UBlueprint* Blueprint, const
 		return Class && Class->FindPropertyByName(Name) != nullptr;
 	};
 
-	const bool bWantWidget = !Def.TagWidgetName.IsEmpty() && Def.TetherStructPath.Num() > 0;
+	const bool bWantWidget = !Def.WidgetComponentName.IsEmpty() && !Def.WidgetClassPath.IsEmpty();
 
-	// Desired unique widget name (GrabTag, GrabTag1, GrabTag2, …), computed vs the current skeleton.
+	// Desired unique widget name (Latch_Tag, Latch_Tag1, …), computed vs the current skeleton.
 	FName DesiredWidgetName = NAME_None;
 	if (bWantWidget)
 	{
-		DesiredWidgetName = FName(*Def.TagWidgetName);
+		DesiredWidgetName = FName(*Def.WidgetComponentName);
 		if (PropertyExists(DesiredWidgetName))
 		{
 			for (int32 N = 1; N < 1000; ++N)
 			{
-				const FName Candidate(*FString::Printf(TEXT("%s%d"), *Def.TagWidgetName, N));
+				const FName Candidate(*FString::Printf(TEXT("%s%d"), *Def.WidgetComponentName, N));
 				if (!PropertyExists(Candidate))
 				{
 					DesiredWidgetName = Candidate;
@@ -202,6 +244,28 @@ FAzrFlowBuilder::FResult FAzrFlowBuilder::BuildFlow(UBlueprint* Blueprint, const
 	}
 	const FSubobjectDataHandle RootHandle = Handles[0];
 
+	// Scene components (the widget) go under the actor's scene root, not the actor handle — a widget
+	// parented to the bare actor context does not show up in the Blueprint viewport.
+	FSubobjectDataHandle SceneRootHandle = RootHandle;
+	for (const FSubobjectDataHandle& Handle : Handles)
+	{
+		const FSubobjectData* Data = Handle.GetData();
+		if (!Data) continue;
+
+		if (const UObject* Obj = Data->GetObject())
+		{
+			if (Obj->GetFName() == TEXT("SceneRoot"))
+			{
+				SceneRootHandle = Handle; // AAzr_Interactable's root
+				break;
+			}
+			if (SceneRootHandle == RootHandle && Obj->IsA<USceneComponent>())
+			{
+				SceneRootHandle = Handle; // fall back to the first scene component
+			}
+		}
+	}
+
 	// ---- Add the interaction component (engine auto-uniquifies the name: Azr_Grab, Azr_Grab1, …) ----
 	FSubobjectDataHandle InteractionHandle;
 	{
@@ -219,17 +283,49 @@ FAzrFlowBuilder::FResult FAzrFlowBuilder::BuildFlow(UBlueprint* Blueprint, const
 		}
 	}
 
-	// ---- Add the Tag widget component (non-fatal if it fails) ----
+	// ---- Add the widget component (non-fatal if it fails) ----
 	FSubobjectDataHandle WidgetHandle;
 	if (bWantWidget)
 	{
 		FAddNewSubobjectParams Params;
-		Params.ParentHandle = RootHandle;
+		Params.ParentHandle = SceneRootHandle;
 		Params.NewClass = UWidgetComponent::StaticClass();
 		Params.BlueprintContext = Blueprint;
 
 		FText FailReason;
 		WidgetHandle = Subsystem->AddNewSubobject(Params, FailReason);
+
+		// Configure the widget template BEFORE the compile below. In an editor world the widget is
+		// only ever created by OnRegister -> InitWidget, and InitWidget early-outs when WidgetClass
+		// is still null. Set it afterwards and the preview instance has already registered empty,
+		// so the viewport stays blank until something forces a re-register (which is why deleting
+		// the component and undoing "fixes" it). Configuring first means the preview is built from
+		// a template that already knows its class.
+		if (const FSubobjectData* Data = WidgetHandle.GetData())
+		{
+			if (UWidgetComponent* WidgetComp = const_cast<UWidgetComponent*>(Data->GetObjectForBlueprint<UWidgetComponent>(Blueprint)))
+			{
+				WidgetComp->SetFlags(RF_Transactional);
+				WidgetComp->Modify();
+
+				// Written reflectively: SetWidgetClass() only rebuilds the live widget once the
+				// component has begun play, so on a template it would just assign the field.
+				if (UClass* WidgetClass = LoadClass<UUserWidget>(nullptr, *Def.WidgetClassPath))
+				{
+					if (FObjectPropertyBase* ClassProp = CastField<FObjectPropertyBase>(WidgetComp->GetClass()->FindPropertyByName(TEXT("WidgetClass"))))
+					{
+						ClassProp->SetObjectPropertyValue(ClassProp->ContainerPtrToValuePtr<void>(WidgetComp), WidgetClass);
+					}
+				}
+				if (FBoolProperty* DrawProp = CastField<FBoolProperty>(WidgetComp->GetClass()->FindPropertyByName(TEXT("bDrawAtDesiredSize"))))
+				{
+					DrawProp->SetPropertyValue_InContainer(WidgetComp, true);
+				}
+
+				WidgetComp->SetWidgetSpace(EWidgetSpace::World);
+				WidgetComp->SetRelativeScale3D(FVector(Def.WidgetScale));
+			}
+		}
 	}
 
 	Result.bComponentAdded = true;
@@ -263,23 +359,7 @@ FAzrFlowBuilder::FResult FAzrFlowBuilder::BuildFlow(UBlueprint* Blueprint, const
 			}
 		}
 
-		// Widget template: Tag class, scale 0.05, draw-at-desired-size.
-		if (const FSubobjectData* Data = WidgetHandle.GetData())
-		{
-			if (UWidgetComponent* WidgetComp = const_cast<UWidgetComponent*>(Data->GetObjectForBlueprint<UWidgetComponent>(Blueprint)))
-			{
-				WidgetComp->SetFlags(RF_Transactional);
-				WidgetComp->Modify();
-				if (UClass* TagClass = LoadClass<UUserWidget>(nullptr, GTagWidgetPath))
-				{
-					WidgetComp->SetWidgetClass(TagClass);
-				}
-				WidgetComp->SetDrawAtDesiredSize(true);
-				WidgetComp->SetRelativeScale3D(FVector(0.05f));
-			}
-		}
-
-		// Interaction template: TetherSettings.TargetWidgetName -> the widget's name.
+		// Interaction template: point every widget-name field this component uses at the new widget.
 		if (!WidgetVarName.IsNone())
 		{
 			if (const FSubobjectData* Data = InteractionHandle.GetData())
@@ -288,7 +368,10 @@ FAzrFlowBuilder::FResult FAzrFlowBuilder::BuildFlow(UBlueprint* Blueprint, const
 				{
 					Comp->SetFlags(RF_Transactional);
 					Comp->Modify();
-					SetTetherTargetWidget(Comp, Def.TetherStructPath, WidgetVarName);
+					for (const FString& NamePath : Def.WidgetNamePaths)
+					{
+						SetWidgetNameAtPath(Comp, NamePath, WidgetVarName);
+					}
 				}
 			}
 		}
@@ -404,13 +487,12 @@ FAzrFlowBuilder::FResult FAzrFlowBuilder::BuildFlow(UBlueprint* Blueprint, const
 			Y += BoundEventGap;
 		}
 
-		// ---- Wrap the flow in a titled comment box (title = "GRAB", "LATCH", …) ----
+		// ---- Wrap the flow in a titled comment box (title = "Grab Attach", "Latch", …) ----
 		if (Result.NodesAdded > 0)
 		{
-			const FString CommentBase = Def.Group.ToUpper();
 			const FString CommentTitle = (SuffixNumber > 0)
-				? FString::Printf(TEXT("%s %d"), *CommentBase, SuffixNumber)
-				: CommentBase;
+				? FString::Printf(TEXT("%s %d"), *DisplayName, SuffixNumber)
+				: DisplayName;
 
 			FGraphNodeCreator<UEdGraphNode_Comment> CommentCreator(*EventGraph);
 			UEdGraphNode_Comment* Comment = CommentCreator.CreateNode();
@@ -420,14 +502,24 @@ FAzrFlowBuilder::FResult FAzrFlowBuilder::BuildFlow(UBlueprint* Blueprint, const
 			Comment->NodeHeight = (Y + 20) - (FlowTop - 70);
 			CommentCreator.Finalize();
 
-			// Set AFTER Finalize: PostPlacedNewNode() resets NodeComment to "Comment".
+			// Set AFTER Finalize: PostPlacedNewNode() resets both of these to the engine defaults.
 			Comment->NodeComment = CommentTitle;
+			Comment->CommentColor = FLinearColor::White; // FFFFFFFF
 		}
 	}
 
 	FBlueprintEditorUtils::MarkBlueprintAsStructurallyModified(Blueprint);
 	FKismetEditorUtilities::CompileBlueprint(Blueprint);
 	Blueprint->MarkPackageDirty();
+
+	// Respawn the open editor's preview actor. Compiling rebuilds the class but leaves the viewport
+	// holding the components it already spawned — and a UWidgetComponent only ever builds its widget
+	// in OnRegister, so one that first registered without a widget class stays blank forever. This
+	// is what deleting the component and undoing was doing by hand.
+	if (TSharedPtr<IBlueprintEditor> Editor = FKismetEditorUtilities::GetIBlueprintEditorForObject(Blueprint, /*bOpenEditor=*/false))
+	{
+		StaticCastSharedPtr<FBlueprintEditor>(Editor)->UpdatePreviewActor(Blueprint, /*bInForceFullUpdate=*/true);
+	}
 
 	Result.bSuccess = true;
 	FString Parts = VarName.ToString();
