@@ -120,6 +120,16 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	FName HandleMeshName = "TargetMesh";
 
+	// Name of the widget component this latch's tether points at.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
+	FName TargetWidgetName = "TargetWidget";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
+	EAzr_HighlightMode HighlightMode = EAzr_HighlightMode::AllComponents;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
+	FAzr_TetherConfig TetherSettings;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	bool bUseLatchSnapHand = false;
 
@@ -132,13 +142,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	float HandFlyDuration = 0.15f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
-	EAzr_HighlightMode HighlightMode = EAzr_HighlightMode::AllComponents;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
-	FAzr_TetherConfig TetherSettings;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup", meta = (DisplayName = "Description"))
 	FAzr_MultiLangText LatchDescription;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")

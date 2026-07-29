@@ -46,6 +46,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup")
 	FName TargetMeshName = "TargetMesh";
 
+	// Name of the widget component this touch's tether points at.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup")
+	FName TargetWidgetName = "TargetWidget";
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup")
 	EAzr_HighlightMode HighlightMode = EAzr_HighlightMode::AllComponents;
 
@@ -55,7 +59,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup")
 	FAzr_TetherConfig TetherSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Touch Configuration|Setup", meta = (DisplayName = "Description"))
 	FAzr_MultiLangText TouchDescription;
 
 	// --- HAPTICS ---

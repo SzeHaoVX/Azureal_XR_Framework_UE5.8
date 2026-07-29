@@ -60,8 +60,11 @@ struct FAzr_TetherConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tether")
 	bool bEnableTether = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tether", meta = (ToolTip = "Used by Grab, Latch, Touch and Attach Target. IGNORED by Explain, Action and Label - those read their own Widget Name field instead."))
-	FName TargetWidgetName = "TargetWidget";
+	// NOTE: which widget the tether points at is NOT stored here. Each component owns that name
+	// next to its mesh name (Grab's config blocks, Latch, Touch, Attach Target), because the
+	// components that use a tether do not all resolve their widget the same way — Explain keeps one
+	// per step and Action one on the component. Keeping it out of here means every component reads
+	// its widget from exactly one obvious place.
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tether")
 	EAzr_TetherPos MeshAnchorPos = EAzr_TetherPos::Top;

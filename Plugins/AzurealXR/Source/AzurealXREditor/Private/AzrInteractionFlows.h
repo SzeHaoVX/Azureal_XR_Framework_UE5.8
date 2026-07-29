@@ -38,6 +38,13 @@ struct FAzrFlowDef
 	// (start and end step). An array member is addressed by its first element, created if missing.
 	// e.g. "Grab.TetherSettings.TargetWidgetName", "WidgetName", "LabelPayloads.WidgetName".
 	TArray<FString> WidgetNamePaths;
+
+	// Components whose settings are split per mode show a dropdown that picks which block the
+	// details panel displays (Azr_Grab's "Grab Mode"). Point the dropdown at the flow that was
+	// stamped, so the panel opens on the settings that flow actually uses.
+	// Display only — every block keeps its data, so the author can switch between them freely.
+	FName ModePropertyName;  // NAME_None when the component has no such dropdown
+	int32 ModeValue;         // enum entry to select
 };
 
 class FAzrInteractionFlows

@@ -46,12 +46,12 @@ UAzr_Grab::UAzr_Grab()
 
 	// --- CONFIG DEFAULTS ---
 	Grab.TargetMeshName = FName("TargetMesh");
-	Grab.TetherSettings.TargetWidgetName = FName("TargetWidget");
+	Grab.TargetWidgetName = FName("TargetWidget");
 	Grab.TetherSettings.AnchorScale = 0.03f;
 	Grab.TetherSettings.CableWidth = 35.0f;
 
 	GrabAttach.TargetMeshName = FName("TargetMesh");
-	GrabAttach.TetherSettings.TargetWidgetName = FName("TargetWidget");
+	GrabAttach.TargetWidgetName = FName("TargetWidget");
 	GrabAttach.SequenceID = 1;
 
 	GrabRemove.TargetMeshName = FName("TargetMesh");
@@ -222,7 +222,7 @@ void UAzr_Grab::EnableGrab()
 
 	UpdatePointer(false);
 
-	CurrentTargetWidget = FindWidgetByName(Grab.TetherSettings.TargetWidgetName);
+	CurrentTargetWidget = FindWidgetByName(Grab.TargetWidgetName);
 	if (CurrentTargetWidget)
 	{
 		CurrentTargetWidget->SetVisibility(true);
@@ -252,7 +252,7 @@ void UAzr_Grab::EnableGrab()
 		}
 	}
 
-	ToggleTether(true, Grab.TetherSettings);
+	ToggleTether(true, Grab);
 }
 
 void UAzr_Grab::EnableGrabAttach(int32 SequenceID)
@@ -286,7 +286,7 @@ void UAzr_Grab::EnableGrabAttach(int32 SequenceID)
 
 	UpdatePointer(false);
 
-	CurrentTargetWidget = FindWidgetByName(GrabAttach.TetherSettings.TargetWidgetName);
+	CurrentTargetWidget = FindWidgetByName(GrabAttach.TargetWidgetName);
 	if (CurrentTargetWidget)
 	{
 		CurrentTargetWidget->SetVisibility(true);
@@ -310,7 +310,7 @@ void UAzr_Grab::EnableGrabAttach(int32 SequenceID)
 		}
 	}
 
-	ToggleTether(true, GrabAttach.TetherSettings);
+	ToggleTether(true, GrabAttach);
 }
 
 void UAzr_Grab::EnableGrabRemove()
@@ -346,7 +346,7 @@ void UAzr_Grab::EnableGrabRemove()
 
 	UpdatePointer(false);
 
-	CurrentTargetWidget = FindWidgetByName(GrabRemove.TetherSettings.TargetWidgetName);
+	CurrentTargetWidget = FindWidgetByName(GrabRemove.TargetWidgetName);
 	if (CurrentTargetWidget)
 	{
 		CurrentTargetWidget->SetVisibility(true);
@@ -370,7 +370,7 @@ void UAzr_Grab::EnableGrabRemove()
 		}
 	}
 
-	ToggleTether(true, GrabRemove.TetherSettings);
+	ToggleTether(true, GrabRemove);
 }
 
 void UAzr_Grab::EnableGrabTrigger()
@@ -406,7 +406,7 @@ void UAzr_Grab::EnableGrabTrigger()
 
 	UpdatePointer(false);
 
-	CurrentTargetWidget = FindWidgetByName(GrabTrigger.TetherSettings.TargetWidgetName);
+	CurrentTargetWidget = FindWidgetByName(GrabTrigger.TargetWidgetName);
 	if (CurrentTargetWidget)
 	{
 		CurrentTargetWidget->SetVisibility(true);
@@ -430,7 +430,7 @@ void UAzr_Grab::EnableGrabTrigger()
 		}
 	}
 
-	ToggleTether(true, GrabTrigger.TetherSettings);
+	ToggleTether(true, GrabTrigger);
 }
 
 void UAzr_Grab::DisableGrab()
@@ -470,10 +470,10 @@ void UAzr_Grab::DisableGrab()
 
 	if (UAzr_Pointer* Pointer = FindPlayerPointer()) Pointer->DisablePointer();
 
-	ToggleTether(false, Grab.TetherSettings);
-	ToggleTether(false, GrabAttach.TetherSettings);
-	ToggleTether(false, GrabRemove.TetherSettings);
-	ToggleTether(false, GrabTrigger.TetherSettings);
+	ToggleTether(false, Grab);
+	ToggleTether(false, GrabAttach);
+	ToggleTether(false, GrabRemove);
+	ToggleTether(false, GrabTrigger);
 
 	if (CurrentTargetWidget)
 	{
@@ -634,10 +634,10 @@ void UAzr_Grab::SnapActorToHand(USceneComponent* Hand, USceneComponent* SnapPoin
 
 	ToggleHighlight(false, EAzr_HighlightMode::AllComponents);
 
-	if (bIsAttachMode) ToggleTether(false, GrabAttach.TetherSettings);
-	else if (bIsGrabRemoveMode) ToggleTether(false, GrabRemove.TetherSettings);
-	else if (bIsGrabTriggerMode) ToggleTether(false, GrabTrigger.TetherSettings);
-	else ToggleTether(false, Grab.TetherSettings);
+	if (bIsAttachMode) ToggleTether(false, GrabAttach);
+	else if (bIsGrabRemoveMode) ToggleTether(false, GrabRemove);
+	else if (bIsGrabTriggerMode) ToggleTether(false, GrabTrigger);
+	else ToggleTether(false, Grab);
 
 	if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(false);
 
@@ -714,7 +714,7 @@ void UAzr_Grab::ReleaseHand()
 			if (GetWorld()) { LastValue = 0.0f; bWasRising = true; }
 		}
 
-		ToggleTether(true, CurrentConfig->TetherSettings);
+		ToggleTether(true, *CurrentConfig);
 		if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(true);
 
 		if (AAzr_Interactable* Parent = Cast<AAzr_Interactable>(GetOwner()))
@@ -1032,7 +1032,7 @@ void UAzr_Grab::ToggleHighlight(bool bState, EAzr_HighlightMode Mode)
 		else if (bIsGrabRemoveMode) CurrentConfig = (const FAzr_GrabConfig*)&GrabRemove;
 		else if (bIsGrabTriggerMode) CurrentConfig = (const FAzr_GrabConfig*)&GrabTrigger;
 
-		CurrentTargetWidget = FindWidgetByName(CurrentConfig->TetherSettings.TargetWidgetName);
+		CurrentTargetWidget = FindWidgetByName(CurrentConfig->TargetWidgetName);
 	}
 
 	// Now that we guarantee it exists, make it glow
@@ -1050,27 +1050,27 @@ void UAzr_Grab::ToggleHighlight(bool bState, EAzr_HighlightMode Mode)
 	}
 }
 
-void UAzr_Grab::ToggleTether(bool bState, const FAzr_TetherConfig& TetherConfig)
+void UAzr_Grab::ToggleTether(bool bState, const FAzr_GrabConfig& Config)
 {
-	if (!bState || !TetherConfig.bEnableTether)
+	if (!bState || !Config.TetherSettings.bEnableTether)
 	{
 		StartAnchor->SetVisibility(false); EndAnchor->SetVisibility(false); TetherCable->SetVisibility(false); return;
 	}
 
 	USceneComponent* MeshTarget = CurrentTargetMesh;
-	USceneComponent* WidgetTarget = FindWidgetByName(TetherConfig.TargetWidgetName);
+	USceneComponent* WidgetTarget = FindWidgetByName(Config.TargetWidgetName);
 	if (!MeshTarget || !WidgetTarget) return;
 
-	if (TetherConfig.AnchorMesh)
+	if (Config.TetherSettings.AnchorMesh)
 	{
-		StartAnchor->SetStaticMesh(TetherConfig.AnchorMesh);
-		EndAnchor->SetStaticMesh(TetherConfig.AnchorMesh);
+		StartAnchor->SetStaticMesh(Config.TetherSettings.AnchorMesh);
+		EndAnchor->SetStaticMesh(Config.TetherSettings.AnchorMesh);
 	}
-	StartAnchor->SetWorldScale3D(FVector(TetherConfig.AnchorScale));
-	EndAnchor->SetWorldScale3D(FVector(TetherConfig.AnchorScale));
+	StartAnchor->SetWorldScale3D(FVector(Config.TetherSettings.AnchorScale));
+	EndAnchor->SetWorldScale3D(FVector(Config.TetherSettings.AnchorScale));
 
-	if (TetherConfig.CableMaterial) TetherCable->SetMaterial(0, TetherConfig.CableMaterial);
-	TetherCable->CableWidth = TetherConfig.CableWidth;
+	if (Config.TetherSettings.CableMaterial) TetherCable->SetMaterial(0, Config.TetherSettings.CableMaterial);
+	TetherCable->CableWidth = Config.TetherSettings.CableWidth;
 
 	// --- DRIFT FIX: Lazy Attachment Check ---
 	bool bStartCorrect = (StartAnchor->GetAttachParent() == MeshTarget);
@@ -1078,8 +1078,8 @@ void UAzr_Grab::ToggleTether(bool bState, const FAzr_TetherConfig& TetherConfig)
 
 	if (!bStartCorrect || !bEndCorrect)
 	{
-		FVector StartPos = CalculateSurfaceAnchor(MeshTarget, TetherConfig.MeshAnchorPos, TetherConfig);
-		FVector EndPos = CalculateSurfaceAnchor(WidgetTarget, TetherConfig.WidgetAnchorPos, TetherConfig);
+		FVector StartPos = CalculateSurfaceAnchor(MeshTarget, Config.TetherSettings.MeshAnchorPos, Config.TetherSettings);
+		FVector EndPos = CalculateSurfaceAnchor(WidgetTarget, Config.TetherSettings.WidgetAnchorPos, Config.TetherSettings);
 
 		if (!bStartCorrect) StartAnchor->AttachToComponent(MeshTarget, FAttachmentTransformRules::KeepWorldTransform);
 		if (!bEndCorrect) EndAnchor->AttachToComponent(WidgetTarget, FAttachmentTransformRules::KeepWorldTransform);
@@ -1098,7 +1098,7 @@ void UAzr_Grab::ToggleTether(bool bState, const FAzr_TetherConfig& TetherConfig)
 	TetherCable->bEnableCollision = false;
 
 	// --- PERCENTAGE MATH & STIFF HANG ---
-	float HangPercentage = TetherConfig.CableHang / 100.0f;
+	float HangPercentage = Config.TetherSettings.CableHang / 100.0f;
 	float InitialDist = FVector::Dist(StartAnchor->GetComponentLocation(), EndAnchor->GetComponentLocation());
 
 	if (HangPercentage <= 0.001f) {

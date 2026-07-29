@@ -11,7 +11,7 @@
 // Field order matches FAzrFlowDef:
 //   Id, Group, Label, ClassPath, ComponentVarName,
 //   EnableFunction, DisableFunction, EnableEventLabel, DisableEventLabel, EventDelegates, Tooltip,
-//   WidgetComponentName, WidgetClassPath, WidgetScale, WidgetNamePaths
+//   WidgetComponentName, WidgetClassPath, WidgetScale, WidgetNamePaths, ModePropertyName, ModeValue
 const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 {
 	static const TArray<FAzrFlowDef> Flows =
@@ -25,7 +25,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{ TEXT("OnGrabbed"), TEXT("OnReleased") },
 			TEXT("Free pick-up grab + On Grabbed / On Released."),
 			TEXT("Grab_Tag"), AZR_TAG_WIDGET, 0.05f,
-			{ TEXT("Grab.TetherSettings.TargetWidgetName") }
+			{ TEXT("Grab.TargetWidgetName") },
+			TEXT("GrabMode"), 0
 		},
 		{
 			TEXT("GrabAttach"), TEXT("Grab"), TEXT("Attach"),
@@ -35,7 +36,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{ TEXT("OnGrabAttached"), TEXT("OnGrabDetached") },
 			TEXT("Grab that snaps into an Attach Target socket."),
 			TEXT("Grab Attach_Tag"), AZR_TAG_WIDGET, 0.05f,
-			{ TEXT("GrabAttach.TetherSettings.TargetWidgetName") }
+			{ TEXT("GrabAttach.TargetWidgetName") },
+			TEXT("GrabMode"), 1
 		},
 		{
 			TEXT("GrabRemove"), TEXT("Grab"), TEXT("Remove"),
@@ -45,7 +47,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{ TEXT("OnGrabRemoved") },
 			TEXT("Grab-to-remove (e.g. take a part off)."),
 			TEXT("Grab Remove_Tag"), AZR_TAG_WIDGET, 0.05f,
-			{ TEXT("GrabRemove.TetherSettings.TargetWidgetName") }
+			{ TEXT("GrabRemove.TargetWidgetName") },
+			TEXT("GrabMode"), 2
 		},
 		{
 			TEXT("GrabTrigger"), TEXT("Grab"), TEXT("Trigger"),
@@ -55,7 +58,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{ TEXT("OnGrabTriggered"), TEXT("OnGrabTriggerReleased") },
 			TEXT("Grab + squeeze trigger (analog value)."),
 			TEXT("Grab Trigger_Tag"), AZR_TAG_WIDGET, 0.05f,
-			{ TEXT("GrabTrigger.TetherSettings.TargetWidgetName") }
+			{ TEXT("GrabTrigger.TargetWidgetName") },
+			TEXT("GrabMode"), 3
 		},
 
 		// ---- Latch (1-DOF; mode Angular/Linear/Rotation is a component property) ----
@@ -67,7 +71,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{ TEXT("OnValueChanged"), TEXT("OnLatched"), TEXT("OnLatchReleased") },
 			TEXT("Lever / slider / valve (set the mode on the component)."),
 			TEXT("Latch_Tag"), AZR_TAG_WIDGET, 0.05f,
-			{ TEXT("TetherSettings.TargetWidgetName") }
+			{ TEXT("TargetWidgetName") },
+			NAME_None, -1
 		},
 
 		// ---- Touch (detection only) ----
@@ -79,7 +84,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{ TEXT("OnTouched"), TEXT("OnUntouched") },
 			TEXT("Hand-proximity detection + On Touched / On Untouched."),
 			TEXT("Touch_Tag"), AZR_TAG_WIDGET, 0.05f,
-			{ TEXT("TetherSettings.TargetWidgetName") }
+			{ TEXT("TargetWidgetName") },
+			NAME_None, -1
 		},
 
 		// ---- Attach Target (passive receptacle: no enable/disable/events) ----
@@ -91,7 +97,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{},
 			TEXT("Socket/receptacle for Grab-Attach."),
 			TEXT("Attach Target_Tag"), AZR_TAG_WIDGET, 0.05f,
-			{ TEXT("TetherSettings.TargetWidgetName") }
+			{ TEXT("TargetWidgetName") },
+			NAME_None, -1
 		},
 
 		// ---- Guidance UI (Explain / Explain+ share the one Azr_Explain component) ----
@@ -103,7 +110,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{ TEXT("OnExplainStarted"), TEXT("OnExplainCompleted") },
 			TEXT("In-world explanation panel. On Explain Started / Completed."),
 			TEXT("Explain_Widget"), AZR_EXPLAIN_WIDGET, 0.1f,
-			{ TEXT("SingleExplainStep.WidgetName") }
+			{ TEXT("SingleExplainStep.WidgetName") },
+			NAME_None, -1
 		},
 		{
 			TEXT("ExplainPlus"), TEXT("Explain+"), TEXT(""),
@@ -114,7 +122,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Explanation with extra interaction. On Explain Plus Started / Completed."),
 			TEXT("Explain Plus_Widget"), AZR_EXPLAIN_WIDGET, 0.1f,
 			// The chain's start and end steps both point at the same panel; MiddleSteps are authored.
-			{ TEXT("StartStep.WidgetName"), TEXT("EndStep.WidgetName") }
+			{ TEXT("StartStep.WidgetName"), TEXT("EndStep.WidgetName") },
+			NAME_None, -1
 		},
 		{
 			TEXT("Action"), TEXT("Action"), TEXT(""),
@@ -124,7 +133,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			{ TEXT("OnActionCompleted"), TEXT("OnStartButtonPressed"), TEXT("OnCompletedButtonPressed") },
 			TEXT("Action panel with progress + Start/Completed buttons."),
 			TEXT("Action_Widget"), AZR_ACTION_WIDGET, 0.1f,
-			{ TEXT("WidgetName") }
+			{ TEXT("WidgetName") },
+			NAME_None, -1
 		},
 		{
 			TEXT("Label"), TEXT("Label"), TEXT(""),
@@ -135,7 +145,8 @@ const TArray<FAzrFlowDef>& FAzrInteractionFlows::All()
 			TEXT("Floating world-space label (enable/disable only, no events)."),
 			TEXT("Label_Widget"), AZR_LABEL_WIDGET, 0.05f,
 			// Label keeps its widget name per payload entry; entry 0 is created if the array is empty.
-			{ TEXT("LabelPayloads.WidgetName") }
+			{ TEXT("LabelPayloads.WidgetName") },
+			NAME_None, -1
 		},
 	};
 	return Flows;

@@ -344,6 +344,32 @@ FAzrFlowBuilder::FResult FAzrFlowBuilder::BuildFlow(UBlueprint* Blueprint, const
 		}
 	}
 
+	// ---- Point the component's mode dropdown at the flow that was just stamped ----
+	// Purely which settings block the details panel shows; every block keeps its data, so the author
+	// can still switch between them.
+	if (Def.ModePropertyName != NAME_None && Def.ModeValue >= 0)
+	{
+		if (const FSubobjectData* Data = InteractionHandle.GetData())
+		{
+			if (UActorComponent* Comp = const_cast<UActorComponent*>(Data->GetObjectForBlueprint<UActorComponent>(Blueprint)))
+			{
+				Comp->SetFlags(RF_Transactional);
+				Comp->Modify();
+
+				FProperty* ModeProp = Comp->GetClass()->FindPropertyByName(Def.ModePropertyName);
+				if (FEnumProperty* EnumProp = CastField<FEnumProperty>(ModeProp))
+				{
+					void* ValueAddress = EnumProp->ContainerPtrToValuePtr<void>(Comp);
+					EnumProp->GetUnderlyingProperty()->SetIntPropertyValue(ValueAddress, static_cast<int64>(Def.ModeValue));
+				}
+				else if (FByteProperty* ByteProp = CastField<FByteProperty>(ModeProp))
+				{
+					ByteProp->SetPropertyValue_InContainer(Comp, static_cast<uint8>(Def.ModeValue));
+				}
+			}
+		}
+	}
+
 	// ---- Configure the Tag widget + point the interaction tether at it ----
 	FName WidgetVarName = NAME_None;
 	if (bWantWidget && WidgetHandle.IsValid())

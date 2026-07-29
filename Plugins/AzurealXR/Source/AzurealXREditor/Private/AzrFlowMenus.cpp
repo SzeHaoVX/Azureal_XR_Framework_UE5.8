@@ -3,7 +3,8 @@
 #include "AzrFlowMenus.h"
 #include "AzrFlowBuilder.h"
 #include "AzrInteractionFlows.h"
-#include "AzrFlowNotify.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
 
 #include "ToolMenus.h"
 #include "ToolMenuSection.h"
@@ -31,6 +32,19 @@ namespace
 	const FName GAzrMenuOwner(TEXT("AzurealXREditor_Flows"));
 	const TCHAR* GAzrIcon = TEXT("GraphEditor.EventGraph_16x");
 	FDelegateHandle GStartupCallbackHandle;
+
+	/** Editor toast reporting what a flow added, or why it could not. */
+	void ShowResultNotification(const FString& Message, bool bSuccess)
+	{
+		FNotificationInfo Info(FText::FromString(Message));
+		Info.ExpireDuration = 4.5f;
+		Info.bUseSuccessFailIcons = true;
+		TSharedPtr<SNotificationItem> Item = FSlateNotificationManager::Get().AddNotification(Info);
+		if (Item.IsValid())
+		{
+			Item->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
+		}
+	}
 
 	FSlateIcon AzrIcon()
 	{
@@ -64,7 +78,7 @@ namespace
 	void RunAndNotify(UBlueprint* Blueprint, const FAzrFlowDef& Def)
 	{
 		const FAzrFlowBuilder::FResult Result = FAzrFlowBuilder::BuildFlow(Blueprint, Def);
-		AzrFlow::ShowResultNotification(Result.Message, Result.bSuccess);
+		ShowResultNotification(Result.Message, Result.bSuccess);
 	}
 
 	using FLeafActionFactory = TFunction<FToolUIActionChoice(const FAzrFlowDef&)>;
@@ -144,7 +158,7 @@ namespace
 				}
 				else
 				{
-					AzrFlow::ShowResultNotification(TEXT("Open this from a Blueprint editor."), false);
+					ShowResultNotification(TEXT("Open this from a Blueprint editor."), false);
 				}
 			}));
 		});

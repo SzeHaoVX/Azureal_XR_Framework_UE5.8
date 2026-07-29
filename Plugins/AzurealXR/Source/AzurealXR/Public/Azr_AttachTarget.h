@@ -46,10 +46,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Config")
 	float MagnetSpeed = 10.0f;
 
+	// Name of the widget component this socket's tether points at.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Config")
+	FName TargetWidgetName = "AttachWidget";
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Config")
 	FAzr_TetherConfig TetherSettings;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Visuals")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Visuals", meta = (DisplayName = "Description"))
 	FAzr_MultiLangText AttachDescription;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Visuals")

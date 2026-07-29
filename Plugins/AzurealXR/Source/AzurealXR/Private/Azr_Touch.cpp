@@ -184,7 +184,7 @@ void UAzr_Touch::EnableTouch()
 
 	// 3. Prepare Visuals
 	// 3. Prepare Visuals
-	CurrentTargetWidget = FindWidgetByName(TetherSettings.TargetWidgetName);
+	CurrentTargetWidget = FindWidgetByName(TargetWidgetName);
 	if (CurrentTargetWidget)
 	{
 		CurrentTargetWidget->SetVisibility(true);
@@ -382,7 +382,7 @@ void UAzr_Touch::ToggleTether(bool bState)
 	}
 
 	USceneComponent* MeshTarget = TargetHandleMesh ? Cast<USceneComponent>(TargetHandleMesh) : AutoDetectedMesh;
-	USceneComponent* WidgetTarget = FindWidgetByName(TetherSettings.TargetWidgetName);
+	USceneComponent* WidgetTarget = FindWidgetByName(TargetWidgetName);
 	if (!MeshTarget || !WidgetTarget) return;
 
 	// Apply Designer Settings

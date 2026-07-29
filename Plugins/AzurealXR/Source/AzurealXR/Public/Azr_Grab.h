@@ -49,6 +49,10 @@ struct FAzr_GrabConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
 	FName TargetMeshName = "TargetMesh";
 
+	// Name of the widget component this grab's tether points at.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
+	FName TargetWidgetName = "TargetWidget";
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Config")
 	EAzr_HighlightMode HighlightMode = EAzr_HighlightMode::AllComponents;
 
@@ -299,7 +303,7 @@ private:
 
 	void ApplyConfig(const FAzr_GrabConfig& InputConfig);
 	void ToggleHighlight(bool bState, EAzr_HighlightMode Mode);
-	void ToggleTether(bool bState, const FAzr_TetherConfig& TetherConfig);
+	void ToggleTether(bool bState, const FAzr_GrabConfig& Config);
 	void EnsureInitialized();
 	void FindAndShowGhost();
 	void UpdatePointer(bool bIsGrabbing);

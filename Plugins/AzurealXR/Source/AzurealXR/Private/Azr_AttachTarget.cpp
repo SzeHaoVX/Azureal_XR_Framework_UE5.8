@@ -35,7 +35,7 @@ UAzr_AttachTarget::UAzr_AttachTarget()
 	static ConstructorHelpers::FObjectFinder<UMaterialInterface> GhostMaterialAsset(TEXT("/AzurealXR/Interaction/Pointer/Pointer_M_Ghost_Blue"));
 	if (GhostMaterialAsset.Succeeded()) GhostMaterial = GhostMaterialAsset.Object;
 
-	TetherSettings.TargetWidgetName = FName("AttachWidget");
+	TargetWidgetName = FName("AttachWidget");
 	TetherSettings.WidgetGap_Vertical = 0.0f;
 	TetherSettings.WidgetGap_Horizontal = 0.0f;
 	TetherSettings.AnchorScale = 0.03f;
@@ -312,7 +312,7 @@ void UAzr_AttachTarget::PostEditChangeProperty(FPropertyChangedEvent& PropertyCh
 void UAzr_AttachTarget::SetTetherAndWidgetVisibility(bool bShow)
 {
 	bForceShowTether = bShow;
-	if (USceneComponent* WidgetTarget = FindWidgetByName(TetherSettings.TargetWidgetName))
+	if (USceneComponent* WidgetTarget = FindWidgetByName(TargetWidgetName))
 	{
 		WidgetTarget->SetVisibility(bShow);
 		CurrentWidget = WidgetTarget;
@@ -365,7 +365,7 @@ void UAzr_AttachTarget::UpdateTetherVisuals()
 		return;
 	}
 
-	USceneComponent* WidgetTarget = FindWidgetByName(TetherSettings.TargetWidgetName);
+	USceneComponent* WidgetTarget = FindWidgetByName(TargetWidgetName);
 	if (!WidgetTarget) return;
 
 	if (TetherSettings.AnchorMesh)

@@ -215,7 +215,7 @@ void UAzr_Latch::EnableLatch()
 	AAzr_Interactable::SetGlobalHiveSpeed(HighlightSpeed);
 
 	// 4. Wake up the Widget FIRST so Slate can start its layout math 
-	CurrentTargetWidget = FindWidgetByName(TetherSettings.TargetWidgetName);
+	CurrentTargetWidget = FindWidgetByName(TargetWidgetName);
 	if (CurrentTargetWidget)
 	{
 		CurrentTargetWidget->SetVisibility(true);
@@ -1006,7 +1006,7 @@ void UAzr_Latch::ToggleTether(bool bState)
 	}
 
 	USceneComponent* MeshTarget = TargetHandleMesh ? Cast<USceneComponent>(TargetHandleMesh) : AutoDetectedMesh;
-	USceneComponent* WidgetTarget = FindWidgetByName(TetherSettings.TargetWidgetName);
+	USceneComponent* WidgetTarget = FindWidgetByName(TargetWidgetName);
 	if (!MeshTarget || !WidgetTarget) return;
 
 	if (TetherSettings.AnchorMesh) { StartAnchor->SetStaticMesh(TetherSettings.AnchorMesh); EndAnchor->SetStaticMesh(TetherSettings.AnchorMesh); }
