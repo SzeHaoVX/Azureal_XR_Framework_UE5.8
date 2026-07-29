@@ -60,7 +60,7 @@ struct FAzr_TetherConfig
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tether")
 	bool bEnableTether = true;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tether", meta = (ToolTip = "IGNORED IN EXPLAIN SYSTEM - Uses the Step's WidgetName instead."))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tether", meta = (ToolTip = "Used by Grab, Latch, Touch and Attach Target. IGNORED by Explain, Action and Label - those read their own Widget Name field instead."))
 	FName TargetWidgetName = "TargetWidget";
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tether")
@@ -156,7 +156,7 @@ struct FAzr_ExplainStep
 	EAzr_HighlightMode HighlightMode = EAzr_HighlightMode::AllComponents;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Step|Visuals")
-	float HighlightSpeed = 1.2f;
+	float HighlightSpeed = 0.8f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Step|Visuals")
 	FAzr_TetherConfig TetherSettings;

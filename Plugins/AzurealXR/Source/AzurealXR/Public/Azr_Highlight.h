@@ -37,7 +37,7 @@ public:
 
 	// --- AUDIO SETTINGS ---
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Audio")
-	float HighlightSpeed = 1.2f;
+	float HighlightSpeed = 0.8f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Audio")
 	USoundBase* SoundHighlightStart;

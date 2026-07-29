@@ -15,7 +15,7 @@ UAzr_Highlight::UAzr_Highlight()
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 
 	StencilID = 252;
-	HighlightSpeed = 1.2f;
+	HighlightSpeed = 0.8f;
 	TargetMeshName = NAME_None;
 
 	LastValue = 0.0f;

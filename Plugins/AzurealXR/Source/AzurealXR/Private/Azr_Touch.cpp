@@ -23,7 +23,7 @@ UAzr_Touch::UAzr_Touch()
 
 	// --- DEFAULTS ---
 	InteractID = 1;
-	HighlightSpeed = 1.2f;
+	HighlightSpeed = 0.8f;
 	StencilID = 252;
 	LastValue = 0.0f;
 	bWasRising = false;

@@ -38,7 +38,7 @@ UAzr_Gaze::UAzr_Gaze()
 	GazeDuration = 2.0f;
 	DrainRate = 1.5f;
 	bResetOnTrigger = true;
-	HighlightSpeed = 1.2f;
+	HighlightSpeed = 0.8f;
 	
 	SpawnedIndicator = nullptr;
 

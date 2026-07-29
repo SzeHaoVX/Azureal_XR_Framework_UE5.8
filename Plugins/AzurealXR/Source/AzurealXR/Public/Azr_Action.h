@@ -98,7 +98,7 @@ public:
 	EAzr_HighlightMode HighlightMode = EAzr_HighlightMode::AllComponents;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action Settings|Visuals")
-	float HighlightSpeed = 1.2f;
+	float HighlightSpeed = 0.8f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Action Settings|Visuals")
 	FAzr_TetherConfig TetherSettings;

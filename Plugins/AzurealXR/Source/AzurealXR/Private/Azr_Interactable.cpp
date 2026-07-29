@@ -23,7 +23,7 @@ static bool IsRelevantHandComp(const UPrimitiveComponent* Comp, bool bAllowDista
 
 // --- HIVE MIND INITIALIZATION ---
 // Defaults to 1.2f. This lives in global memory.
-float AAzr_Interactable::GlobalHiveSpeed = 1.2f;
+float AAzr_Interactable::GlobalHiveSpeed = 0.8f;
 
 void AAzr_Interactable::SetGlobalHiveSpeed(float NewSpeed)
 {

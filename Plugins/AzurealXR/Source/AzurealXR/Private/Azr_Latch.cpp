@@ -39,7 +39,7 @@ UAzr_Latch::UAzr_Latch()
 	Damping = 15.0f;
 
 	bUseLatchSnapHand = false;
-	HighlightSpeed = 1.2f;
+	HighlightSpeed = 0.8f;
 	HandFlyDuration = 0.15f;
 	MinLeverArmLength = 5.0f;
 	MaxBreakDistance = 50.0f;
