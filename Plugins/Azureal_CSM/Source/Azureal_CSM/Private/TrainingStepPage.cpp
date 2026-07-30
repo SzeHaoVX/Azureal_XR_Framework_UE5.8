@@ -15,16 +15,25 @@
 
 // --- SETUP ---
 
-void UTrainingStepPage::InitializePageData()
+void UTrainingStepPage::NativeConstruct()
 {
-    // Seed English fallbacks for the localized chrome strings if left blank in the inspector
+    Super::NativeConstruct();
+
+    // Seed English fallbacks for the localized chrome strings if left blank in the inspector.
+    // These used to live in InitializePageData, which nothing ever calls — the Blueprint starts the
+    // step flow through its own custom event — so the captions were never populated and the buttons
+    // came up blank. Seeding here also keeps the two jobs apart: this fills in text, while
+    // InitializePageData starts the step sequence. Matches how UMainMenuPage seeds its own strings.
     if (Text_ButtonNext.English.IsEmpty())        Text_ButtonNext.English = TEXT("Next");
     if (Text_ButtonConfirm.English.IsEmpty())     Text_ButtonConfirm.English = TEXT("Confirm");
     if (Text_ButtonNextChapter.English.IsEmpty()) Text_ButtonNextChapter.English = TEXT("Next Chapter");
     if (Text_ButtonCompleted.English.IsEmpty())   Text_ButtonCompleted.English = TEXT("Completed");
     if (Text_TimeMinutes.English.IsEmpty())       Text_TimeMinutes.English = TEXT("m");
     if (Text_TimeSeconds.English.IsEmpty())       Text_TimeSeconds.English = TEXT("sec");
+}
 
+void UTrainingStepPage::InitializePageData()
+{
     InitRetryCount = 0;
     TryInitializeData();
 }

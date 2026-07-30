@@ -120,6 +120,11 @@ public:
 
 protected:
     // --- C++ ANIMATION ENGINE (NEW) ---
+    // Seeds the English chrome strings. Done here rather than in InitializePageData so the button and
+    // timer captions are always populated, without the Blueprint having to call anything and without
+    // starting the step flow.
+    virtual void NativeConstruct() override;
+
     virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
     // --- WIDGET BINDINGS ---
