@@ -125,15 +125,5 @@ UWidgetComponent* UAzr_Label::FindWidgetByName(FName Name)
 {
 	if (Name.IsNone() || !GetOwner()) return nullptr;
 
-	TArray<UWidgetComponent*> Comps;
-	GetOwner()->GetComponents<UWidgetComponent>(Comps);
-
-	for (UWidgetComponent* Comp : Comps)
-	{
-		if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString()))
-		{
-			return Comp;
-		}
-	}
-	return nullptr;
+	return Azr::FindComponentByName<UWidgetComponent>(GetOwner(), Name);
 }

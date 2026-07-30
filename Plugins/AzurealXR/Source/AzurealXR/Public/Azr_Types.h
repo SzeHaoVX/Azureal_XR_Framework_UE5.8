@@ -4,7 +4,53 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+#include "GameFramework/Actor.h"
 #include "Azr_Types.generated.h"
+
+
+namespace Azr
+{
+	/**
+	 * Resolve one of an actor's components by name, the way every Azureal component expects:
+	 * an EXACT name match always wins, and a substring match is only accepted when nothing matches
+	 * exactly. Matching on substring alone meant a name like "Handle" could be answered by
+	 * "Handle_Guard" purely because of component ordering.
+	 *
+	 * Predicate lets a caller add its own test (e.g. only widget components).
+	 */
+	template <typename ComponentType, typename PredicateType>
+	ComponentType* FindComponentByNameIf(const AActor* Owner, const FName Name, PredicateType Predicate)
+	{
+		if (!Owner || Name.IsNone()) return nullptr;
+
+		TArray<ComponentType*> Components;
+		Owner->GetComponents<ComponentType>(Components);
+
+		const FString NameString = Name.ToString();
+		ComponentType* SubstringMatch = nullptr;
+
+		for (ComponentType* Component : Components)
+		{
+			if (!Component || !Predicate(Component)) continue;
+
+			if (Component->GetFName() == Name)
+			{
+				return Component; // exact match always wins
+			}
+			if (!SubstringMatch && Component->GetName().Contains(NameString))
+			{
+				SubstringMatch = Component; // remembered, but only used if nothing matches exactly
+			}
+		}
+		return SubstringMatch;
+	}
+
+	template <typename ComponentType>
+	ComponentType* FindComponentByName(const AActor* Owner, const FName Name)
+	{
+		return FindComponentByNameIf<ComponentType>(Owner, Name, [](ComponentType*) { return true; });
+	}
+}
 
 
 // --- NEW: POINTER TARGET ENUM ---

@@ -1233,25 +1233,13 @@ FVector UAzr_Grab::CalculateSurfaceAnchor(USceneComponent* Target, EAzr_TetherPo
 
 USceneComponent* UAzr_Grab::FindWidgetByName(FName Name)
 {
-	if (Name.IsNone()) return nullptr;
-	TArray<USceneComponent*> Comps; GetOwner()->GetComponents(Comps);
-	for (USceneComponent* Comp : Comps)
-	{
-		if (Comp->IsA(UWidgetComponent::StaticClass()) && (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString())))
-			return Comp;
-	}
-	return nullptr;
+	return Azr::FindComponentByNameIf<USceneComponent>(GetOwner(), Name,
+		[](USceneComponent* Comp) { return Comp->IsA(UWidgetComponent::StaticClass()); });
 }
 
 UPrimitiveComponent* UAzr_Grab::FindMeshByName(FName Name)
 {
-	TArray<UPrimitiveComponent*> Comps; GetOwner()->GetComponents(Comps);
-	for (UPrimitiveComponent* Comp : Comps)
-	{
-		if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString()))
-			return Cast<UPrimitiveComponent>(Comp);
-	}
-	return nullptr;
+	return Azr::FindComponentByName<UPrimitiveComponent>(GetOwner(), Name);
 }
 
 UAzr_Pointer* UAzr_Grab::FindPlayerPointer() const

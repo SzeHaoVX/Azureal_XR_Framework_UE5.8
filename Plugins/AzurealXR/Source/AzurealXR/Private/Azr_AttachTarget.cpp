@@ -548,16 +548,8 @@ USceneComponent* UAzr_AttachTarget::FindWidgetByName(FName Name)
 	if (Name.IsNone()) return nullptr;
 	if (!GetOwner()) return nullptr;
 
-	TArray<USceneComponent*> Comps;
-	GetOwner()->GetComponents(Comps);
-	for (USceneComponent* Comp : Comps)
-	{
-		if (Comp->IsA(UWidgetComponent::StaticClass()))
-		{
-			if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString())) return Comp;
-		}
-	}
-	return nullptr;
+	return Azr::FindComponentByNameIf<USceneComponent>(GetOwner(), Name,
+		[](USceneComponent* Comp) { return Comp->IsA(UWidgetComponent::StaticClass()); });
 }
 
 void UAzr_AttachTarget::GenerateGhostFromClass()

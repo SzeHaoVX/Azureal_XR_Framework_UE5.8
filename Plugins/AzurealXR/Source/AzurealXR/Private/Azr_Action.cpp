@@ -375,16 +375,7 @@ void UAzr_Action::ExecuteAnimations()
 			// 1. Try to find the specific mesh by name (if the designer typed one in)
 			if (!Payload.TargetComponentName.IsNone())
 			{
-				TArray<USkeletalMeshComponent*> SkelComps;
-				ResolvedActor->GetComponents<USkeletalMeshComponent>(SkelComps);
-				for (USkeletalMeshComponent* Comp : SkelComps)
-				{
-					if (Comp && (Comp->GetFName() == Payload.TargetComponentName || Comp->GetName().Contains(Payload.TargetComponentName.ToString())))
-					{
-						TargetSkelMesh = Comp;
-						break;
-					}
-				}
+				TargetSkelMesh = Azr::FindComponentByName<USkeletalMeshComponent>(ResolvedActor, Payload.TargetComponentName);
 			}
 
 			// 2. Fallback: If no name was provided (or we didn't find a match), just grab the first one
@@ -671,25 +662,13 @@ FVector UAzr_Action::CalculateSurfaceAnchor(USceneComponent* Target, EAzr_Tether
 UPrimitiveComponent* UAzr_Action::FindMeshByName(FName Name)
 {
 	if (Name.IsNone() || !GetOwner()) return nullptr;
-	TArray<UPrimitiveComponent*> Comps;
-	GetOwner()->GetComponents(Comps);
-	for (UPrimitiveComponent* Comp : Comps)
-	{
-		if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString())) return Comp;
-	}
-	return nullptr;
+	return Azr::FindComponentByName<UPrimitiveComponent>(GetOwner(), Name);
 }
 
 UWidgetComponent* UAzr_Action::FindWidgetByName(FName Name)
 {
 	if (Name.IsNone() || !GetOwner()) return nullptr;
-	TArray<UWidgetComponent*> Comps;
-	GetOwner()->GetComponents<UWidgetComponent>(Comps);
-	for (UWidgetComponent* Comp : Comps)
-	{
-		if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString())) return Comp;
-	}
-	return nullptr;
+	return Azr::FindComponentByName<UWidgetComponent>(GetOwner(), Name);
 }
 
 UAzr_Pointer* UAzr_Action::FindPlayerPointer() const

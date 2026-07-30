@@ -133,11 +133,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	bool bUseLatchSnapHand = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup", meta = (ToolTip = "Distance from the pivot, measured perpendicular to the interaction axis, over which the hand gains full turning influence. Closer in, its influence ramps down so a hand sitting on the pivot cannot make the latch jitter. 0 disables the ramp."))
 	float MinLeverArmLength = 5.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup", meta = (ToolTip = "How far the hand may stray from the latch ZONE before the latch lets go. 0 or less disables breaking entirely."))
 	float MaxBreakDistance = 50.0f;
+
+	// Angular only: a hand passing through the pivot makes the measured angle jump ~180 degrees in a
+	// single frame, which would slam the lever end to end. Anything faster than this is treated as a
+	// bad reading and discarded rather than applied.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup", meta = (EditCondition = "LatchType == EAzr_LatchType::Angular", EditConditionHides, ToolTip = "Fastest turn (degrees per second) accepted as a real hand movement. Steps larger than this in one frame are discarded as measurement noise from the hand passing near the pivot. 0 or less disables the guard."))
+	float MaxTurnSpeed = 3000.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	float HandFlyDuration = 0.15f;
@@ -190,6 +196,13 @@ public:
 	// --- API ---
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
 	void EnableLatch();
+
+	// Re-reads the latch's current transform as its zero point.
+	// InitialTransform is captured once at BeginPlay and deliberately never re-captured, since
+	// re-capturing mid-interaction stacks transforms. Call this after deliberately REPOSITIONING a
+	// latch at runtime, otherwise it keeps driving motion from where it used to be.
+	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
+	void RecaptureInitialTransform();
 
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
 	void DisableLatch();

@@ -608,15 +608,7 @@ void UAzr_Gaze::GenerateIndicatorPreview()
 UMeshComponent* UAzr_Gaze::FindMeshByName(FName Name)
 {
 	if (Name.IsNone()) return nullptr;
-	TArray<UMeshComponent*> Comps; // <--- Changed to UMeshComponent
-	GetOwner()->GetComponents(Comps);
-
-	for (UMeshComponent* Comp : Comps)
-	{
-		if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString()))
-			return Comp;
-	}
-	return nullptr;
+	return Azr::FindComponentByName<UMeshComponent>(GetOwner(), Name);
 }
 
 

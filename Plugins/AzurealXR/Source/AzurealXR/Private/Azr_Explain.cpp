@@ -623,23 +623,12 @@ UPrimitiveComponent* UAzr_Explain::FindMeshByName(FName Name) {
 
     if (!SearchActor) return nullptr;
 
-    TArray<UPrimitiveComponent*> Comps;
-    SearchActor->GetComponents(Comps);
-
-    for (UPrimitiveComponent* Comp : Comps) {
-        if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString())) return Comp;
-    }
-    return nullptr;
+    return Azr::FindComponentByName<UPrimitiveComponent>(SearchActor, Name);
 }
 
 UWidgetComponent* UAzr_Explain::FindWidgetByName(FName Name) {
     if (Name.IsNone() || !GetOwner()) return nullptr;
-    TArray<UWidgetComponent*> Comps;
-    GetOwner()->GetComponents<UWidgetComponent>(Comps);
-    for (UWidgetComponent* Comp : Comps) {
-        if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString())) return Comp;
-    }
-    return nullptr;
+    return Azr::FindComponentByName<UWidgetComponent>(GetOwner(), Name);
 }
 
 UAzr_Pointer* UAzr_Explain::FindPlayerPointer() const {

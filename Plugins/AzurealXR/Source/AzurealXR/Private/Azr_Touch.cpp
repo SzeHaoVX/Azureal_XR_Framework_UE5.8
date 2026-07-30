@@ -540,16 +540,13 @@ void UAzr_Touch::EndPlay(const EEndPlayReason::Type Reason) { DisableTouch(); Su
 
 UPrimitiveComponent* UAzr_Touch::FindMeshByName(FName Name)
 {
-	TArray<UPrimitiveComponent*> Comps; GetOwner()->GetComponents(Comps);
-	for (auto* M : Comps) if (M->GetFName() == Name || M->GetName().Contains(Name.ToString())) return M;
-	return nullptr;
+	return Azr::FindComponentByName<UPrimitiveComponent>(GetOwner(), Name);
 }
 
 USceneComponent* UAzr_Touch::FindWidgetByName(FName Name)
 {
-	TArray<USceneComponent*> Comps; GetOwner()->GetComponents(Comps);
-	for (auto* W : Comps) if (W->IsA(UWidgetComponent::StaticClass()) && (W->GetFName() == Name || W->GetName().Contains(Name.ToString()))) return Cast<USceneComponent>(W);
-	return nullptr;
+	return Azr::FindComponentByNameIf<USceneComponent>(GetOwner(), Name,
+		[](USceneComponent* Comp) { return Comp->IsA(UWidgetComponent::StaticClass()); });
 }
 
 UAzr_Pointer* UAzr_Touch::FindPlayerPointer() const

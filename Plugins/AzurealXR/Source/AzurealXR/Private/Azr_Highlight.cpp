@@ -157,12 +157,5 @@ void UAzr_Highlight::ToggleVisuals(bool bState)
 
 UPrimitiveComponent* UAzr_Highlight::FindMeshByName(FName Name)
 {
-	TArray<UPrimitiveComponent*> Comps;
-	GetOwner()->GetComponents(Comps);
-	for (UPrimitiveComponent* Comp : Comps)
-	{
-		if (Comp->GetFName() == Name) return Comp;
-		if (Comp->GetName().Contains(Name.ToString())) return Comp;
-	}
-	return nullptr;
+	return Azr::FindComponentByName<UPrimitiveComponent>(GetOwner(), Name);
 }

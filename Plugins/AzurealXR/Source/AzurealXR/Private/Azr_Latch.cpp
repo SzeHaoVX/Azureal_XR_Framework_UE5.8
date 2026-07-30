@@ -169,6 +169,21 @@ void UAzr_Latch::BeginPlay()
 	if (ActiveLeftSnap) IdealLeftGripTransform = ActiveLeftSnap->GetComponentTransform().GetRelativeTransform(HandleTrans);
 	if (ActiveRightSnap) IdealRightGripTransform = ActiveRightSnap->GetComponentTransform().GetRelativeTransform(HandleTrans);
 
+	// --- AUTHORING CHECK ---
+	// A zone centred on the pivot describes an impossible interaction: torque is force x radius, so a
+	// hand grabbing exactly at the pivot has no lever arm and cannot turn anything. Say so loudly
+	// rather than letting it look like a broken latch.
+	if (LatchType == EAzr_LatchType::Angular && LinkedLatchZone)
+	{
+		const float ZoneToPivot = FVector::Dist(LinkedLatchZone->GetComponentLocation(), GetComponentLocation());
+		if (ZoneToPivot < MinLeverArmLength)
+		{
+			UE_LOG(LogTemp, Warning,
+				TEXT("Azr_Latch '%s' on '%s': the latch zone sits %.1fcm from the pivot, inside Min Lever Arm Length (%.1fcm). A hand grabbing there has no leverage, so the lever will barely move. Move the zone out to where the handle actually is."),
+				*GetName(), *GetOwner()->GetName(), ZoneToPivot, MinLeverArmLength);
+		}
+	}
+
 	// (NOTE: The Indicator spawning and Overlap binding logic that used to be here has been completely deleted. The Zone handles it now!)
 }
 
@@ -755,6 +770,17 @@ void UAzr_Latch::ReleaseLatch()
 	}
 }
 
+void UAzr_Latch::RecaptureInitialTransform()
+{
+	// Only safe while nothing is holding the latch — re-baselining mid-interaction stacks the
+	// offset already applied on top of the new zero point.
+	if (ActiveHands.Num() > 0) return;
+
+	InitialTransform = GetRelativeTransform();
+	CurrentRawValue = FMath::Clamp(StartValue, LimitMin, LimitMax);
+	ApplyConstraints(CurrentRawValue);
+}
+
 void UAzr_Latch::CheckBreakDistance()
 {
 	if (MaxBreakDistance <= 0.0f) return;
@@ -762,7 +788,13 @@ void UAzr_Latch::CheckBreakDistance()
 	for (int32 i = ActiveHands.Num() - 1; i >= 0; i--)
 	{
 		USceneComponent* Hand = ActiveHands[i];
-		USceneComponent* TargetComp = TargetHandleMesh ? Cast<USceneComponent>(TargetHandleMesh) : this;
+
+		// Measure from the latch ZONE — the volume the player actually reached into — falling back to
+		// the latch itself. It used to measure from the handle mesh, but a mesh's location is its
+		// PIVOT, not its bounds: on something large like a carpet the origin can sit metres from
+		// where the hand is, so a hand resting on the zone was already past MaxBreakDistance and the
+		// latch let go the instant it was grabbed.
+		USceneComponent* TargetComp = LinkedLatchZone ? Cast<USceneComponent>(LinkedLatchZone) : this;
 
 		if (FVector::DistSquared(Hand->GetComponentLocation(), TargetComp->GetComponentLocation()) > (MaxBreakDistance * MaxBreakDistance))
 		{
@@ -799,16 +831,34 @@ void UAzr_Latch::HandleAngularInteraction(float DeltaTime)
 	FVector ToHand = HandPos - PivotPos;
 	FVector ProjectedHand = ToHand - (Axis * FVector::DotProduct(ToHand, Axis));
 
-	if (ProjectedHand.Size() < MinLeverArmLength)
+	// Near the pivot a tiny hand movement swings the measured angle wildly, so its influence is
+	// ramped in over MinLeverArmLength instead of being switched on at a threshold. A hard cut-off
+	// made the lever feel stuck while still held; a ramp damps the jitter and still responds.
+	float LeverWeight = 1.0f;
+	if (MinLeverArmLength > 0.0f)
 	{
-		LastAngle = CalculateAngle(HandPos);
-		return;
+		LeverWeight = FMath::Clamp(ProjectedHand.Size() / MinLeverArmLength, 0.0f, 1.0f);
 	}
 
 	float PrePhysicsValue = CurrentRawValue;
-	float CurrentAngle = CalculateAngle(HandPos);
-	float DeltaAngle = FMath::FindDeltaAngleDegrees(LastAngle, CurrentAngle);
+	const float CurrentAngle = CalculateAngle(HandPos);
+	const float RawDelta = FMath::FindDeltaAngleDegrees(LastAngle, CurrentAngle);
+
+	// Resync before any early-out, so a discarded frame measures from where the hand actually is
+	// instead of saving the bad jump up for the next one.
 	LastAngle = CurrentAngle;
+
+	// The angle is atan2 of the two coordinates across the interaction axis, which is undefined at
+	// the pivot itself — so a hand passing through or sitting on the pivot flips it by ~180 degrees
+	// between frames, and the shortest-path delta then swings the lever end to end. The lever-arm
+	// ramp alone cannot hide a jump that large. No hand turns a lever this fast, so treat an
+	// impossible step as a bad reading and drop it.
+	if (MaxTurnSpeed > 0.0f && FMath::Abs(RawDelta) > (MaxTurnSpeed * DeltaTime))
+	{
+		return;
+	}
+
+	float DeltaAngle = RawDelta * LeverWeight;
 
 	if (bInvertRotation) DeltaAngle *= -1.0f;
 
@@ -897,12 +947,16 @@ void UAzr_Latch::ApplyConstraints(float PrePhysicsRawValue)
 	{
 		FVector NewLocation = InitialTransform.GetLocation();
 
-		// Override ONLY the target axis with the absolute StartValue/CurrentRawValue
+		// OFFSET the target axis from the start position, matching Angular/Rotation which offset from
+		// InitialTransform's rotation. This used to overwrite the axis with CurrentRawValue as an
+		// absolute parent-local coordinate, even though CalculateLinearDist already measures the hand
+		// RELATIVE to InitialTransform — so the value was produced in one space and consumed in
+		// another, and Limit Min/Max meant something different in Linear than in the other modes.
 		switch (InteractionAxis)
 		{
-		case EAzr_Axis::X_Axis: NewLocation.X = CurrentRawValue; break;
-		case EAzr_Axis::Y_Axis: NewLocation.Y = CurrentRawValue; break;
-		case EAzr_Axis::Z_Axis: NewLocation.Z = CurrentRawValue; break;
+		case EAzr_Axis::X_Axis: NewLocation.X += CurrentRawValue; break;
+		case EAzr_Axis::Y_Axis: NewLocation.Y += CurrentRawValue; break;
+		case EAzr_Axis::Z_Axis: NewLocation.Z += CurrentRawValue; break;
 		}
 
 		SetRelativeLocation(NewLocation);
@@ -1220,17 +1274,13 @@ FVector UAzr_Latch::CalculateSurfaceAnchor(USceneComponent* Target, EAzr_TetherP
 
 UPrimitiveComponent* UAzr_Latch::FindMeshByName(FName Name)
 {
-	if (Name.IsNone()) return nullptr;
-	TArray<UPrimitiveComponent*> Comps; GetOwner()->GetComponents(Comps);
-	for (UPrimitiveComponent* Comp : Comps) if (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString())) return Comp;
-	return nullptr;
+	return Azr::FindComponentByName<UPrimitiveComponent>(GetOwner(), Name);
 }
 
 USceneComponent* UAzr_Latch::FindWidgetByName(FName Name)
 {
-	TArray<USceneComponent*> Comps; GetOwner()->GetComponents(Comps);
-	for (USceneComponent* Comp : Comps) if (Comp->IsA(UWidgetComponent::StaticClass()) && (Comp->GetFName() == Name || Comp->GetName().Contains(Name.ToString()))) return Cast<USceneComponent>(Comp);
-	return nullptr;
+	return Azr::FindComponentByNameIf<USceneComponent>(GetOwner(), Name,
+		[](USceneComponent* Comp) { return Comp->IsA(UWidgetComponent::StaticClass()); });
 }
 
 UAzr_Pointer* UAzr_Latch::FindPlayerPointer() const
