@@ -214,7 +214,10 @@ protected:
     FTimerHandle EventTeleportTimerHandle;
 
     // --- STATE TRACKERS ---
+    // One-shot gesture locks, kept separate on purpose: a shared lock meant an accidental snap turn
+    // consumed the backward step, and neither recovered until the stick was fully centred.
     bool bReadyToSnapTurn;
+    bool bReadyToBlinkStep;
     float TargetGripLeft;
     float CurrentGripLeft;
     float TargetGripRight;
@@ -244,6 +247,14 @@ protected:
     // Gate for backward blink-step / smooth-move. Defers to the teleport component so backward
     // locomotion honours Azr_TeleportArea volumes (or the NavMesh) exactly like the teleport arc.
     bool IsBackwardDestinationAllowed(const FVector& TargetLocation) const;
+
+    // Where the player's body actually stands, at the pawn's floor height. In room scale the head can
+    // be metres from VROrigin, so locomotion that means "from the player" must measure from here --
+    // measuring from the actor instead offsets the move by however far they physically walked.
+    FVector GetHeadFloorLocation() const;
+
+    // The direction the player is looking, flattened to the floor plane and always unit length.
+    FVector GetViewDirection() const;
 
     void Move(const FInputActionValue& Value);
     void RightStickInput(const FInputActionValue& Value);

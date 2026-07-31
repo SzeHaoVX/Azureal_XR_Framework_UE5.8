@@ -129,6 +129,7 @@ AAzr_Pawn::AAzr_Pawn() {
     SmoothMoveSpeed = 300.0f;
     BlinkStepDistance = 150.0f;
     bReadyToSnapTurn = true;
+    bReadyToBlinkStep = true;
     GazeTraceDistance = 500.0f;
     GazeTraceRadius = 5.0f;
     bShowGazeDebug = false;
@@ -543,6 +544,25 @@ void AAzr_Pawn::RightStickInput(const FInputActionValue& Value) {
     ProcessStickInput(Value.Get<FVector2D>(), RightMotionController, false);
 }
 
+FVector AAzr_Pawn::GetHeadFloorLocation() const {
+    if (!Camera) return GetActorLocation();
+
+    // Horizontal position of the head, dropped to the pawn's own floor height.
+    FVector HeadFloor = Camera->GetComponentLocation();
+    HeadFloor.Z = GetActorLocation().Z;
+    return HeadFloor;
+}
+
+FVector AAzr_Pawn::GetViewDirection() const {
+    if (!Camera) return GetActorForwardVector();
+
+    // Built from the camera's yaw rather than by flattening its forward vector. Flattening a
+    // near-vertical gaze leaves a vector too short for Normalize(), which zeroes it -- so looking down
+    // at your own hands used to collapse the movement direction to nothing. A yaw-only rotator is
+    // always unit length.
+    return FRotator(0.0f, Camera->GetComponentRotation().Yaw, 0.0f).Vector();
+}
+
 bool AAzr_Pawn::IsBackwardDestinationAllowed(const FVector& TargetLocation) const {
     // Single source of truth: whatever the teleport component accepts (Azr_TeleportArea volumes, or
     // the NavMesh) is what backward locomotion accepts too.
@@ -605,13 +625,25 @@ void AAzr_Pawn::ProcessStickInput(FVector2D AxisInput, UMotionControllerComponen
 
     float DeltaTime = GetWorld()->GetDeltaSeconds();
 
+    // Sampled BEFORE this frame's turn is applied, so a turn and a move landing on the same frame
+    // can never disagree about which way the player was facing when they pushed the stick.
+    const FVector ViewDir = GetViewDirection();
+
+    // Snap turn and blink step are one-shot gestures, so a single stick push may only claim one of
+    // them -- whichever axis the player actually pushed further. Both used to fire off their own 0.5
+    // threshold independently, and a diagonal pull reads about 0.71 on BOTH axes, so pulling back and
+    // even slightly sideways triggered the turn, spent the lock the step also needed, and stepped
+    // nowhere. That is the "backwards turns me instead" bug.
+    const bool bTurnAxisDominates = FMath::Abs(AxisInput.X) > FMath::Abs(AxisInput.Y);
+    const bool bMoveAxisDominates = !bTurnAxisDominates;
+
     // --- 2. X-AXIS: TURN ---
     float TurnYaw = 0.0f;
     if (FMath::Abs(AxisInput.X) > 0.5f) {
         if (TurnInput == ETurnBehavior::SmoothTurn) {
             TurnYaw = AxisInput.X * SmoothTurnSpeed * DeltaTime;
         }
-        else if (TurnInput == ETurnBehavior::SnapTurn && bReadyToSnapTurn) {
+        else if (TurnInput == ETurnBehavior::SnapTurn && bReadyToSnapTurn && bTurnAxisDominates) {
             TurnYaw = SnapTurnAngle * (AxisInput.X > 0 ? 1.0f : -1.0f);
             bReadyToSnapTurn = false;
         }
@@ -626,9 +658,6 @@ void AAzr_Pawn::ProcessStickInput(FVector2D AxisInput, UMotionControllerComponen
     }
 
     // --- 3. Y-AXIS: FORWARD & BACKWARD ---
-    FVector ViewDir = Camera->GetForwardVector();
-    ViewDir.Z = 0; ViewDir.Normalize();
-
     if (AxisInput.Y > 0.5f) {
         if (ForwardInput == EForwardBehavior::Teleport && CachedTeleportComp) {
             CachedTeleportComp->HandleTeleportInput(AxisInput.Y, HandController);
@@ -640,21 +669,25 @@ void AAzr_Pawn::ProcessStickInput(FVector2D AxisInput, UMotionControllerComponen
     else if (AxisInput.Y < -0.5f) {
         // Backward moves are validated through the teleport component so they obey whatever the
         // project uses (Azr_TeleportArea volumes or the NavMesh) — see IsBackwardDestinationAllowed.
-        if (BackwardInput == EBackBehavior::BlinkStep && bReadyToSnapTurn && CachedTeleportComp) {
-            FVector TargetLoc = GetActorLocation() - (ViewDir * BlinkStepDistance);
+        if (BackwardInput == EBackBehavior::BlinkStep && bReadyToBlinkStep && bMoveAxisDominates && CachedTeleportComp) {
+            // Measured from the head, not the actor. TeleportToLocation takes a FLOOR position and
+            // re-applies the head offset itself, so handing it an actor position double-counted
+            // however far the player had physically walked from VROrigin -- which pushed the step
+            // sideways by exactly that much instead of straight back.
+            FVector TargetLoc = GetHeadFloorLocation() - (ViewDir * BlinkStepDistance);
 
             if (IsBackwardDestinationAllowed(TargetLoc)) {
                 CachedTeleportComp->TeleportToLocation(TargetLoc);
-                // Only spend the shared step/turn lock on a step that actually happened; a rejected
-                // blink used to swallow it and eat the player's next snap turn.
-                bReadyToSnapTurn = false;
+                // Only spend the lock on a step that actually happened; a rejected blink used to
+                // swallow it and eat the player's next step.
+                bReadyToBlinkStep = false;
             }
         }
         else if (BackwardInput == EBackBehavior::SmoothMove) {
             FVector DeltaMove = ViewDir * AxisInput.Y * SmoothMoveSpeed * DeltaTime;
-            FVector TargetLoc = GetActorLocation() + DeltaMove;
 
-            if (IsBackwardDestinationAllowed(TargetLoc)) {
+            // Validate where the player's body ends up, not where VROrigin ends up.
+            if (IsBackwardDestinationAllowed(GetHeadFloorLocation() + DeltaMove)) {
                 AddActorWorldOffset(DeltaMove, true);
             }
         }
@@ -666,9 +699,11 @@ void AAzr_Pawn::ProcessStickInput(FVector2D AxisInput, UMotionControllerComponen
     }
 
     // --- 4. RESET LOCKS ---
-    if (FMath::Abs(AxisInput.X) < 0.2f && FMath::Abs(AxisInput.Y) < 0.2f) {
-        bReadyToSnapTurn = true;
-    }
+    // Per-axis. Requiring the whole stick to be centred meant that after an accidental turn the player
+    // could correct their thumb to straight-back and still get nothing, because the other axis was
+    // holding the lock shut. Each gesture now re-arms as soon as its own axis returns to neutral.
+    if (FMath::Abs(AxisInput.X) < 0.2f) bReadyToSnapTurn = true;
+    if (FMath::Abs(AxisInput.Y) < 0.2f) bReadyToBlinkStep = true;
 }
 
 void AAzr_Pawn::TeleportPlayer(FVector TargetLocation, FRotator TargetRotation)
