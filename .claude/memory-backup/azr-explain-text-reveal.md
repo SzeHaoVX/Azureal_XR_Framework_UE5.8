@@ -5,21 +5,23 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 476fe6fc-eae3-4d83-89c0-c52b396e6559
-  modified: 2026-08-10T03:56:35.323Z
+  modified: 2026-08-10T03:58:28.071Z
 ---
 
 `Azr_Explain` can reveal its sentence word by word in step with the voice-over. Built 2026-08-04, never
 committed. Off by default (`bRevealTextWithAudio`). Production plan agreed but deliberately **not**
 built - see [[azr-savegame-experiment]] for the other on-hold experiment.
 
-**WHERE IT LIVES:** the framework repo, **committed** on 2026-08-10 — `Plugins/AzurealXR`
-(`Azr_Explain`, `Azr_ExplainWidget`, `Azr_Types`) plus `Tools/Azr-ElevenLabsTimings.ps1`. Also present
-in the TNB sandbox, which additionally carries the save system's `AzrArmedMode`; that property is
-deliberately **not** in the framework copy.
+**WHERE IT LIVES:** archived, **not implemented**, at
+`.claude/experiments/azr-explain-text-reveal/` in the framework repo — a git patch, the generator
+script, and a README of the gotchas. The framework source itself is untouched. Revive with
+`git apply` when and if it is confirmed for production. A working copy also runs in the TNB sandbox,
+which additionally carries the save prototype's `AzrArmedMode` (do **not** bring that across).
 
-It was lost once: an earlier framework copy was reverted without either of us noticing and survived
-only in TNB, and the script vanished entirely and had to be rewritten from these notes. That is exactly
-why it is committed now — see [[framework-repo-is-home-for-all-notes]].
+**Archive it, do not merge it.** On 2026-08-10 this was committed straight into `Plugins/AzurealXR`
+and had to be backed out — the ask was to keep experiments *retrievable*, not applied. Experiments go
+in `.claude/experiments/<name>/` as a patch plus notes; the product source stays clean until the user
+says implement. See [[framework-repo-is-home-for-all-notes]].
 
 **Two paths exist in the code.** `FAzr_ExplainStep::WordTimings` (3-box CSV of seconds) filled in =
 exact reveal, driven straight off the numbers. Blank = falls back to estimating pace from audio

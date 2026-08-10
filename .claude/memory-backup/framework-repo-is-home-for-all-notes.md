@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 476fe6fc-eae3-4d83-89c0-c52b396e6559
-  modified: 2026-08-10T03:52:00.772Z
+  modified: 2026-08-10T03:58:35.511Z
 ---
 
 `C:\GitHub\Azureal_XR_Framework_UE5.8` is the **main development framework** and the single home for
@@ -18,6 +18,12 @@ beds**. Code experiments may live and run there, but **never store skills or not
 
 **Why:** stated directly on 2026-08-10. The framework is the product; the module projects are
 disposable copies used to try things out. Notes left in a test project vanish with it.
+
+**Store it, do not implement it.** "Save this in the framework repo" means keep it *retrievable* — it
+is **not** permission to merge experimental code into the product. On 2026-08-10 the Explain reveal was
+committed straight into `Plugins/AzurealXR` and had to be backed out. Experiments belong in
+`.claude/experiments/<name>/` as a git patch plus a README; the product source stays clean until the
+user explicitly says implement.
 
 **How to apply:**
 - Skills → `.claude/skills/<name>/SKILL.md` in the framework repo (git-tracked, survives migration).
