@@ -3,6 +3,8 @@
 #include "Azr_Explain.h"
 #include "Azr_Interactable.h"
 #include "Azr_Pointer.h"
+#include "Azr_SessionSubsystem.h"
+#include "Engine/GameInstance.h"
 #include "CableComponent.h"
 #include "Components/AudioComponent.h"
 #include "Components/WidgetComponent.h"
@@ -135,8 +137,12 @@ void UAzr_Explain::DisableExplain() {
 
     if (ActiveAudioComp) ActiveAudioComp->Stop();
 
+    bRevealActive = false;
+
     // --- THE FIX: UNHOOK EARS FROM THE WIDGET ---
     if (ActiveExplainUI) {
+        ActiveExplainUI->ShowFullExplainText();
+
         ActiveExplainUI->OnPlayAudioClicked.RemoveDynamic(this, &UAzr_Explain::HandlePlayAudioClicked);
         ActiveExplainUI->OnProceedClicked.RemoveDynamic(this, &UAzr_Explain::HandleProceedClicked);
         ActiveExplainUI = nullptr;
@@ -172,8 +178,33 @@ void UAzr_Explain::TickComponent(float DeltaTime, ELevelTick TickType, FActorCom
             float Progress = Elapsed / StepDuration;
             ActiveExplainUI->SetAudioProgress(Progress);
 
+            UpdateTextReveal(DeltaTime, Elapsed);
+
             if (Progress >= 1.0f) {
                 bIsStepRunning = false;
+
+                if (bRevealActive) {
+                    if (bLogRevealDiagnostics) {
+                        if (ExactWordTimes.Num() > 0) {
+                            UE_LOG(LogTemp, Warning,
+                                TEXT("[Azr Reveal] EXACT timings | %d words over %.2fs (last word at %.2fs) | revealed %d/%d"),
+                                ExactWordTimes.Num(), StepDuration, ExactWordTimes.Last(), RevealedWords, TotalRevealWords);
+                        }
+                        else {
+                            const float SpeechPct = (DiagTotalFrames > 0)
+                                ? (100.0f * DiagSpeechFrames / DiagTotalFrames) : 0.0f;
+                            UE_LOG(LogTemp, Warning,
+                                TEXT("[Azr Reveal] ESTIMATED (no timings) envelope=%s peak=%.4f cutoff=%.4f | speech %.1f%% of clip (%.2fs of %.2fs) | words %d/%d"),
+                                bEnvelopeReceived ? TEXT("YES") : TEXT("NEVER ARRIVED"),
+                                PeakEnvelope, FMath::Max(PeakEnvelope * SilenceLevel, 0.0015f),
+                                SpeechPct, SpeechSeconds, StepDuration, RevealedWords, TotalRevealWords);
+                        }
+                    }
+
+                    bRevealActive = false;
+                    ActiveExplainUI->ShowFullExplainText();
+                }
+
                 ActiveExplainUI->SetPlaybackCompleted();
 
                 // If they used a custom timer that ended BEFORE the audio finished, gracefully stop the audio
@@ -268,6 +299,13 @@ void UAzr_Explain::LoadStep(const FAzr_ExplainStep& StepData, EAzr_ExplainStepTy
     ToggleHighlight(false);
     UpdatePointer(false);
 
+    // A reveal left running from a skipped step would keep writing words into the widget this step is
+    // about to take over. SetExplainText below puts the new sentence up whole, as it should be before
+    // the learner presses Play.
+    bRevealActive = false;
+    RevealedWords = 0;
+    TotalRevealWords = 0;
+
     // 2. Set the new active data
     CurrentStepType = StepType;
     CurrentActiveStep = StepData;
@@ -335,20 +373,225 @@ void UAzr_Explain::HandlePlayAudioClicked() {
         StepDuration = TrackToPlay ? TrackToPlay->GetDuration() : 0.0f;
     }
 
-   
-    if (TrackToPlay && ActiveWidgetComp) {
-        if (!ActiveAudioComp) {
-            ActiveAudioComp = UGameplayStatics::SpawnSoundAttached(TrackToPlay, ActiveWidgetComp);
+    // Start the reveal from nothing. Done before Play so the sentence is already cleared by the time
+    // the first word is spoken, rather than blinking away a frame into the narration.
+    bRevealActive = false;
+    LatestEnvelope = 0.0f;
+    ExactWordTimes.Reset();
+    bEnvelopeReceived = false;
+    SpeechSeconds = 0.0f;
+    SpeechHoldRemaining = 0.0f;
+    PeakEnvelope = 0.0f;
+    DiagSpeechFrames = 0;
+    DiagTotalFrames = 0;
+    RevealedWords = 0;
+    TotalRevealWords = 0;
+
+    if (bRevealTextWithAudio && ActiveExplainUI && TrackToPlay) {
+        TotalRevealWords = ActiveExplainUI->GetExplainWordCount();
+        if (TotalRevealWords > 0) {
+            bRevealActive = true;
+            ParseExactWordTimes(TotalRevealWords);
+            ActiveExplainUI->SetRevealedWordCount(0);
         }
-        else {
+    }
+
+    if (TrackToPlay && ActiveWidgetComp) {
+        EnsureAudioComponent();
+
+        if (ActiveAudioComp) {
             ActiveAudioComp->SetSound(TrackToPlay);
             ActiveAudioComp->Play();
         }
     }
     else if (StepDuration <= 0.0f) {
-        
+
         bIsStepRunning = false;
         if (ActiveExplainUI) ActiveExplainUI->SetPlaybackCompleted();
+    }
+}
+
+void UAzr_Explain::EnsureAudioComponent() {
+    if (!ActiveWidgetComp) {
+        return;
+    }
+
+    if (ActiveAudioComp) {
+        // An Explain+ chain narrates through a different widget each step, so the one audio component
+        // follows whichever is current -- otherwise later steps play from the first step's location.
+        if (ActiveAudioComp->GetAttachParent() != ActiveWidgetComp) {
+            ActiveAudioComp->AttachToComponent(ActiveWidgetComp, FAttachmentTransformRules::SnapToTargetIncludingScale);
+        }
+        return;
+    }
+
+    ActiveAudioComp = NewObject<UAudioComponent>(GetOwner());
+    if (!ActiveAudioComp) {
+        return;
+    }
+
+    // Built by hand rather than through SpawnSoundAttached, which starts the sound as it creates the
+    // component. The envelope feed is decided when a sound starts, from whether the delegate is bound
+    // at that instant, so it has to be bound while the component is still silent.
+    ActiveAudioComp->bAutoActivate = false;
+    ActiveAudioComp->bAutoDestroy = false;
+    ActiveAudioComp->SetupAttachment(ActiveWidgetComp);
+    ActiveAudioComp->RegisterComponent();
+
+    ActiveAudioComp->OnAudioSingleEnvelopeValue.RemoveDynamic(this, &UAzr_Explain::HandleAudioEnvelope);
+    ActiveAudioComp->OnAudioSingleEnvelopeValue.AddDynamic(this, &UAzr_Explain::HandleAudioEnvelope);
+}
+
+FString UAzr_Explain::ResolveLanguageString(const FAzr_MultiLangText& MultiLangText) const {
+    FString ActiveLanguage = TEXT("English");
+
+    if (UGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance() : nullptr) {
+        if (UAzr_SessionSubsystem* SessionSubsystem = GI->GetSubsystem<UAzr_SessionSubsystem>()) {
+            ActiveLanguage = SessionSubsystem->GetSessionLanguage();
+        }
+    }
+
+    if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ms"), ESearchCase::IgnoreCase)) {
+        return MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay;
+    }
+    if (ActiveLanguage.Equals(TEXT("Tamil"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ta"), ESearchCase::IgnoreCase)) {
+        return MultiLangText.Tamil.IsEmpty() ? MultiLangText.English : MultiLangText.Tamil;
+    }
+
+    return MultiLangText.English;
+}
+
+void UAzr_Explain::ParseExactWordTimes(int32 ExpectedWordCount) {
+    ExactWordTimes.Reset();
+
+    const FString Raw = ResolveLanguageString(CurrentActiveStep.WordTimings);
+    if (Raw.TrimStartAndEnd().IsEmpty()) {
+        return;
+    }
+
+    TArray<FString> Parts;
+    Raw.ParseIntoArray(Parts, TEXT(","), true);
+
+    ExactWordTimes.Reserve(Parts.Num());
+    for (const FString& Part : Parts) {
+        const FString Trimmed = Part.TrimStartAndEnd();
+        if (!Trimmed.IsNumeric()) {
+            UE_LOG(LogTemp, Warning,
+                TEXT("[Azr Reveal] Word Timings contain a non-number ('%s') -- ignoring them and estimating instead."),
+                *Trimmed);
+            ExactWordTimes.Reset();
+            return;
+        }
+        ExactWordTimes.Add(FCString::Atof(*Trimmed));
+    }
+
+    // A count that does not match the sentence on screen means the text was edited after the timings
+    // were generated. Using them anyway would put every word after the edit against the wrong sound.
+    if (ExactWordTimes.Num() != ExpectedWordCount) {
+        UE_LOG(LogTemp, Warning,
+            TEXT("[Azr Reveal] Word Timings list has %d entries but the sentence has %d words -- ignoring them and estimating instead. Re-generate the timings for this text."),
+            ExactWordTimes.Num(), ExpectedWordCount);
+        ExactWordTimes.Reset();
+        return;
+    }
+
+    for (int32 i = 1; i < ExactWordTimes.Num(); ++i) {
+        if (ExactWordTimes[i] < ExactWordTimes[i - 1]) {
+            UE_LOG(LogTemp, Warning,
+                TEXT("[Azr Reveal] Word Timings go backwards at entry %d -- ignoring them and estimating instead."), i);
+            ExactWordTimes.Reset();
+            return;
+        }
+    }
+}
+
+void UAzr_Explain::HandleAudioEnvelope(const USoundWave* PlayingSoundWave, const float EnvelopeValue) {
+    // Only stored, never acted on here: this arrives on the audio thread's schedule, which is neither
+    // the game thread nor a steady rate. The reveal reads it on tick, where DeltaTime is meaningful.
+    LatestEnvelope = EnvelopeValue;
+    bEnvelopeReceived = true;
+}
+
+void UAzr_Explain::UpdateTextReveal(float DeltaTime, float Elapsed) {
+    if (!bRevealActive || !ActiveExplainUI || TotalRevealWords <= 0 || StepDuration <= 0.0f) {
+        return;
+    }
+
+    // With authored timings there is nothing to work out: each word has a moment, and playback either
+    // has reached it or has not. Everything below this point exists only to estimate what these
+    // timings state outright.
+    if (ExactWordTimes.Num() > 0) {
+        int32 TargetWords = 0;
+        while (TargetWords < ExactWordTimes.Num() && Elapsed >= ExactWordTimes[TargetWords]) {
+            ++TargetWords;
+        }
+
+        if (TargetWords > RevealedWords) {
+            RevealedWords = FMath::Min(TargetWords, TotalRevealWords);
+            ActiveExplainUI->SetRevealedWordCount(RevealedWords);
+        }
+        return;
+    }
+
+    // The reveal runs on a clock that only ticks while something is being said. A pause in the
+    // narration is a pause in the text, which is what makes the two feel locked together rather than
+    // merely finishing at the same time.
+
+    // Quiet is judged against the loudest this clip has been, not a fixed number. Speech envelopes
+    // peak nowhere near 1 -- a normal read measures around 0.1 -- so a fixed cutoff generous enough
+    // for one asset silences most of the next one.
+    PeakEnvelope = FMath::Max(PeakEnvelope, LatestEnvelope);
+
+    // The floor keeps a clip that has only ever been near-silent from treating its own noise as speech.
+    const float SilenceCutoff = FMath::Max(PeakEnvelope * SilenceLevel, 0.0015f);
+    const bool bSpeaking = (LatestEnvelope > SilenceCutoff);
+
+    // The hold is what keeps this from being twitchy: loudness drops to nothing in the middle of a
+    // word every time a stop consonant closes, and reacting to each of those would stutter the text.
+    if (bSpeaking) {
+        SpeechHoldRemaining = SpeechHoldTime;
+    }
+
+    if (bSpeaking || SpeechHoldRemaining > 0.0f) {
+        SpeechSeconds += DeltaTime;
+        SpeechHoldRemaining = FMath::Max(0.0f, SpeechHoldRemaining - DeltaTime);
+        ++DiagSpeechFrames;
+    }
+    ++DiagTotalFrames;
+
+    const float ElapsedFraction = FMath::Clamp(Elapsed / StepDuration, 0.0f, 1.0f);
+
+    // No loudness readings well after playback began means this platform is not feeding them. Pace on
+    // the clip's length instead: evenly spread rather than speech-shaped, but still readable.
+    if (!bEnvelopeReceived && Elapsed > 0.5f) {
+        // Still length-weighted: without loudness the reveal cannot follow pauses, but it can at least
+        // keep giving longer words longer on screen.
+        const int32 EvenTarget = ActiveExplainUI->GetWordCountForProgress(ElapsedFraction, WordLengthWeighting);
+        if (EvenTarget > RevealedWords) {
+            RevealedWords = FMath::Min(EvenTarget, TotalRevealWords);
+            ActiveExplainUI->SetRevealedWordCount(RevealedWords);
+        }
+        return;
+    }
+
+    // How much of this clip is speech is not knowable up front, so start from the assumption and hand
+    // over to the measured figure across the opening quarter, by which point it has settled.
+    const float MeasuredRatio = (Elapsed > KINDA_SMALL_NUMBER) ? (SpeechSeconds / Elapsed) : AssumedSpeechRatio;
+    const float SpeechRatio = FMath::Lerp(AssumedSpeechRatio, MeasuredRatio, FMath::Clamp(ElapsedFraction * 4.0f, 0.0f, 1.0f));
+
+    const float TotalSpeechSeconds = StepDuration * FMath::Max(SpeechRatio, KINDA_SMALL_NUMBER);
+    float RevealFraction = FMath::Clamp(SpeechSeconds / TotalSpeechSeconds, 0.0f, 1.0f);
+
+    // Pull towards the clip's own clock as it runs out, so the final word lands with the final sound
+    // even if the speech estimate drifted. Confined to the closing stretch: applied any earlier it
+    // competes with the speech clock through the body of the sentence and visibly hurries the text.
+    const float EndPull = FMath::SmoothStep(0.85f, 1.0f, ElapsedFraction);
+    RevealFraction = FMath::Lerp(RevealFraction, ElapsedFraction, EndPull);
+
+    const int32 TargetWords = ActiveExplainUI->GetWordCountForProgress(RevealFraction, WordLengthWeighting);
+    if (TargetWords > RevealedWords) {
+        RevealedWords = FMath::Min(TargetWords, TotalRevealWords);
+        ActiveExplainUI->SetRevealedWordCount(RevealedWords);
     }
 }
 

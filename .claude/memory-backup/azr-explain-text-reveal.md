@@ -5,26 +5,25 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 476fe6fc-eae3-4d83-89c0-c52b396e6559
-  modified: 2026-08-10T03:44:41.468Z
+  modified: 2026-08-10T03:56:35.323Z
 ---
 
 `Azr_Explain` can reveal its sentence word by word in step with the voice-over. Built 2026-08-04, never
 committed. Off by default (`bRevealTextWithAudio`). Production plan agreed but deliberately **not**
 built - see [[azr-savegame-experiment]] for the other on-hold experiment.
 
-**WHERE IT ACTUALLY LIVES (checked 2026-08-10):** only
-`C:\VR_Game\MechadiumVR\TNB-Module2-Version3\Plugins\AzurealXR`. The framework-repo copy was reverted
-at some point and is **gone** - `Azr_Explain.h` there has zero `bRevealTextWithAudio`. Copy it back from
-TNB if it is wanted in the framework (the two differ only by the save system's `AzrArmedMode`).
+**WHERE IT LIVES:** the framework repo, **committed** on 2026-08-10 — `Plugins/AzurealXR`
+(`Azr_Explain`, `Azr_ExplainWidget`, `Azr_Types`) plus `Tools/Azr-ElevenLabsTimings.ps1`. Also present
+in the TNB sandbox, which additionally carries the save system's `AzrArmedMode`; that property is
+deliberately **not** in the framework copy.
+
+It was lost once: an earlier framework copy was reverted without either of us noticing and survived
+only in TNB, and the script vanished entirely and had to be rewritten from these notes. That is exactly
+why it is committed now — see [[framework-repo-is-home-for-all-notes]].
 
 **Two paths exist in the code.** `FAzr_ExplainStep::WordTimings` (3-box CSV of seconds) filled in =
 exact reveal, driven straight off the numbers. Blank = falls back to estimating pace from audio
-loudness.
-
-**The generator script is LOST.** `Tools/Azr-ElevenLabsTimings.ps1` (ElevenLabs `with-timestamps` ->
-wav + word-time CSV, with `-SelfTest`, `-ListVoices` and an output-format fallback ladder) exists
-nowhere on disk any more. Its outputs survive in `C:\Narration` (`C1_Intro.wav`, `C1_Intro.times.txt`,
-29 words). Rewriting it needs the notes below, which are the whole reason this memory exists.
+loudness. Sample output from a real run is in `C:\Narration` (`C1_Intro.wav` + `.times.txt`, 29 words).
 
 **Why:** the estimate was measured at **0.97 s worst-case error** against real timings - the failures
 land on paragraph pauses (1.2 s of silence no spelling-based heuristic can predict). Exact timings are
