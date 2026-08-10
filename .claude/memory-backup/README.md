@@ -19,12 +19,22 @@ These copies travel with the repo instead.
 
 ## Restoring
 
-Copy every `.md` here — including `MEMORY.md`, which is the index loaded at the start of each session —
-into the live path above, creating it if needed. Then start a session and confirm the memories come
-back.
+Run this once from the repo root:
 
-If the repo now sits somewhere else, the folder name changes to match: the full path, with `\` and `:`
-replaced by `-`. `C:\Work\Azureal_XR_Framework_UE5.8` becomes `C--Work-Azureal-XR-Framework-UE5-8`.
+```
+powershell -ExecutionPolicy Bypass -File .\.claude\restore-memory.ps1
+```
+
+It works out the destination from wherever the repo now sits, creates it, and copies the files in. Add
+`-WhatIfOnly` to preview, or `-Force` to overwrite memories already there.
+
+To do it by hand instead, copy every `.md` here — **including `MEMORY.md`**, which is the index loaded
+at the start of each session; without it the individual memories are never found — into the live path
+above.
+
+The folder name is the repo's full path with `:`, `\`, `_` **and** `.` all replaced by `-`. So
+`C:\Work\Azureal_XR_Framework_UE5.8` becomes `C--Work-Azureal-XR-Framework-UE5-8`. Getting the
+underscores or the dot wrong produces a folder that is never read, with no error.
 
 ## Keeping it current
 
