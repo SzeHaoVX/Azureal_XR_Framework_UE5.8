@@ -23,19 +23,19 @@ Engine is a Launcher install at `C:\Program Files\Epic Games\UE_5.8` (the .sln r
 
 ```powershell
 # Build editor binaries (required after any C++ change)
-& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" Azureal_XR_V2Editor Win64 Development -Project="C:\GitHub\Azureal_XR_V2\Azureal_XR_V2.uproject" -WaitMutex
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" Azureal_XR_V2Editor Win64 Development -Project="C:\GitHub\Azureal_XR_Framework_UE5.8\Azureal_XR_V2.uproject" -WaitMutex
 
 # Build the game (non-editor) target
-& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" Azureal_XR_V2 Win64 Development -Project="C:\GitHub\Azureal_XR_V2\Azureal_XR_V2.uproject" -WaitMutex
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\Build.bat" Azureal_XR_V2 Win64 Development -Project="C:\GitHub\Azureal_XR_Framework_UE5.8\Azureal_XR_V2.uproject" -WaitMutex
 
 # Launch the editor
-& "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" "C:\GitHub\Azureal_XR_V2\Azureal_XR_V2.uproject"
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor.exe" "C:\GitHub\Azureal_XR_Framework_UE5.8\Azureal_XR_V2.uproject"
 
 # Regenerate VS project files (after adding/removing source files or plugins)
-& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\GenerateProjectFiles.bat" -project="C:\GitHub\Azureal_XR_V2\Azureal_XR_V2.uproject" -game
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\GenerateProjectFiles.bat" -project="C:\GitHub\Azureal_XR_Framework_UE5.8\Azureal_XR_V2.uproject" -game
 
 # Package a Win64 build
-& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="C:\GitHub\Azureal_XR_V2\Azureal_XR_V2.uproject" -platform=Win64 -clientconfig=Development -build -cook -stage -pak
+& "C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat" BuildCookRun -project="C:\GitHub\Azureal_XR_Framework_UE5.8\Azureal_XR_V2.uproject" -platform=Win64 -clientconfig=Development -build -cook -stage -pak
 ```
 
 Two solutions exist: `Azureal_XR_V2.sln` is the game solution; `Automation_Azureal_XR_V2.sln` contains only engine C# tooling (UBT/UAT/EpicGames.*) — you rarely need it. `Binaries/`, `Intermediate/`, `Saved/`, `DerivedDataCache/`, `.vs/`, and each plugin's `Binaries/`/`Intermediate/` are generated — never edit them, and ignore them when searching (built artifacts are currently checked into the tree).
