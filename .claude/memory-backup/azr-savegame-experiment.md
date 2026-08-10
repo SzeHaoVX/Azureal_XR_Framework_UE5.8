@@ -5,12 +5,17 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 476fe6fc-eae3-4d83-89c0-c52b396e6559
-  modified: 2026-08-03T15:09:11.054Z
+  modified: 2026-08-10T04:04:48.751Z
 ---
 
-Whole-world save/resume was prototyped in `C:\VR_Game\MechadiumVR\TNB-Module2-Version3` (a throwaway copy),
-**not** in the framework repo, and is **untracked in git**. On hold as of 2026-08-03. Working for Chapter 1
-mid-step resume; not tested on chapters 2-7, not ported, not production-ready. See [[csm-build-from-document-workflow]].
+Whole-world save/resume. On hold as of 2026-08-03. Working for Chapter 1 mid-step resume; not tested on
+chapters 2-7, not ported, not production-ready. See [[csm-build-from-document-workflow]].
+
+**ARCHIVED, NOT IMPLEMENTED**, at `.claude/experiments/azr-savegame/` in the framework repo (committed
+2026-08-10): the 7 new source files verbatim, `armed-mode.patch`, `csm-hooks.patch`,
+`SAVE_SYSTEM_TESTING.md` and a README with the revive steps and every rule below. Both patches were
+verified to apply cleanly. The framework source itself is **untouched** — archive experiments, do not
+merge them; see [[framework-repo-is-home-for-all-notes]]. A working copy also runs in the TNB sandbox.
 
 Files: `Azr_SaveTypes/Saveable/SaveGame/SaveSubsystem/SaveVerifier` in AzurealXR, plus hooks in CSM's
 `ChapterSubsystem` (opaque "CSM" payload), `TrainingStepPage`, `MainMenuPage`. Console tools: `Azr.Save.Verify`

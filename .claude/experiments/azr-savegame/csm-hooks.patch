@@ -1,0 +1,982 @@
+--- a/Plugins/Azureal_CSM/Source/Azureal_CSM/Public/ChapterSubsystem.h
++++ b/Plugins/Azureal_CSM/Source/Azureal_CSM/Public/ChapterSubsystem.h
+@@ -11,6 +11,61 @@
+ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnChapterDataUpdated);
+ 
+ class UTrainingCurriculum;
++class UAzr_SaveGame;
++
++/**
++ * Curriculum progress, in the form it travels inside an AzurealXR save.
++ *
++ * The framework stores this as an opaque blob under the key "CSM", so AzurealXR never needs to know
++ * the curriculum system exists -- the dependency stays one-way, CSM to framework, as designed.
++ */
++USTRUCT()
++struct FCsm_SaveState
++{
++    GENERATED_BODY()
++
++    UPROPERTY()
++    int32 CurrentIndex = -1;
++
++    UPROPERTY()
++    TArray<int32> CompletedChapters;
++
++    UPROPERTY()
++    TMap<int32, int32> ChapterStepProgress;
++
++    UPROPERTY()
++    bool bHasPassedStartScreen = false;
++
++    // --- STEP PAGE POSITION ---
++    // ChapterStepProgress only tracks whole master steps, but a learner is interrupted part-way
++    // through one. This is the finer position, and it lives on the step page widget -- which is not an
++    // actor, so the framework's actor sweep never sees it. Without these fields a resume lands on the
++    // right master step with its sub-steps reset to zero.
++
++    /** True once a step page has contributed. Absent in saves written before sub-step resume existed. */
++    UPROPERTY()
++    bool bHasPageState = false;
++
++    /** Completed sub-step count for each master step. */
++    UPROPERTY()
++    TArray<int32> PageProgressMemory;
++
++    /** Which master steps have already fired their sequencer event, so a resume does not re-fire them. */
++    UPROPERTY()
++    TArray<bool> StepTriggerHistory;
++
++    UPROPERTY()
++    int32 CurrentViewingIndex = 0;
++
++    UPROPERTY()
++    int32 MaxUnlockedIndex = 0;
++
++    UPROPERTY()
++    int32 FurthestVisitedIndex = 0;
++
++    UPROPERTY()
++    bool bSessionFinished = false;
++};
+ 
+ UCLASS()
+ class AZUREAL_CSM_API UChapterSubsystem : public UGameInstanceSubsystem
+@@ -18,10 +73,55 @@
+     GENERATED_BODY()
+ 
+ public:
++    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
++    virtual void Deinitialize() override;
++
+     // --- EVENT DISPATCHER ---
+     UPROPERTY(BlueprintAssignable, Category = "Events")
+     FOnChapterDataUpdated OnChapterDataUpdated;
+ 
++    // --- SAVE / RESUME ---
++
++    /**
++     * The master step the learner had reached in the current chapter, for the step page to jump to
++     * after a resume. Zero when the chapter has not been started.
++     */
++    UFUNCTION(BlueprintPure, Category = "Chapter System")
++    int32 GetResumeStepIndex() const;
++
++    /**
++     * The live step page, so its sub-step position can be folded into the save.
++     *
++     * The page registers itself; the subsystem never goes looking for it. A widget is rebuilt on every
++     * level load, so this is deliberately weak and re-established each time.
++     */
++    void RegisterStepPage(class UTrainingStepPage* Page);
++
++    /**
++     * Read the parked resume position WITHOUT discarding it.
++     *
++     * Deliberately not one-shot. The step page is re-initialised more than once -- construction, the
++     * menu's Start path, and anything else that calls Initialize StepPage -- and every one of those
++     * calls SetTotalSessionSteps, which wipes the page back to step one. A position that could only be
++     * claimed once was therefore lost to whichever init happened first, and the learner ended up back
++     * at step one. Keeping it means every re-init lands on the saved step instead.
++     */
++    bool PeekPendingPageState(FCsm_SaveState& OutState) const;
++
++    /** Drop the parked position. Called once the learner actually moves on, so it stops re-applying. */
++    void ClearPendingPageState();
++
++    /**
++     * True when a resume is under way and its position has not been taken up yet.
++     *
++     * Consults the save subsystem as well as local state, because the two become true at different
++     * moments: the save subsystem knows a load was requested before the level travel, whereas the
++     * parked page state only exists once the snapshot has been applied -- which is after the widgets
++     * have already constructed and asked this question.
++     */
++    UFUNCTION(BlueprintPure, Category = "Chapter System")
++    bool HasPendingResume() const;
++
+     // --- SESSION STATE ---
+     UFUNCTION(BlueprintPure, Category = "Session State")
+     bool HasPassedStartScreen() const { return bHasPassedStartScreen; }
+@@ -95,6 +195,14 @@
+     void GetModuleCompletionStatus(int32& OutCompletedCount, int32& OutTotalCount) const;
+ 
+ private:
++    /** Writes curriculum progress into the framework's save as the "CSM" payload. */
++    UFUNCTION()
++    void HandleCaptureSave(UAzr_SaveGame* SaveGame);
++
++    /** Reads that payload back out after the framework has restored the world. */
++    UFUNCTION()
++    void HandleRestoreSave(UAzr_SaveGame* SaveGame);
++
+     UPROPERTY()
+     UChapterBundle* ActiveBundle;
+ 
+@@ -102,4 +210,11 @@
+     TSet<int32> CompletedChapterIndexes;
+     TMap<int32, int32> ChapterStepProgress;
+     bool bHasPassedStartScreen = false;
++
++    /** Rebuilt on every level load, so never assumed valid. */
++    TWeakObjectPtr<class UTrainingStepPage> ActiveStepPage;
++
++    /** Held between a restore and whenever the step page next appears. */
++    FCsm_SaveState PendingPageState;
++    bool bHasPendingPageState = false;
+ };
+\ No newline at end of file
+--- a/Plugins/Azureal_CSM/Source/Azureal_CSM/Private/ChapterSubsystem.cpp
++++ b/Plugins/Azureal_CSM/Source/Azureal_CSM/Private/ChapterSubsystem.cpp
+@@ -1,8 +1,187 @@
+ 
+ 
+ #include "ChapterSubsystem.h"
+-#include "ExplanationFlowLibrary.h" 
+-#include "TrainingCurriculum.h"     
++#include "ExplanationFlowLibrary.h"
++#include "TrainingCurriculum.h"
++#include "TrainingStepPage.h"
++
++#include "Azr_SaveGame.h"
++#include "Azr_SaveSubsystem.h"
++#include "Engine/GameInstance.h"
++#include "Serialization/MemoryReader.h"
++#include "Serialization/MemoryWriter.h"
++#include "Serialization/ObjectAndNameAsStringProxyArchive.h"
++#include "Serialization/StructuredArchiveAdapters.h"
++
++// --- SAVE / RESUME ---
++
++void UChapterSubsystem::Initialize(FSubsystemCollectionBase& Collection)
++{
++    Super::Initialize(Collection);
++
++    // The framework owns the save file; the curriculum just contributes a payload to it. Binding
++    // this way keeps the dependency one-directional -- AzurealXR has no idea CSM exists.
++    if (UGameInstance* GameInstance = GetGameInstance())
++    {
++        if (UAzr_SaveSubsystem* SaveSubsystem = GameInstance->GetSubsystem<UAzr_SaveSubsystem>())
++        {
++            SaveSubsystem->OnCaptureSave.AddDynamic(this, &UChapterSubsystem::HandleCaptureSave);
++            SaveSubsystem->OnRestoreSave.AddDynamic(this, &UChapterSubsystem::HandleRestoreSave);
++        }
++    }
++}
++
++void UChapterSubsystem::Deinitialize()
++{
++    if (UGameInstance* GameInstance = GetGameInstance())
++    {
++        if (UAzr_SaveSubsystem* SaveSubsystem = GameInstance->GetSubsystem<UAzr_SaveSubsystem>())
++        {
++            SaveSubsystem->OnCaptureSave.RemoveDynamic(this, &UChapterSubsystem::HandleCaptureSave);
++            SaveSubsystem->OnRestoreSave.RemoveDynamic(this, &UChapterSubsystem::HandleRestoreSave);
++        }
++    }
++    Super::Deinitialize();
++}
++
++void UChapterSubsystem::HandleCaptureSave(UAzr_SaveGame* SaveGame)
++{
++    if (!SaveGame)
++    {
++        return;
++    }
++
++    FCsm_SaveState State;
++    State.CurrentIndex = CurrentIndex;
++    State.CompletedChapters = CompletedChapterIndexes.Array();
++    State.ChapterStepProgress = ChapterStepProgress;
++    State.bHasPassedStartScreen = bHasPassedStartScreen;
++
++    // Fold in where the learner actually is inside the current step. The page is a widget, so the
++    // framework's actor sweep cannot reach it -- it has to hand its position over itself.
++    if (UTrainingStepPage* Page = ActiveStepPage.Get())
++    {
++        Page->CapturePageState(State);
++        UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] capture: page registered, step %d of %d, sub-progress %d entries"),
++            State.CurrentViewingIndex, State.PageProgressMemory.Num(),
++            State.PageProgressMemory.IsValidIndex(State.CurrentViewingIndex) ? State.PageProgressMemory[State.CurrentViewingIndex] : -1);
++    }
++    else
++    {
++        UE_LOG(LogTemp, Warning, TEXT("[AzrSave/CSM] capture: NO step page registered -- sub-step position will NOT be saved."));
++    }
++
++    FAzr_PayloadRecord Payload;
++    FMemoryWriter Writer(Payload.Data, true);
++    FObjectAndNameAsStringProxyArchive Ar(Writer, false);
++    Ar.ArNoDelta = true;
++    FCsm_SaveState::StaticStruct()->SerializeItem(FStructuredArchiveFromArchive(Ar).GetSlot(), &State, nullptr);
++
++    SaveGame->Payloads.Add(TEXT("CSM"), MoveTemp(Payload));
++}
++
++void UChapterSubsystem::HandleRestoreSave(UAzr_SaveGame* SaveGame)
++{
++    if (!SaveGame)
++    {
++        return;
++    }
++
++    const FAzr_PayloadRecord* Payload = SaveGame->Payloads.Find(TEXT("CSM"));
++    if (!Payload || Payload->Data.Num() == 0)
++    {
++        return;
++    }
++
++    FCsm_SaveState State;
++    FMemoryReader Reader(Payload->Data, true);
++    FObjectAndNameAsStringProxyArchive Ar(Reader, true);
++    Ar.ArNoDelta = true;
++    FCsm_SaveState::StaticStruct()->SerializeItem(FStructuredArchiveFromArchive(Ar).GetSlot(), &State, nullptr);
++
++    CurrentIndex = State.CurrentIndex;
++    CompletedChapterIndexes = TSet<int32>(State.CompletedChapters);
++    ChapterStepProgress = State.ChapterStepProgress;
++    bHasPassedStartScreen = State.bHasPassedStartScreen;
++
++    // The page position is parked rather than applied. It cannot be applied yet from either direction:
++    // the page may not exist, and even if it does it has no steps until the learner starts the chapter,
++    // at which point SetTotalSessionSteps would wipe whatever had been written anyway. The page claims
++    // this the moment it knows its own step count.
++    if (State.bHasPageState)
++    {
++        PendingPageState = State;
++        bHasPendingPageState = true;
++        UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] restore: page position parked (chapter %d, step %d) -- waiting for the step page to claim it."),
++            State.CurrentIndex, State.CurrentViewingIndex);
++    }
++    else
++    {
++        UE_LOG(LogTemp, Warning, TEXT("[AzrSave/CSM] restore: save carries NO page position -- the chapter will open at step 1."));
++    }
++
++    // The menu and step page read their contents from this subsystem, so tell them it has changed.
++    OnChapterDataUpdated.Broadcast();
++}
++
++bool UChapterSubsystem::HasPendingResume() const
++{
++    if (bHasPendingPageState)
++    {
++        return true;
++    }
++
++    // The widget asks this during its own construction, which happens before the snapshot lands.
++    // The save subsystem raised its flag before the level travel, so it is the only side that knows.
++    if (const UGameInstance* GameInstance = GetGameInstance())
++    {
++        if (const UAzr_SaveSubsystem* Save = GameInstance->GetSubsystem<UAzr_SaveSubsystem>())
++        {
++            return Save->IsResumePending();
++        }
++    }
++    return false;
++}
++
++void UChapterSubsystem::RegisterStepPage(UTrainingStepPage* Page)
++{
++    // Only remember the page. Applying here would be far too early: registration happens in
++    // NativeConstruct, before the learner has pressed Start, so the page has no steps yet -- its arrays
++    // are empty and TotalStepsCount is 0. Writing a restored position into that would clamp every index
++    // to zero and destroy the very state being restored.
++    //
++    // The page pulls its position itself once it knows how many steps it has. See
++    // UTrainingStepPage::SetTotalSessionSteps.
++    ActiveStepPage = Page;
++}
++
++bool UChapterSubsystem::PeekPendingPageState(FCsm_SaveState& OutState) const
++{
++    if (!bHasPendingPageState)
++    {
++        return false;
++    }
++
++    OutState = PendingPageState;
++    return true;
++}
++
++void UChapterSubsystem::ClearPendingPageState()
++{
++    if (!bHasPendingPageState)
++    {
++        return;
++    }
++
++    bHasPendingPageState = false;
++    PendingPageState = FCsm_SaveState();
++    UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] resume finished -- parked position released."));
++}
++
++int32 UChapterSubsystem::GetResumeStepIndex() const
++{
++    return ChapterStepProgress.FindRef(CurrentIndex);
++}
+ 
+ // --- SETUP & NAVIGATION ---
+ 
+--- a/Plugins/Azureal_CSM/Source/Azureal_CSM/Public/TrainingStepPage.h
++++ b/Plugins/Azureal_CSM/Source/Azureal_CSM/Public/TrainingStepPage.h
+@@ -30,6 +30,24 @@
+     UFUNCTION(BlueprintCallable, Category = "Training Setup")
+     void InitializePageData();
+ 
++    // --- SAVE / RESUME ---
++
++    /** Write this page's position into the curriculum payload. Called by UChapterSubsystem at capture. */
++    void CapturePageState(struct FCsm_SaveState& OutState) const;
++
++    /**
++     * Put the page back where a save left it, without re-firing the steps already completed.
++     * StepTriggerHistory comes back with it, so the sequencer only fires for the step being resumed.
++     */
++    void ApplyPageState(const struct FCsm_SaveState& State);
++
++    /**
++     * Snapshot progress into the learner's slot. Called automatically at every sub-step boundary --
++     * the one moment where nothing is mid-flight -- so a save is never taken part-way through a chain.
++     */
++    UFUNCTION(BlueprintCallable, Category = "Training Setup")
++    void SaveProgressNow();
++
+     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+     USoundBase* StepAdvanceSound;
+ 
+@@ -196,6 +214,50 @@
+     float FinalSessionDuration = 0.0f;
+     bool bSessionFinished = false;
+ 
++    /**
++     * Training time already banked before this page existed.
++     *
++     * Zero on a fresh run; on a resume it is whatever the save carried, so elapsed time keeps counting
++     * from where the learner left off rather than restarting at each load.
++     */
++    float BankedSecondsAtPageStart = 0.0f;
++
++    /** Set when a resume is waiting; applied on the next tick, after Build Step UI has finished. */
++    bool bResumeQueued = false;
++
++    /** Applies a queued resume position. Deferred a tick so nothing redraws over it. */
++    void ApplyQueuedResume();
++
++    /**
++     * Writes the restored position into the page's state -- arrays and indices only, no UI.
++     *
++     * Must run in the SAME frame as SetTotalSessionSteps' reset. That reset clears StepTriggerHistory,
++     * and until this puts it back every step reads as "not yet fired" -- so anything running later in
++     * the frame can fire one and desync the Game Manager.
++     */
++    void ApplyPageStateData(const struct FCsm_SaveState& State);
++
++    /** Redraws the page at the restored position. Safe to defer; must not be what carries the data. */
++    void RefreshResumedDisplay();
++
++    /**
++     * True between a load being requested and the world snapshot finishing.
++     *
++     * During that window the level has been rebuilt but not yet restored, so the step flow must not be
++     * driven: the fresh level's own step 1 would run, and its Delay would land after the restore and
++     * advance the Game Manager past the saved step.
++     */
++    bool IsResumeInFlight() const;
++
++    /**
++     * Brings the Game Manager's step counter in line with the resumed step WITHOUT re-running it.
++     *
++     * The snapshot has already armed the sub-step the learner was on, so the step must not be entered
++     * again -- that would arm its first sub-step as well and leave two interactions live. The counter
++     * is a Blueprint variable, so it is written reflectively.
++     */
++    void AdoptRestoredGameManagerStep(AActor* GMActor);
++
+     
+     bool bIsTextFadingIn = false;
+     float TextFadeSpeed = 4.0f;
+--- a/Plugins/Azureal_CSM/Source/Azureal_CSM/Private/TrainingStepPage.cpp
++++ b/Plugins/Azureal_CSM/Source/Azureal_CSM/Private/TrainingStepPage.cpp
+@@ -6,12 +6,14 @@
+ #include "ExplanationFlowLibrary.h"
+ #include "TrainingSubStepRow.h"
+ #include "MyBlueprintFunctionLibrary.h" // Language resolver
++#include "Azr_SaveSubsystem.h"
+ #include "Kismet/GameplayStatics.h"
+ #include "Engine/Engine.h"
+ #include "Sound/SoundBase.h"
+ #include "TimerManager.h" 
+ #include "QuizAnswerRow.h"
+ #include "Engine/GameInstance.h"
++#include "UObject/UnrealType.h"
+ 
+ // --- SETUP ---
+ 
+@@ -19,6 +21,16 @@
+ {
+     Super::NativeConstruct();
+ 
++    // Announce this page to the curriculum subsystem so its position can be folded into a save, and so
++    // a restore that landed before the page existed can hand its position over now.
++    if (UGameInstance* GI = GetGameInstance())
++    {
++        if (UChapterSubsystem* Subsystem = GI->GetSubsystem<UChapterSubsystem>())
++        {
++            Subsystem->RegisterStepPage(this);
++        }
++    }
++
+     // Seed English fallbacks for the localized chrome strings if left blank in the inspector.
+     // These used to live in InitializePageData, which nothing ever calls — the Blueprint starts the
+     // step flow through its own custom event — so the captions were never populated and the buttons
+@@ -38,6 +50,136 @@
+     TryInitializeData();
+ }
+ 
++// --- SAVE / RESUME ---
++
++void UTrainingStepPage::CapturePageState(FCsm_SaveState& OutState) const
++{
++    UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] capture detail: viewing=%d maxUnlocked=%d furthest=%d subProgress=%d"),
++        CurrentViewingIndex, MaxUnlockedIndex, FurthestVisitedIndex,
++        PageProgressMemory.IsValidIndex(CurrentViewingIndex) ? PageProgressMemory[CurrentViewingIndex] : -1);
++
++    OutState.bHasPageState = true;
++    OutState.PageProgressMemory = PageProgressMemory;
++    OutState.StepTriggerHistory = StepTriggerHistory;
++    OutState.CurrentViewingIndex = CurrentViewingIndex;
++    OutState.MaxUnlockedIndex = MaxUnlockedIndex;
++    OutState.FurthestVisitedIndex = FurthestVisitedIndex;
++    OutState.bSessionFinished = bSessionFinished;
++}
++
++void UTrainingStepPage::ApplyPageState(const FCsm_SaveState& State)
++{
++    if (!State.bHasPageState)
++    {
++        return;
++    }
++
++    ApplyPageStateData(State);
++    RefreshResumedDisplay();
++}
++
++void UTrainingStepPage::ApplyPageStateData(const FCsm_SaveState& State)
++{
++    if (!State.bHasPageState)
++    {
++        return;
++    }
++
++    // Refuse to write a position into a page that has no steps. Clamping against a zero-length list
++    // would silently collapse every restored index to 0 and then report the chapter as complete.
++    if (TotalStepsCount <= 0)
++    {
++        return;
++    }
++
++    // The steps themselves are rebuilt from the data asset, so only the position is restored here.
++    // Anything longer than the freshly built list is discarded rather than trusted: the curriculum may
++    // legitimately have fewer steps than the save expected.
++    PageProgressMemory = State.PageProgressMemory;
++    StepTriggerHistory = State.StepTriggerHistory;
++    PageProgressMemory.SetNum(TotalStepsCount, EAllowShrinking::Yes);
++    StepTriggerHistory.SetNum(TotalStepsCount, EAllowShrinking::Yes);
++
++    CurrentViewingIndex  = FMath::Clamp(State.CurrentViewingIndex,  0, FMath::Max(TotalStepsCount, 0));
++    MaxUnlockedIndex     = FMath::Clamp(State.MaxUnlockedIndex,     0, FMath::Max(TotalStepsCount, 0));
++    FurthestVisitedIndex = FMath::Clamp(State.FurthestVisitedIndex, 0, FMath::Max(TotalStepsCount, 0));
++    bSessionFinished     = State.bSessionFinished;
++}
++
++void UTrainingStepPage::RefreshResumedDisplay()
++{
++    if (TotalStepsCount <= 0)
++    {
++        return;
++    }
++
++    // Show the restored step. TryFireNextStepEvent is gated by StepTriggerHistory, which was restored
++    // above, so the sequencer re-arms the step being resumed without replaying the earlier ones.
++    OnPageChanged(CurrentViewingIndex);
++    EvaluateCurrentPageType();
++    RefreshList();
++    UpdateNextButtonState();
++    OnUpdateNavigationButtons();
++    ScrollToActiveSubStep();
++
++    if (CurrentViewingIndex < TotalStepsCount)
++    {
++        TryFireNextStepEvent(CurrentViewingIndex);
++    }
++    else if (CurrentViewingIndex == TotalStepsCount)
++    {
++        OnChapterCompleted();
++    }
++}
++
++void UTrainingStepPage::SaveProgressNow()
++{
++    UGameInstance* GI = GetGameInstance();
++    if (!GI)
++    {
++        return;
++    }
++
++    UAzr_SaveSubsystem* Save = GI->GetSubsystem<UAzr_SaveSubsystem>();
++    if (!Save || Save->IsRestoring())
++    {
++        // Saving in the middle of applying a restore would capture a half-rebuilt world.
++        return;
++    }
++
++    // Reaching a sub-step boundary means the learner has moved past the point they resumed from, so the
++    // parked position has done its job. Released here rather than on first use, so that every earlier
++    // re-initialisation of the page still lands on the saved step.
++    if (UChapterSubsystem* Subsystem = GI->GetSubsystem<UChapterSubsystem>())
++    {
++        Subsystem->ClearPendingPageState();
++    }
++
++    // Elapsed time is kept as a duration on the subsystem, not as a start stamp on this widget: world
++    // time restarts on level load, and the widget itself is destroyed and rebuilt.
++    //
++    // Only the time accrued since this page began is added to what was already banked. Assigning the
++    // page's own elapsed time would throw away everything before the resume, so a learner who saved an
++    // hour in and came back would show a couple of minutes.
++    if (GetWorld() && !bSessionFinished)
++    {
++        const float SincePageStarted = GetWorld()->GetTimeSeconds() - SessionStartTime;
++        Save->SetAccumulatedSeconds(BankedSecondsAtPageStart + FMath::Max(SincePageStarted, 0.0f));
++    }
++
++    // Something for a Continue button to show. 1-based, matching everything else Blueprint-facing.
++    if (UChapterSubsystem* Subsystem = GI->GetSubsystem<UChapterSubsystem>())
++    {
++        int32 ChapterNumber = 0;
++        FAzr_MultiLangText ChapterTitle;
++        Subsystem->GetCurrentChapterInfo(ChapterNumber, ChapterTitle);
++        Save->SetProgressLabel(FString::Printf(TEXT("Chapter %d - Step %d of %d"),
++            ChapterNumber, FMath::Min(CurrentViewingIndex + 1, TotalStepsCount), TotalStepsCount));
++    }
++
++    Save->SaveProgress();
++}
++
+ void UTrainingStepPage::TryInitializeData()
+ {
+     if (!GetWorld()) return;
+@@ -83,6 +225,17 @@
+ void UTrainingStepPage::StartGM()
+ {
+     AActor* GMActor = FindChapterGameManager();
++
++    // A resume does NOT re-run the step. The snapshot has already put the world back and re-armed the
++    // exact sub-step the learner was on, so running the sequencer here would arm the step's FIRST
++    // sub-step alongside it -- two live interactions, both firing, which is worse than either.
++    //
++    // Only the counter needs attention, so that the NEXT step fires at the right index.
++    if (GMActor && IsResumeInFlight())
++    {
++        AdoptRestoredGameManagerStep(GMActor);
++        return;
++    }
+     if (GMActor && GMActor->Implements<UStepSequencerInterface>())
+     {
+         IStepSequencerInterface::Execute_RunStepsOrder(GMActor);
+@@ -229,6 +382,10 @@
+ 
+     UpdateNextButtonState();
+     OnUpdateNavigationButtons();
++
++    // Quiz steps never reach AdvanceProgress -- it refuses them, because a quiz is advanced by Confirm
++    // rather than by the sequencer. Without a save here, an answered quiz would be asked again on resume.
++    SaveProgressNow();
+ }
+ 
+ void UTrainingStepPage::RestoreQuizVisualStates()
+@@ -387,6 +544,20 @@
+ 
+         UpdateNextButtonState();
+         OnUpdateNavigationButtons();
++
++        // Saved ONLY when the chapter has just been completed -- never on an ordinary page turn.
++        //
++        // Turning into a step starts that step's sequencer chain, and those chains open with sounds and
++        // Delays before they arm anything. A snapshot taken at that instant catches the world with the
++        // chain still in flight and NOTHING armed, so restoring it produces a step the learner can see
++        // but not interact with. Chapter completion has no such chain running, so it is safe to record.
++        //
++        // The cost is that quitting immediately after entering a step resumes at the previous boundary,
++        // which is the intended guarantee anyway: at most one sub-step is ever lost.
++        if (CurrentViewingIndex == TotalStepsCount)
++        {
++            SaveProgressNow();
++        }
+     }
+ }
+ 
+@@ -401,12 +572,19 @@
+         UpdateNextButtonState();
+         OnUpdateNavigationButtons();
+     }
++
++    // Deliberately no save here. Paging BACK to review an earlier step must not become the resume
++    // position -- a learner flicking backwards through completed steps would otherwise rewrite their
++    // progress to wherever they happened to be looking.
+ }
+ 
+ void UTrainingStepPage::JumpToCurrentPage()
+ {
+     if (CurrentViewingIndex != FurthestVisitedIndex)
+     {
++        UE_LOG(LogTemp, Warning, TEXT("[AzrSave/CSM] JumpToCurrentPage: viewing %d -> %d (FurthestVisited)."),
++            CurrentViewingIndex, FurthestVisitedIndex);
++
+         CurrentViewingIndex = FurthestVisitedIndex;
+         OnPageChanged(CurrentViewingIndex);
+         EvaluateCurrentPageType();
+@@ -434,6 +612,72 @@
+ 
+     UpdateNextButtonState();
+     OnUpdateNavigationButtons();
++
++    // A resume is NOT applied here, only queued. This function is called from Initialize StepPage,
++    // which then goes on to run Build Step UI -- so anything written now is redrawn a moment later.
++    // The queued position is applied on the next tick, once every caller has finished.
++    if (UGameInstance* GI = GetGameInstance())
++    {
++        if (UChapterSubsystem* Subsystem = GI->GetSubsystem<UChapterSubsystem>())
++        {
++            FCsm_SaveState Resume;
++            if (Subsystem->PeekPendingPageState(Resume))
++            {
++                // The DATA goes back immediately, in the same frame the Init above wiped it. That
++                // matters more than it looks: StepTriggerHistory was just cleared to all-false, and
++                // anything running later in this frame -- Build Step UI, for one -- reads that as "no
++                // step has fired yet", fires one, and pushes the Game Manager a step past the learner.
++                // Deferring this by even a tick leaves that gap wide open.
++                ApplyPageStateData(Resume);
++
++                // Only the REDRAW waits for the next tick, because Build Step UI runs after this
++                // function and would paint over anything drawn now.
++                bResumeQueued = true;
++                UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] step page: %d steps built, position restored to step %d (redraw next tick)."),
++                    NewTotalSteps, Resume.CurrentViewingIndex);
++            }
++            else
++            {
++                UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] step page: %d steps built, nothing parked -- starting at step 1."), NewTotalSteps);
++            }
++        }
++    }
++}
++
++void UTrainingStepPage::ApplyQueuedResume()
++{
++    bResumeQueued = false;
++
++    UGameInstance* GI = GetGameInstance();
++    UChapterSubsystem* Subsystem = GI ? GI->GetSubsystem<UChapterSubsystem>() : nullptr;
++    if (!Subsystem)
++    {
++        return;
++    }
++
++    FCsm_SaveState Resume;
++    if (!Subsystem->PeekPendingPageState(Resume) || TotalStepsCount <= 0)
++    {
++        return;
++    }
++
++    // Carry forward the time already banked, so the clock continues rather than restarts.
++    if (UAzr_SaveSubsystem* Save = GI->GetSubsystem<UAzr_SaveSubsystem>())
++    {
++        BankedSecondsAtPageStart = Save->GetAccumulatedSeconds();
++    }
++
++    UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] redrawing resumed page: viewing=%d maxUnlocked=%d furthest=%d (of %d steps)"),
++        Resume.CurrentViewingIndex, Resume.MaxUnlockedIndex, Resume.FurthestVisitedIndex, TotalStepsCount);
++
++    // Data was already restored in SetTotalSessionSteps; this is only the redraw. Re-applied here as
++    // well so a re-initialisation that happened without a resume still lands on the right values.
++    //
++    // The parked position is deliberately NOT released. Any later re-initialisation -- the menu's Start
++    // path, for one -- wipes the page back to step one, and would strand the learner there if the
++    // position had already been thrown away. It is released once they actually advance.
++    ApplyPageStateData(Resume);
++    RefreshResumedDisplay();
+ }
+ 
+ void UTrainingStepPage::AdvanceProgress()
+@@ -447,8 +691,34 @@
+         return;
+     }
+ 
++    // Only the actual snapshot application is off-limits -- writing progress into a half-rebuilt world
++    // would be meaningless. Once that is done the learner is playing again, so advances are real.
++    if (UGameInstance* GI = GetGameInstance())
++    {
++        if (UAzr_SaveSubsystem* Save = GI->GetSubsystem<UAzr_SaveSubsystem>())
++        {
++            if (Save->IsRestoring())
++            {
++                UE_LOG(LogTemp, Warning, TEXT("[AzrSave/CSM] ignored an AdvanceProgress arriving mid-restore."));
++                return;
++            }
++
++            // Reaching here means the learner has genuinely advanced, so the resume is over and the
++            // sequencer may drive the Game Manager again. Cleared at the TOP, before anything below can
++            // call TryFireNextStepEvent -- otherwise the first legitimate step would be suppressed too.
++            if (Save->IsResumePending())
++            {
++                UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] first advance after resume -- sequencer unlocked."));
++                Save->ClearResumePending();
++            }
++        }
++    }
++
+     if (CurrentViewingIndex != MaxUnlockedIndex && MaxUnlockedIndex < TotalStepsCount)
+     {
++        UE_LOG(LogTemp, Warning, TEXT("[AzrSave/CSM] AdvanceProgress catch-up: viewing %d -> %d (MaxUnlocked)."),
++            CurrentViewingIndex, MaxUnlockedIndex);
++
+         CurrentViewingIndex = MaxUnlockedIndex;
+         if (CurrentViewingIndex > FurthestVisitedIndex) FurthestVisitedIndex = CurrentViewingIndex;
+ 
+@@ -494,6 +764,11 @@
+         UpdateNextButtonState();
+         OnUpdateNavigationButtons();
+     }
++
++    // The one moment in the whole flow where nothing is in flight: the sub-step that just finished has
++    // hidden its guidance, the next is armed and waiting for the player, and no chain is part-way
++    // through a Delay. Every autosave is taken here, which is what makes resume safe.
++    SaveProgressNow();
+ }
+ 
+ void UTrainingStepPage::ScrollToActiveSubStep()
+@@ -552,8 +827,80 @@
+ 
+ // --- GETTERS & HELPERS ---
+ 
++void UTrainingStepPage::AdoptRestoredGameManagerStep(AActor* GMActor)
++{
++    if (!GMActor)
++    {
++        return;
++    }
++
++    // The counter is a Blueprint variable, so it is reached reflectively rather than through an
++    // interface. Both spellings are accepted because Blueprint shows "Steps Integer" while some
++    // authoring passes produce the unspaced form.
++    static const FName Candidates[] = { FName(TEXT("Steps Integer")), FName(TEXT("StepsInteger")) };
++
++    for (const FName& Candidate : Candidates)
++    {
++        if (FIntProperty* Counter = CastField<FIntProperty>(GMActor->GetClass()->FindPropertyByName(Candidate)))
++        {
++            // Set to the step the learner is ON, not one below it. Nothing is being re-entered here --
++            // the counter is only being made correct so the NEXT RunStepsOrder increments into the
++            // following step. The current step's interactions are already live from the snapshot.
++            Counter->SetPropertyValue_InContainer(GMActor, CurrentViewingIndex + 1);
++
++            UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] resumed in place on step %d; %s.%s set to %d. Sub-step progress kept."),
++                CurrentViewingIndex + 1, *GMActor->GetName(), *Candidate.ToString(), CurrentViewingIndex + 1);
++
++            // Sub-step progress is deliberately left alone. The learner is standing exactly where they
++            // stopped, with that sub-step armed, so the ticks beside the earlier ones are accurate.
++
++            // The resume is over; the sequencer runs normally from the next step onwards.
++            if (UGameInstance* GI = GetGameInstance())
++            {
++                if (UAzr_SaveSubsystem* Save = GI->GetSubsystem<UAzr_SaveSubsystem>())
++                {
++                    // No re-arm here: the restore already brought the interactions back with the rest
++                    // of the world. Calling Enable* a second time would restart their timers and
++                    // animations for no reason.
++                    Save->ClearResumePending();
++                }
++                if (UChapterSubsystem* Subsystem = GI->GetSubsystem<UChapterSubsystem>())
++                {
++                    Subsystem->ClearPendingPageState();
++                }
++            }
++            return;
++        }
++    }
++
++    UE_LOG(LogTemp, Warning, TEXT("[AzrSave/CSM] could not find a step counter on %s -- the resume may enter the wrong step. ")
++        TEXT("Expected an integer variable named 'Steps Integer'."), *GMActor->GetName());
++}
++
++bool UTrainingStepPage::IsResumeInFlight() const
++{
++    const UGameInstance* GI = GetGameInstance();
++    const UAzr_SaveSubsystem* Save = GI ? GI->GetSubsystem<UAzr_SaveSubsystem>() : nullptr;
++    return Save && (Save->IsResumePending() || Save->IsRestoring());
++}
++
+ void UTrainingStepPage::TryFireNextStepEvent(int32 StepIndex)
+ {
++    // Blocked only while the snapshot is actually being applied -- the world is half-rebuilt then and
++    // the counter has not landed. Once that is done the sequencer is allowed to run, because StartGM
++    // seeds the counter so it enters the resumed step rather than the next one.
++    if (const UGameInstance* GI = GetGameInstance())
++    {
++        if (const UAzr_SaveSubsystem* Save = GI->GetSubsystem<UAzr_SaveSubsystem>())
++        {
++            if (Save->IsRestoring())
++            {
++                UE_LOG(LogTemp, Log, TEXT("[AzrSave/CSM] deferred a step fire arriving mid-restore (step %d)."), StepIndex);
++                return;
++            }
++        }
++    }
++
+     if (StepTriggerHistory.IsValidIndex(StepIndex)) {
+         if (!StepTriggerHistory[StepIndex]) {
+             StepTriggerHistory[StepIndex] = true;
+@@ -604,6 +951,14 @@
+ {
+     Super::NativeTick(MyGeometry, InDeltaTime);
+ 
++    // Applied here rather than during initialisation, because Initialize StepPage runs Build Step UI
++    // straight after Set Total Session Steps -- so a position written inline is immediately redrawn
++    // over. By the time the first tick arrives, every caller has finished and the page is stable.
++    if (bResumeQueued)
++    {
++        ApplyQueuedResume();
++    }
++
+     if (bIsTextFadingIn)
+     {
+         // Read current opacity safely from whichever text block exists
+--- a/Plugins/Azureal_CSM/Source/Azureal_CSM/Public/MainMenuPage.h
++++ b/Plugins/Azureal_CSM/Source/Azureal_CSM/Public/MainMenuPage.h
+@@ -30,6 +30,26 @@
+     UFUNCTION(BlueprintCallable, Category = "Menu Logic")
+     void RestartWholeModule();
+ 
++    // --- CONTINUE ---
++    // Wire a Continue button to these three. Show it only when HasSavedProgress is true, caption it
++    // with GetSavedProgressLabel, and call ContinueSavedProgress when pressed.
++
++    /** True when this learner has a resumable save. Use it to show or hide the Continue button. */
++    UFUNCTION(BlueprintPure, Category = "Menu Logic")
++    bool HasSavedProgress() const;
++
++    /** Where they left off, e.g. "Chapter 2 - Step 4". Empty when there is nothing to continue. */
++    UFUNCTION(BlueprintPure, Category = "Menu Logic")
++    FString GetSavedProgressLabel() const;
++
++    /** Travel back to the saved level and restore the world. Returns false if the save is unusable. */
++    UFUNCTION(BlueprintCallable, Category = "Menu Logic")
++    bool ContinueSavedProgress();
++
++    /** Throw the saved progress away, so Start Over genuinely starts over. */
++    UFUNCTION(BlueprintCallable, Category = "Menu Logic")
++    void ClearSavedProgress();
++
+     // --- CURRENT CHAPTER RESTART LOGIC ---
+     UFUNCTION(BlueprintCallable, Category = "Menu Logic")
+     void LoadCurrentChapter();
+--- a/Plugins/Azureal_CSM/Source/Azureal_CSM/Private/MainMenuPage.cpp
++++ b/Plugins/Azureal_CSM/Source/Azureal_CSM/Private/MainMenuPage.cpp
+@@ -8,6 +8,15 @@
+ #include "Components/VerticalBoxSlot.h"
+ #include "Kismet/GameplayStatics.h"
+ #include "Engine/GameInstance.h"
++#include "Azr_SaveSubsystem.h"
++
++namespace
++{
++    UAzr_SaveSubsystem* GetSaveSubsystem(const UGameInstance* GameInstance)
++    {
++        return GameInstance ? GameInstance->GetSubsystem<UAzr_SaveSubsystem>() : nullptr;
++    }
++}
+ 
+ // --- BINDINGS ---
+ 
+@@ -87,8 +96,59 @@
+ 
+ // --- MODULE RESET LOGIC ---
+ 
++// --- CONTINUE ---
++
++bool UMainMenuPage::HasSavedProgress() const
++{
++    const UAzr_SaveSubsystem* Save = GetSaveSubsystem(GetGameInstance());
++    return Save && Save->HasProgress();
++}
++
++FString UMainMenuPage::GetSavedProgressLabel() const
++{
++    const UAzr_SaveSubsystem* Save = GetSaveSubsystem(GetGameInstance());
++    if (!Save)
++    {
++        return FString();
++    }
++
++    FString Label;
++    FDateTime When;
++    float Seconds = 0.0f;
++    if (!Save->GetSaveSummary(Save->GetDefaultSlotName(), Label, When, Seconds))
++    {
++        return FString();
++    }
++    return Label;
++}
++
++bool UMainMenuPage::ContinueSavedProgress()
++{
++    UAzr_SaveSubsystem* Save = GetSaveSubsystem(GetGameInstance());
++    if (!Save || !Save->HasProgress())
++    {
++        return false;
++    }
++
++    // The save carries its own level, so this travels as well as restores -- no need to pick a chapter
++    // first. A refusal here means the save was written against different course content.
++    return Save->LoadProgress();
++}
++
++void UMainMenuPage::ClearSavedProgress()
++{
++    if (UAzr_SaveSubsystem* Save = GetSaveSubsystem(GetGameInstance()))
++    {
++        Save->DeleteProgress();
++    }
++}
++
+ void UMainMenuPage::RestartWholeModule()
+ {
++    // Starting over must not leave a save behind, or the next Continue would resurrect the run the
++    // learner just chose to abandon.
++    ClearSavedProgress();
++
+     UGameInstance* GI = GetGameInstance();
+     UChapterSubsystem* Subsystem = nullptr;
+     if (GI)
