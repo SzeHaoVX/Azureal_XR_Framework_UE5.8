@@ -61,35 +61,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Explain API")
 	void SetAudioProgress(float Progress);
 
-	// --- SPOKEN REVEAL ---
-	// The sentence is shown in full first so it can be read at the learner's own pace. When the audio
-	// starts it is cleared and rebuilt word by word, in step with the narration.
-
-	/** Show only the first NumWords of the sentence. 0 clears it. */
-	UFUNCTION(BlueprintCallable, Category = "Azureal|Explain API")
-	void SetRevealedWordCount(int32 NumWords);
-
-	/** Put the whole sentence back. Called when playback ends, and whenever the reveal is not in use. */
-	UFUNCTION(BlueprintCallable, Category = "Azureal|Explain API")
-	void ShowFullExplainText();
-
-	/** How many words the current sentence has, so the driver knows what it is counting towards. */
-	UFUNCTION(BlueprintPure, Category = "Azureal|Explain API")
-	int32 GetExplainWordCount() const { return WordEndOffsets.Num(); }
-
-	/**
-	 * How many words should be showing once Fraction of the narration has been spoken.
-	 *
-	 * Not simply Fraction * WordCount. Words are not spoken at a uniform rate -- "the" and
-	 * "electricity" take very different amounts of time -- so giving every word an equal slice of the
-	 * clip makes short words lag and long words arrive early. Each word instead claims time in
-	 * proportion to its length, which is what stops the reveal drifting against the voice mid-sentence.
-	 *
-	 * LengthWeighting blends between equal slices (0) and fully length-proportional (1).
-	 */
-	UFUNCTION(BlueprintPure, Category = "Azureal|Explain API")
-	int32 GetWordCountForProgress(float Fraction, float LengthWeighting) const;
-
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Explain API")
 	void SetPlaybackCompleted();
 
@@ -129,34 +100,6 @@ protected:
 	FAzr_MultiLangText Text_Continue;
 
 private:
-	/** The sentence as authored, kept so a partial reveal can always rebuild from the original. */
-	FString FullExplainString;
-
-	/**
-	 * Where each word ends in FullExplainString.
-	 *
-	 * Offsets rather than a split array so a partial reveal is just Left(N) of the original -- which
-	 * keeps the author's punctuation, double spaces and line breaks byte-for-byte instead of
-	 * re-joining words with a single space and quietly reflowing the paragraph.
-	 *
-	 * Words rather than characters on purpose: at headset distance a per-character typewriter is hard
-	 * to read and fights the rhythm of speech, whereas words land naturally with the narration.
-	 */
-	TArray<int32> WordEndOffsets;
-
-	/**
-	 * Characters in each word, used as a stand-in for how long it takes to say.
-	 *
-	 * Character count rather than a syllable estimate on purpose: it holds up across English, Malay and
-	 * Tamil without per-language rules, and syllable counting actually overstates the difference --
-	 * longer words are spoken with shorter syllables, so their duration grows more slowly than their
-	 * syllable count does.
-	 */
-	TArray<int32> WordLengths;
-
-	/** Recompute the reveal offsets. Called whenever the displayed sentence changes. */
-	void RebuildWordOffsets(const FText& SourceText);
-
 	UFUNCTION()
 	void OnInteractionButtonClicked();
 

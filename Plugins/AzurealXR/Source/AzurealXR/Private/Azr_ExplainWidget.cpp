@@ -5,7 +5,6 @@
 #include "Components/ProgressBar.h"
 #include "Components/TextBlock.h"
 #include "GameFramework/PlayerController.h"
-#include "Internationalization/TextChar.h"
 #include "Engine/GameInstance.h"
 #include "Azr_SessionSubsystem.h"
 #include "TimerManager.h"
@@ -60,113 +59,8 @@ void UAzr_ExplainWidget::InitializeStep(EAzr_ExplainStepType InStepType) {
 
 // --- INJECTS THE DEV TEXT INTO THE UI (resolved to the active language) ---
 void UAzr_ExplainWidget::SetExplainText(const FAzr_MultiLangText& NewText) {
-    const FText Localized = GetLocalizedText(NewText);
-
-    // Cache before display: the reveal has to be able to rebuild this sentence from the original even
-    // after the block has been cleared, and the localized resolve happens here.
-    RebuildWordOffsets(Localized);
-
     if (ExplainTextBlock) {
-        ExplainTextBlock->SetText(Localized);
-    }
-}
-
-void UAzr_ExplainWidget::RebuildWordOffsets(const FText& SourceText) {
-    FullExplainString = SourceText.ToString();
-    WordEndOffsets.Reset();
-    WordLengths.Reset();
-
-    // Walk the string once, recording the index just past each run of non-whitespace. Trailing
-    // whitespace after a word is deliberately left out of the offset so the revealed text does not
-    // end on a dangling space that nudges the last word's wrap position.
-    const int32 Length = FullExplainString.Len();
-    int32 Index = 0;
-
-    while (Index < Length) {
-        while (Index < Length && FTextChar::IsWhitespace(FullExplainString[Index])) {
-            ++Index;
-        }
-        if (Index >= Length) {
-            break;
-        }
-
-        const int32 WordStart = Index;
-        while (Index < Length && !FTextChar::IsWhitespace(FullExplainString[Index])) {
-            ++Index;
-        }
-        WordEndOffsets.Add(Index);
-        WordLengths.Add(Index - WordStart);
-    }
-}
-
-int32 UAzr_ExplainWidget::GetWordCountForProgress(float Fraction, float LengthWeighting) const {
-    const int32 NumWords = WordLengths.Num();
-    if (NumWords <= 0) {
-        return 0;
-    }
-
-    Fraction = FMath::Clamp(Fraction, 0.0f, 1.0f);
-    if (Fraction >= 1.0f) {
-        return NumWords;
-    }
-
-    LengthWeighting = FMath::Clamp(LengthWeighting, 0.0f, 1.0f);
-    if (LengthWeighting <= KINDA_SMALL_NUMBER) {
-        return FMath::RoundToInt(Fraction * NumWords);
-    }
-
-    // Every word carries a fixed cost on top of its letters -- the beat between words, which is spoken
-    // whether the word is long or short. Without it a one-letter word would claim almost no time at all.
-    const float WordGapCost = 2.5f;
-
-    float RawTotal = 0.0f;
-    for (const int32 Len : WordLengths) {
-        RawTotal += WordGapCost + Len;
-    }
-    const float RawAverage = RawTotal / NumWords;
-    if (RawAverage <= KINDA_SMALL_NUMBER) {
-        return FMath::RoundToInt(Fraction * NumWords);
-    }
-
-    // Weights are scaled to average 1, so whatever the blend the whole sentence still totals NumWords
-    // and Fraction maps onto it directly.
-    const float Target = Fraction * NumWords;
-    float Accumulated = 0.0f;
-
-    for (int32 i = 0; i < NumWords; ++i) {
-        const float Proportional = (WordGapCost + WordLengths[i]) / RawAverage;
-        Accumulated += FMath::Lerp(1.0f, Proportional, LengthWeighting);
-
-        if (Accumulated >= Target) {
-            return i + 1;
-        }
-    }
-
-    return NumWords;
-}
-
-void UAzr_ExplainWidget::SetRevealedWordCount(int32 NumWords) {
-    if (!ExplainTextBlock) {
-        return;
-    }
-
-    const int32 Clamped = FMath::Clamp(NumWords, 0, WordEndOffsets.Num());
-
-    if (Clamped <= 0) {
-        ExplainTextBlock->SetText(FText::GetEmpty());
-        return;
-    }
-    if (Clamped >= WordEndOffsets.Num()) {
-        ShowFullExplainText();
-        return;
-    }
-
-    ExplainTextBlock->SetText(FText::FromString(FullExplainString.Left(WordEndOffsets[Clamped - 1])));
-}
-
-void UAzr_ExplainWidget::ShowFullExplainText() {
-    if (ExplainTextBlock) {
-        ExplainTextBlock->SetText(FText::FromString(FullExplainString));
+        ExplainTextBlock->SetText(GetLocalizedText(NewText));
     }
 }
 
@@ -245,11 +139,6 @@ void UAzr_ExplainWidget::SetAudioProgress(float Progress) {
 void UAzr_ExplainWidget::SetPlaybackCompleted() {
     if (CurrentState == EAzr_ExplainWidgetState::Playing) {
         CurrentState = EAzr_ExplainWidgetState::Completed;
-
-        // The narration is over, so the sentence must be whole regardless of where the reveal got to.
-        // Belt and braces with the component's own call: whichever runs first, the learner is never
-        // left staring at a half-finished sentence with nothing left to play.
-        ShowFullExplainText();
 
         if (APlayerController* PC = Cast<APlayerController>(GetOwningPlayer())) {
             PC->SetHapticsByValue(1.0f, 1.0f, EControllerHand::Left);

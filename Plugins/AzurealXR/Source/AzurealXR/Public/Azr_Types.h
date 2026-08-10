@@ -181,21 +181,6 @@ struct FAzr_ExplainStep
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Step")
 	class USoundBase* AudioTrack = nullptr;
 
-	/**
-	 * Exact moment each word is spoken, in seconds, comma separated -- one number per word of
-	 * ExplainText, in order. Paste it from the ElevenLabs generator script.
-	 *
-	 * Filled in, the text reveal is driven straight off these times and matches the narration exactly.
-	 * Left blank, the reveal falls back to estimating the pacing from the audio's loudness, which
-	 * tracks the voice but is never word-perfect.
-	 *
-	 * Three boxes because each language is a different recording with a different word count. A blank
-	 * box falls back to English, and if the word count does not match the text being shown the timings
-	 * are ignored rather than trusted -- an edited sentence must be re-generated to stay in sync.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Step")
-	FAzr_MultiLangText WordTimings;
-
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Step")
 	EAzr_ExplainMode ExplainMode = EAzr_ExplainMode::Audio;
