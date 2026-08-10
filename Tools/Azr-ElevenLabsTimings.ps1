@@ -79,29 +79,45 @@ $ErrorActionPreference = "Stop"
 # Its own function so -SelfTest can exercise the part that actually decides synchronisation, with no
 # API call and no credits spent.
 # --------------------------------------------------------------------------------------------------
-function ConvertTo-WordStartTimes {
+function ConvertTo-WordSpans {
     param(
         [Parameter(Mandatory = $true)] [array] $Characters,
-        [Parameter(Mandatory = $true)] [array] $StartTimes
+        [Parameter(Mandatory = $true)] [array] $StartTimes,
+        [Parameter(Mandatory = $true)] [array] $EndTimes
     )
 
-    $times  = New-Object System.Collections.Generic.List[double]
+    # Both ends of each word, not just where it begins. The gap to the next word is not the same as a
+    # word's own length -- the difference is any pause after it -- and the reveal in Unreal cannot tell
+    # those apart from start times alone.
+    $spans  = New-Object System.Collections.Generic.List[string]
     $inWord = $false
+    $wordStart = 0.0
+    $wordEnd   = 0.0
 
     for ($i = 0; $i -lt $Characters.Count; $i++) {
         $isSpace = [string]::IsNullOrWhiteSpace($Characters[$i])
 
-        if (-not $isSpace -and -not $inWord) {
+        if ($isSpace) {
+            if ($inWord) {
+                $spans.Add(("{0:F3}:{1:F3}" -f $wordStart, $wordEnd))
+                $inWord = $false
+            }
+            continue
+        }
+
+        if (-not $inWord) {
             # First character of a word -- the instant it begins being spoken.
-            $times.Add([double]$StartTimes[$i])
+            $wordStart = [double]$StartTimes[$i]
             $inWord = $true
         }
-        elseif ($isSpace) {
-            $inWord = $false
-        }
+
+        # Carried forward, so whichever character turns out to be the last leaves its end time behind.
+        $wordEnd = [double]$EndTimes[$i]
     }
 
-    return $times
+    if ($inWord) { $spans.Add(("{0:F3}:{1:F3}" -f $wordStart, $wordEnd)) }
+
+    return $spans
 }
 
 # Same rule as the C++ (any run of whitespace separates words) so the counts agree. If they ever
@@ -121,27 +137,29 @@ if ($SelfTest) {
 
     $sentence = "Check the 11kV panel."          # 4 words, with punctuation and a digit-word
     $chars  = $sentence.ToCharArray() | ForEach-Object { [string]$_ }
-    # Synthetic alignment: every character 0.10s apart, so the expected answers are obvious by eye.
+    # Synthetic alignment: every character spans 0.10s, so the expected answers are obvious by eye.
     $starts = 0..($chars.Count - 1) | ForEach-Object { [math]::Round($_ * 0.10, 3) }
+    $ends   = 0..($chars.Count - 1) | ForEach-Object { [math]::Round(($_ + 1) * 0.10, 3) }
 
-    $got      = ConvertTo-WordStartTimes -Characters $chars -StartTimes $starts
-    $expected = @(0.0, 0.6, 1.0, 1.5)   # C(0) t(6) 1(10) p(15)
+    $got = ConvertTo-WordSpans -Characters $chars -StartTimes $starts -EndTimes $ends
+    # Check(0..0.5) the(0.6..0.9) 11kV(1.0..1.4) panel.(1.5..2.1)
+    $expected = @("0.000:0.500", "0.600:0.900", "1.000:1.400", "1.500:2.100")
     $words    = Get-WordCount -InText $sentence
 
     Write-Host ("  sentence : '{0}'" -f $sentence)
     Write-Host ("  words    : {0}" -f $words)
-    Write-Host ("  expected : {0}" -f (($expected | ForEach-Object { "{0:F3}" -f $_ }) -join ","))
-    Write-Host ("  got      : {0}" -f (($got      | ForEach-Object { "{0:F3}" -f $_ }) -join ","))
+    Write-Host ("  expected : {0}" -f ($expected -join ","))
+    Write-Host ("  got      : {0}" -f ($got      -join ","))
     Write-Host ""
 
     $ok = ($got.Count -eq $words) -and ($got.Count -eq $expected.Count)
     if ($ok) {
         for ($i = 0; $i -lt $expected.Count; $i++) {
-            if ([math]::Abs($got[$i] - $expected[$i]) -gt 0.0005) { $ok = $false; break }
+            if ($got[$i] -ne $expected[$i]) { $ok = $false; break }
         }
     }
 
-    if ($ok) { Write-Host "  PASS - word boundaries and counts line up." -ForegroundColor Green }
+    if ($ok) { Write-Host "  PASS - word boundaries, lengths and counts line up." -ForegroundColor Green }
     else     { Write-Host "  FAIL" -ForegroundColor Red; exit 1 }
 
     Write-Host ""
@@ -273,11 +291,12 @@ else {
 # 'alignment' follows the text as submitted. 'normalized_alignment' follows the SPOKEN expansion, where
 # "11kV" becomes "eleven kilovolts" -- more characters than the sentence on screen, so its indices would
 # not correspond to the words the widget displays.
-$wordTimes     = ConvertTo-WordStartTimes -Characters $resp.alignment.characters `
-                                          -StartTimes $resp.alignment.character_start_times_seconds
+$wordTimes     = ConvertTo-WordSpans -Characters $resp.alignment.characters `
+                                     -StartTimes $resp.alignment.character_start_times_seconds `
+                                     -EndTimes   $resp.alignment.character_end_times_seconds
 $expectedWords = Get-WordCount -InText $Text
 
-$csv         = ($wordTimes | ForEach-Object { "{0:F3}" -f $_ }) -join ","
+$csv         = $wordTimes -join ","
 $timingsPath = Join-Path $OutDir "$OutName.times.txt"
 Set-Content -Path $timingsPath -Value $csv -Encoding utf8 -NoNewline
 
@@ -294,7 +313,7 @@ if ($wordTimes.Count -ne $expectedWords) {
     Write-Host "         Check for unusual punctuation or stray whitespace, then re-run." -ForegroundColor Red
 }
 else {
-    Write-Host ("  last word at  : {0:F2}s" -f $wordTimes[$wordTimes.Count - 1])
+    Write-Host ("  last word span: {0}s" -f $wordTimes[$wordTimes.Count - 1])
     Write-Host ""
     Write-Host "Paste into the step's Word Timings box (English):" -ForegroundColor Cyan
     Write-Host $csv

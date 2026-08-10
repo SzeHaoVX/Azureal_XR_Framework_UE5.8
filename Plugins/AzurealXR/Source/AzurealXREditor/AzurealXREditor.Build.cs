@@ -29,7 +29,13 @@ public class AzurealXREditor : ModuleRules
                 "SubobjectDataInterface",// USubobjectDataSubsystem (component add)
                 "ToolMenus",             // UToolMenus toolbar button + content-browser entry
                 "ContentBrowser",        // UContentBrowserAssetContextMenuContext
-                "AzurealXR"              // UAzr_HandScanner (component visualizer)
+                "PropertyEditor",        // details-panel Generate Narration buttons
+                "AssetTools",            // IAssetTools::ImportAssetTasks (generated narration -> USoundWave)
+                "DeveloperSettings",     // UAzr_NarrationSettings (per-user ElevenLabs config)
+                "Settings",              // ISettingsModule (this module loads too late for the automatic sweep)
+                "HTTP",                  // ElevenLabs text-to-speech with timestamps
+                "Json",                  // parsing the alignment data those timestamps arrive in
+                "AzurealXR"              // UAzr_HandScanner (component visualizer), UAzr_Explain (narration buttons)
             }
             );
     }
