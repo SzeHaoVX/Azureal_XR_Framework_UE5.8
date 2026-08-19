@@ -1198,6 +1198,53 @@ float UAzr_Latch::CalculateTwistAngle(USceneComponent* Hand) const
 	}
 }
 
+FVector UAzr_Latch::GetHandLocationForValueDelta(FVector CurrentHandLocation, float DeltaValue) const
+{
+	if (FMath::IsNearlyZero(DeltaValue)) return CurrentHandLocation;
+
+	// The same frozen frame CalculateAngle and CalculateLinearDist measure in, so the answer is in
+	// step with them however the latch has since moved.
+	const FTransform ParentWorld = GetAttachParent() ? GetAttachParent()->GetComponentTransform() : FTransform::Identity;
+	const FTransform ZeroTransform = InitialTransform * ParentWorld;
+	const FVector WorldAxis = ZeroTransform.TransformVectorNoScale(GetAxisVector()).GetSafeNormal();
+
+	if (WorldAxis.IsNearlyZero()) return CurrentHandLocation;
+
+	switch (LatchType)
+	{
+	case EAzr_LatchType::Linear:
+	{
+		// Probed, not derived. Nudging a test point one centimetre along the axis and reading what the
+		// measurement did gives both the scale of that frame and its sign in one go -- and keeps
+		// giving the right answer if the frame is ever changed.
+		const float PerCm = CalculateLinearDist(CurrentHandLocation + WorldAxis) - CalculateLinearDist(CurrentHandLocation);
+		if (FMath::IsNearlyZero(PerCm)) return CurrentHandLocation;
+
+		return CurrentHandLocation + WorldAxis * (DeltaValue / PerCm);
+	}
+	case EAzr_LatchType::Angular:
+	{
+		// Swung around the pivot rather than pushed towards it, so the hand keeps its distance from
+		// the pivot exactly. That distance is the lever arm the latch weighs its influence by, and
+		// letting it creep inwards would quietly weaken every turn after the first.
+		const FVector Pivot = ZeroTransform.GetLocation();
+		const FVector Arm = CurrentHandLocation - Pivot;
+		if (Arm.IsNearlyZero()) return CurrentHandLocation;
+
+		// Probed for the same reason. CalculateAngle's sign is not the same on all three axes, and
+		// bInvertRotation flips it again, so which way to swing is measured rather than tabulated.
+		const FVector Probe = Pivot + Arm.RotateAngleAxis(1.0f, WorldAxis);
+		const float PerDegree = FMath::FindDeltaAngleDegrees(CalculateAngle(CurrentHandLocation), CalculateAngle(Probe));
+		if (FMath::IsNearlyZero(PerDegree)) return CurrentHandLocation;
+
+		const float Wanted = bInvertRotation ? -DeltaValue : DeltaValue;
+		return Pivot + Arm.RotateAngleAxis(Wanted / PerDegree, WorldAxis);
+	}
+	default:
+		return CurrentHandLocation;
+	}
+}
+
 FVector UAzr_Latch::GetAxisVector() const
 {
 	switch (InteractionAxis)

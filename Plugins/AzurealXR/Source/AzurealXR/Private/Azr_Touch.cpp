@@ -2,6 +2,7 @@
 
 #include "Azr_Touch.h"
 #include "Azr_TouchZone.h"
+#include "Azr_HandScanner.h"
 #include "Azr_Indicator.h"
 #include "Azr_Pointer.h"
 #include "Azr_Interactable.h"
@@ -163,18 +164,13 @@ void UAzr_Touch::EnableTouch()
 		}
 
 		// If a hand was already inside, manually execute the entry logic immediately!
-		if (ActiveHands.Num() > 0)
+		//
+		// Gated the same way an overlap is. A crosshair is very often already resting on the thing at
+		// the moment a step enables it -- the player is looking straight at it, that is the point -- and
+		// without this the step would complete itself before they had done anything.
+		if (ActiveHands.Num() > 0 && !HandRequiresPress(Cast<UPrimitiveComponent>(ActiveHands[0])))
 		{
-			if (LinkedTouchZone->SpawnedIndicator) LinkedTouchZone->SpawnedIndicator->OnExpand();
-			if (SoundOnTouch) UGameplayStatics::SpawnSoundAttached(SoundOnTouch, GetOwner()->GetRootComponent());
-
-			if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
-			{
-				bool bIsRight = ActiveHands[0]->ComponentHasTag(FName("Right"));
-				PC->PlayHapticEffect(HapticOnTouch, bIsRight ? EControllerHand::Right : EControllerHand::Left, 1.5f, false);
-			}
-
-			OnTouched.Broadcast();
+			BeginTouch(ActiveHands[0]);
 		}
 	}
 
@@ -243,7 +239,73 @@ void UAzr_Touch::DisableTouch()
 	if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(false);
 
 	ActiveHands.Empty();
+	PressedHands.Empty();
+	bIsTouched = false;
 	SetComponentTickEnabled(false);
+}
+
+void UAzr_Touch::BeginTouch(USceneComponent* Hand)
+{
+	if (bIsTouched || !GetOwner()) return;
+	bIsTouched = true;
+
+	if (LinkedTouchZone && LinkedTouchZone->SpawnedIndicator)
+	{
+		LinkedTouchZone->SpawnedIndicator->OnExpand();
+	}
+
+	if (SoundOnTouch) UGameplayStatics::SpawnSoundAttached(SoundOnTouch, GetOwner()->GetRootComponent());
+
+	// Strong Connection Haptics (Synced with Latch intensity)
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		const bool bIsRight = Hand && Hand->ComponentHasTag(FName("Right"));
+		PC->PlayHapticEffect(HapticOnTouch, bIsRight ? EControllerHand::Right : EControllerHand::Left, 1.5f, false);
+	}
+
+	OnTouched.Broadcast();
+}
+
+void UAzr_Touch::EndTouch()
+{
+	if (!bIsTouched) return;
+	bIsTouched = false;
+
+	if (LinkedTouchZone && LinkedTouchZone->SpawnedIndicator)
+	{
+		LinkedTouchZone->SpawnedIndicator->OnShrink();
+	}
+
+	if (SoundOnUntouch && GetOwner()) UGameplayStatics::SpawnSoundAttached(SoundOnUntouch, GetOwner()->GetRootComponent());
+
+	OnUntouched.Broadcast();
+}
+
+bool UAzr_Touch::HandRequiresPress(UPrimitiveComponent* HandComp)
+{
+	if (!HandComp) return false;
+
+	// The scan capsule is a child of the scanner, and the scanner is what knows whether it is standing
+	// in for a hand or for a crosshair. Anything else tagged as a hand -- a project's own component --
+	// falls through to the headset rule, which is the behaviour that existed before desktop did.
+	const UAzr_HandScanner* Scanner = Cast<UAzr_HandScanner>(HandComp->GetAttachParent());
+	return Scanner && Scanner->RequiresPressToTouch();
+}
+
+void UAzr_Touch::PressHand(USceneComponent* Hand)
+{
+	if (!bIsTouchEnabled || !Hand) return;
+
+	PressedHands.AddUnique(Hand);
+	if (PressedHands.Num() == 1) BeginTouch(Hand);
+}
+
+void UAzr_Touch::ReleaseHand(USceneComponent* Hand)
+{
+	if (!Hand) return;
+
+	PressedHands.Remove(Hand);
+	if (PressedHands.Num() == 0) EndTouch();
 }
 
 // --- OVERLAP HANDLERS ---
@@ -258,25 +320,13 @@ void UAzr_Touch::OnTouchZoneBeginOverlap(UPrimitiveComponent* OverlappedComp, AA
 		// AddUnique ensures we don't double-count if the Initial Sweep already caught this hand
 		ActiveHands.AddUnique(OtherComp);
 
+		// Arriving is the touch for a real hand -- reaching out to a thing is the whole gesture. A
+		// desktop crosshair arrives at everything the player looks at, so for that one, arriving only
+		// means it is now within reach; PressHand decides the rest.
+		if (HandRequiresPress(OtherComp)) return;
+
 		// Only fire logic on the FIRST hand entry
-		if (ActiveHands.Num() == 1)
-		{
-			if (LinkedTouchZone && LinkedTouchZone->SpawnedIndicator)
-			{
-				LinkedTouchZone->SpawnedIndicator->OnExpand();
-			}
-
-			if (SoundOnTouch) UGameplayStatics::SpawnSoundAttached(SoundOnTouch, GetOwner()->GetRootComponent());
-
-			// Strong Connection Haptics (Synced with Latch intensity)
-			if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
-			{
-				bool bIsRight = OtherComp->ComponentHasTag(FName("Right"));
-				PC->PlayHapticEffect(HapticOnTouch, bIsRight ? EControllerHand::Right : EControllerHand::Left, 1.5f, false);
-			}
-
-			OnTouched.Broadcast();
-		}
+		if (ActiveHands.Num() == 1) BeginTouch(OtherComp);
 	}
 }
 
@@ -289,18 +339,13 @@ void UAzr_Touch::OnTouchZoneEndOverlap(UPrimitiveComponent* OverlappedComp, AAct
 	{
 		ActiveHands.Remove(OtherComp);
 
+		// Leaving ends it either way. Aiming off a thing while still holding the click is the desktop
+		// equivalent of pulling the hand back out, and letting it hold on from across the room would
+		// make the click a latch rather than a press.
+		PressedHands.Remove(OtherComp);
+
 		// Only fire release logic when the zone is completely empty of valid hands
-		if (ActiveHands.Num() == 0)
-		{
-			if (LinkedTouchZone && LinkedTouchZone->SpawnedIndicator)
-			{
-				LinkedTouchZone->SpawnedIndicator->OnShrink();
-			}
-
-			if (SoundOnUntouch) UGameplayStatics::SpawnSoundAttached(SoundOnUntouch, GetOwner()->GetRootComponent());
-
-			OnUntouched.Broadcast();
-		}
+		if (ActiveHands.Num() == 0) EndTouch();
 	}
 }
 

@@ -36,6 +36,7 @@ public class AzurealXR : ModuleRules
                 "UMG",
                 "Slate",
                 "SlateCore",
+                "RenderCore",   // GWhiteTexture, for drawing the desktop crosshair with no asset
                 "NavigationSystem",
                 "CableComponent",
                 "HTTP", // Required for API communication

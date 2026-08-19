@@ -4,6 +4,8 @@
 #include "Components/PrimitiveComponent.h"
 #include "Azr_Interactable.h"
 #include "Azr_LatchZone.h" // <-- NEW: Include our Smart Hub
+#include "Azr_Touch.h"
+#include "Azr_TouchZone.h"
 #include "DrawDebugHelpers.h"
 
 UAzr_HandScanner::UAzr_HandScanner()
@@ -80,6 +82,107 @@ void UAzr_HandScanner::UpdateDistanceCapsuleShape()
 	// the capsule out by half its length so it starts at the hand instead of straddling it.
 	DistanceGrabCapsule->SetRelativeRotation(FRotationMatrix::MakeFromZ(Dir).Rotator());
 	DistanceGrabCapsule->SetRelativeLocation(Dir * HalfLen);
+}
+
+void UAzr_HandScanner::SetDistanceReach(float NewLength)
+{
+	DistanceCapsuleLength = FMath::Max(NewLength, 0.0f);
+
+	// Safe before the capsule exists: the value is stored either way, and CreateScanCapsules will use
+	// it when it builds. Once the capsule is there it has to be resized AND re-pushed, because how far
+	// out it sits from the hand is derived from its own length.
+	if (DistanceGrabCapsule)
+	{
+		DistanceGrabCapsule->SetCapsuleSize(DistanceCapsuleRadius, DistanceCapsuleLength);
+		UpdateDistanceCapsuleShape();
+	}
+}
+
+void UAzr_HandScanner::SetInteractSize(float NewRadius, float NewHalfHeight)
+{
+	InteractCapsuleRadius = FMath::Max(NewRadius, 0.01f);
+	InteractCapsuleHalfHeight = FMath::Max(NewHalfHeight, 0.01f);
+
+	if (InteractCapsule)
+	{
+		InteractCapsule->SetCapsuleSize(InteractCapsuleRadius, InteractCapsuleHalfHeight);
+	}
+}
+
+void UAzr_HandScanner::SetDistanceGrabEnabled(bool bEnabled)
+{
+	if (!DistanceGrabCapsule) return;
+
+	// Collision is switched rather than the component being destroyed, so VR behaviour is one call
+	// away and nothing that already resolved against this capsule is invalidated.
+	DistanceGrabCapsule->SetCollisionEnabled(bEnabled ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
+	DistanceGrabCapsule->SetGenerateOverlapEvents(bEnabled);
+
+	if (!bEnabled)
+	{
+		// Whatever it had already collected has to go with it. Switching collision off stops new
+		// overlaps but fires no end-overlap events, so anything already in the list would otherwise
+		// stay grabbable from a capsule that is no longer looking.
+		DistanceOverlappedGrabbables.Empty();
+		UpdateBestCandidate();
+	}
+}
+
+void UAzr_HandScanner::SetRequiresPressToTouch(bool bRequired)
+{
+	if (bRequiresPressToTouch == bRequired) return;
+
+	// Let go of anything held under the old rule first, or a touch pressed on desktop would be left
+	// broadcast-but-never-released if the rule changed under it.
+	SetTouchPressed(false);
+	bRequiresPressToTouch = bRequired;
+}
+
+void UAzr_HandScanner::SetTouchPressed(bool bPressed)
+{
+	if (!bRequiresPressToTouch || bTouchPressed == bPressed) return;
+	bTouchPressed = bPressed;
+
+	if (!bPressed)
+	{
+		// Exactly the ones told the click went down, whether or not the hand is still inside them.
+		// Azr_Touch drops a hand that leaves the zone, so telling it twice is harmless and telling it
+		// nothing would strand a touch broadcast forever.
+		for (const TWeakObjectPtr<UAzr_Touch>& Touch : PressedTouches)
+		{
+			if (Touch.IsValid()) Touch->ReleaseHand(InteractCapsule);
+		}
+		PressedTouches.Reset();
+		return;
+	}
+
+	PressedTouches.Reset();
+	if (!InteractCapsule) return;
+
+	// Asked at the moment of the click rather than tracked as the hand moves. The crosshair is swept
+	// across the room every time the player looks around, so keeping a running list of everything it
+	// has passed over would be bookkeeping for an answer only ever wanted now.
+	TArray<UPrimitiveComponent*> Overlaps;
+	InteractCapsule->GetOverlappingComponents(Overlaps);
+
+	for (UPrimitiveComponent* Comp : Overlaps)
+	{
+		UAzr_TouchZone* Zone = Cast<UAzr_TouchZone>(Comp);
+		if (!Zone || !Zone->GetOwner()) continue;
+
+		// Same pairing rule the brain uses to find its zone, read the other way round. A zone holds no
+		// pointer back to its brain, and giving it one would mean keeping two links in step.
+		TArray<UAzr_Touch*> Brains;
+		Zone->GetOwner()->GetComponents<UAzr_Touch>(Brains);
+
+		for (UAzr_Touch* Brain : Brains)
+		{
+			if (!Brain || Brain->InteractID != Zone->InteractID) continue;
+
+			Brain->PressHand(InteractCapsule);
+			PressedTouches.Add(Brain);
+		}
+	}
 }
 
 void UAzr_HandScanner::BeginPlay()

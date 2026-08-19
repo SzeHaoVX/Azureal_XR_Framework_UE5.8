@@ -218,6 +218,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
 	void HandleTriggerInput(float Value);
 
+	/** Where this latch currently sits, in its own units -- degrees for Angular and Rotation, centimetres for Linear. */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	float GetLatchValue() const { return CurrentRawValue; }
+
+	/**
+	 * Where a hand would have to move to work this latch by DeltaValue, from wherever it is now.
+	 *
+	 * The latch is driven entirely by where the hand is, so anything wanting to move one without a
+	 * real hand -- desktop's mouse wheel, an accessibility control, a scripted demonstration -- can
+	 * ask for a position and put the hand there, rather than reaching past the maths and writing the
+	 * value. Everything downstream (limits, damping, haptics, OnValueChanged, the trigger) then
+	 * behaves exactly as it does for a player.
+	 *
+	 * Returns the location unchanged for Rotation, which reads the wrist's orientation rather than
+	 * the hand's position, and so cannot be worked by moving it anywhere.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	FVector GetHandLocationForValueDelta(FVector CurrentHandLocation, float DeltaValue) const;
+
 	void GrabLatch(USceneComponent* Hand);
 	void ReleaseLatch();
 	void ReleaseSpecificHand(USceneComponent* Hand);

@@ -93,6 +93,24 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
 	void DisableTouch();
 
+	/**
+	 * The pointer clicked, or let go, while inside this touch's zone.
+	 *
+	 * Desktop only, and driven by UAzr_HandScanner. In a headset a hand arriving in the zone IS the
+	 * touch, because putting it there took reaching out. On desktop the "hand" is a crosshair the
+	 * player sweeps across the room merely by looking around, so arriving somewhere means aiming at
+	 * it and nothing more -- the touch has to be asked for.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
+	void PressHand(USceneComponent* Hand);
+
+	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
+	void ReleaseHand(USceneComponent* Hand);
+
+	/** True between OnTouched and OnUntouched. */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	bool IsTouched() const { return bIsTouched; }
+
 private:
 	// --- INTERNAL VISUALS ---
 	UPROPERTY()
@@ -116,8 +134,21 @@ private:
 	bool bIsTouchEnabled = false;
 	bool bHasTetherSettled = false;
 
+	/**
+	 * Whether this counts as touched right now.
+	 *
+	 * Kept apart from ActiveHands because presence and touching stopped being the same thing once
+	 * desktop arrived: a crosshair can be inside the zone for as long as the player is looking that
+	 * way. This is the flag the events are paired against, so neither can fire twice.
+	 */
+	bool bIsTouched = false;
+
 	UPROPERTY()
 	TArray<USceneComponent*> ActiveHands;
+
+	/** Hands inside the zone that are also pressing. Desktop only; a real hand never appears here. */
+	UPROPERTY()
+	TArray<USceneComponent*> PressedHands;
 
 	UPROPERTY()
 	UPrimitiveComponent* TargetHandleMesh;
@@ -135,6 +166,13 @@ private:
 	APawn* CachedPlayerPawn;
 
 	// --- HELPERS ---
+	/** The one place OnTouched fires from, so the entry sweep, an overlap and a click all agree. */
+	void BeginTouch(USceneComponent* Hand);
+	void EndTouch();
+
+	/** True when this "hand" is a desktop crosshair, whose presence alone must not count as a touch. */
+	static bool HandRequiresPress(UPrimitiveComponent* HandComp);
+
 	void EnsureInitialized();
 	void AutoDetectTouchZone();
 	void ToggleTether(bool bState);

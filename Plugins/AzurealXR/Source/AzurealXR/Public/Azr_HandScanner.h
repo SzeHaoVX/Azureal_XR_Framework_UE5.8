@@ -78,6 +78,68 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Input")
 	void ProcessGrabInput(bool bIsPressed);
 
+	/**
+	 * Change how far the distance-grab capsule reaches, after it has already been built.
+	 *
+	 * The capsule is sized once when it is created, so setting DistanceCapsuleLength on its own does
+	 * nothing to a hand that is already in play. Desktop mode needs a far longer reach than VR -- a
+	 * metre is arm's length, but pointing across a room is the whole interaction -- and it only knows
+	 * that after BeginPlay, once the headset (or its absence) has been detected.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Azureal|Config")
+	void SetDistanceReach(float NewLength);
+
+	/**
+	 * True while this hand has hold of a latch.
+	 *
+	 * Desktop mode asks because a latch is worked by moving the hand, not by aiming it: something has
+	 * to know when to stop the hand following the view and let the mouse drag it instead.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	bool IsHoldingLatch() const { return CurrentHeldLatch.IsValid(); }
+
+	/** True while this hand is carrying a grabbed object. */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	bool IsHoldingObject() const { return CurrentHeldComponent.IsValid(); }
+
+	/**
+	 * Resize the close-range interact capsule after it has been built.
+	 *
+	 * Desktop mode shrinks it to the size of the aiming dot and parks it on the surface the dot is
+	 * touching, so that what the crosshair is over is exactly what can be interacted with. A capsule
+	 * sized for a hand would reach things the dot is nowhere near.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Azureal|Config")
+	void SetInteractSize(float NewRadius, float NewHalfHeight);
+
+	/**
+	 * Turn the long forward-reaching distance-grab capsule on or off.
+	 *
+	 * Switched off on desktop. It exists so a VR player can reach a distant object without walking to
+	 * it, but it overlaps everything along its length and then picks a best candidate -- which is not
+	 * necessarily the thing under the crosshair. With the interact capsule sitting on the aimed point
+	 * instead, this one can only disagree with the dot.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Azureal|Config")
+	void SetDistanceGrabEnabled(bool bEnabled);
+
+	/**
+	 * Whether this hand's presence in a touch zone counts as a touch on its own.
+	 *
+	 * False for a real hand: reaching out and putting it there IS the touch. True on desktop, where
+	 * the hand is parked wherever the crosshair points -- it arrives at everything the player merely
+	 * looks at, so a touch there has to be a deliberate click.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Azureal|Config")
+	void SetRequiresPressToTouch(bool bRequired);
+
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	bool RequiresPressToTouch() const { return bRequiresPressToTouch; }
+
+	/** The click going down or up. Whatever the hand is inside at that moment is told. No-op in VR. */
+	UFUNCTION(BlueprintCallable, Category = "Azureal|Input")
+	void SetTouchPressed(bool bPressed);
+
 	// --- GETTERS ---
 	// Allows the Pawn to pass trigger values directly to the held component
 	FORCEINLINE UAzr_Latch* GetCurrentHeldLatch() const { return CurrentHeldLatch.Get(); }
@@ -86,6 +148,13 @@ public:
 private:
 
 	bool bIsGripPressed = false;
+
+	// --- TOUCH (desktop click-to-touch) ---
+	bool bRequiresPressToTouch = false;
+	bool bTouchPressed = false;
+
+	/** Touches told that the click went down, so exactly those can be told when it comes back up. */
+	TArray<TWeakObjectPtr<class UAzr_Touch>> PressedTouches;
 
 	// --- GRAB TRACKING (Physics Objects) ---
 	TArray<TWeakObjectPtr<UAzr_Grab>> OverlappedGrabbables;
