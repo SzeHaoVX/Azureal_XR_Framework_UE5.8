@@ -9,6 +9,11 @@ UAzr_StartSessionAction* UAzr_StartSessionAction::StartAzurealSession(UObject* W
 {
 	UAzr_StartSessionAction* Action = NewObject<UAzr_StartSessionAction>();
 	Action->WorldContext = WorldContextObject;
+
+	// Roots the node against garbage collection until it finishes. Without this the object
+	// holding the delegate bindings can be collected while the request is still in flight, and
+	// neither pin ever fires -- an intermittent hang that reads as the server never answering.
+	Action->RegisterWithGameInstance(WorldContextObject);
 	return Action;
 }
 

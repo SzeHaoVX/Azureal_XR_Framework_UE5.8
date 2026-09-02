@@ -12,6 +12,11 @@ UAzr_AzurealUpdate* UAzr_AzurealUpdate::AzurealUpdate(UObject* WorldContextObjec
 {
 	UAzr_AzurealUpdate* Action = NewObject<UAzr_AzurealUpdate>();
 	Action->WorldContext = WorldContextObject;
+
+	// Roots the node against garbage collection until it finishes. Without this the object
+	// holding the delegate bindings can be collected while the request is still in flight, and
+	// neither pin ever fires -- an intermittent hang that reads as the server never answering.
+	Action->RegisterWithGameInstance(WorldContextObject);
 	Action->CachedChapter = ChapterNumber;
 	Action->CachedStep = StepNumber;
 	Action->CachedSubStep = SubStepNumber;
@@ -78,6 +83,11 @@ UAzr_AzurealQuizUpdate* UAzr_AzurealQuizUpdate::AzurealQuizUpdate(UObject* World
 {
 	UAzr_AzurealQuizUpdate* Action = NewObject<UAzr_AzurealQuizUpdate>();
 	Action->WorldContext = WorldContextObject;
+
+	// Roots the node against garbage collection until it finishes. Without this the object
+	// holding the delegate bindings can be collected while the request is still in flight, and
+	// neither pin ever fires -- an intermittent hang that reads as the server never answering.
+	Action->RegisterWithGameInstance(WorldContextObject);
 	Action->CachedChapter = ChapterNumber;
 	Action->CachedStep = StepNumber;
 	Action->CachedSubStep = SubStepNumber;
@@ -133,6 +143,11 @@ UAzr_AzurealEndSession* UAzr_AzurealEndSession::AzurealEndSession(UObject* World
 {
 	UAzr_AzurealEndSession* Action = NewObject<UAzr_AzurealEndSession>();
 	Action->WorldContext = WorldContextObject;
+
+	// Roots the node against garbage collection until it finishes. Without this the object
+	// holding the delegate bindings can be collected while the request is still in flight, and
+	// neither pin ever fires -- an intermittent hang that reads as the server never answering.
+	Action->RegisterWithGameInstance(WorldContextObject);
 	return Action;
 }
 

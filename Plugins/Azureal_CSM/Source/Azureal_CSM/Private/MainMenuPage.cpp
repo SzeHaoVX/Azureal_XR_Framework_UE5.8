@@ -213,6 +213,11 @@ bool UMainMenuPage::IsStartScreenActive() const
 
     if (Subsystem)
     {
+        // Arriving by a platform jump means a chapter is already current without the player ever
+        // having seen the menu, so the index below cannot be read as "they have started". Shown once;
+        // passing the start screen clears the flag and the ordinary rule resumes.
+        if (Subsystem->WasOpenedByChapterJump() && !Subsystem->HasPassedStartScreen()) return true;
+
         if (Subsystem->GetCurrentChapterIndex() > 0) return false;
         return !Subsystem->HasPassedStartScreen();
     }
