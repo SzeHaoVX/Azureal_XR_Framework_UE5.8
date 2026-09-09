@@ -5,6 +5,7 @@
 #include "Azr_Explain.h"
 #include "Azr_NarrationGenerator.h"
 
+#include "Algo/Find.h"
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"
@@ -84,18 +85,28 @@ void FAzr_ExplainStepCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> 
 
 void FAzr_ExplainStepCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> PropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-	// Everything inside the step is left exactly as the property system would have drawn it; only the
-	// header row gained a button.
+	// Everything inside the step is left exactly as the property system would have drawn it, bar the
+	// timings; only the header row gained a button.
+	//
+	// WordTimings is hidden rather than made read-only or removed. Generate Narration writes it
+	// through this same handle, and the runtime reads it, so the property has to stay -- but it is
+	// three rows of colon-separated numbers that nobody should be typing, and every way of getting
+	// them right is already automatic. Showing it only invites a hand-edit that puts the reveal out
+	// of step with the voice.
+	static const FName HiddenChildren[] = { GET_MEMBER_NAME_CHECKED(FAzr_ExplainStep, WordTimings) };
+
 	uint32 NumChildren = 0;
 	PropertyHandle->GetNumChildren(NumChildren);
 
 	for (uint32 Index = 0; Index < NumChildren; ++Index)
 	{
 		const TSharedPtr<IPropertyHandle> ChildHandle = PropertyHandle->GetChildHandle(Index);
-		if (ChildHandle.IsValid())
-		{
-			ChildBuilder.AddProperty(ChildHandle.ToSharedRef());
-		}
+		if (!ChildHandle.IsValid()) continue;
+
+		const FName ChildName = ChildHandle->GetProperty() ? ChildHandle->GetProperty()->GetFName() : NAME_None;
+		if (Algo::Find(HiddenChildren, ChildName) != nullptr) continue;
+
+		ChildBuilder.AddProperty(ChildHandle.ToSharedRef());
 	}
 }
 

@@ -735,15 +735,31 @@ FAzr_NarrationResult FAzr_NarrationGenerator::GenerateForStepHandle(const TShare
 	}
 
 	// --- NAME THE ASSET AFTER WHERE IT CAME FROM ---
+	//
+	// Three parts, and all three are load-bearing: the package says which actor or Blueprint, the
+	// component says which Explain on it, and the property says which step within that component.
+	//
+	// The component used to be left out, which was fine until an actor carried more than one Explain.
+	// Both components' SingleExplainStep then produced the same name, and since the import replaces by
+	// name, generating the second silently overwrote the sound the first was still pointing at -- with
+	// the first step's timings and fingerprint left intact, so the runtime went on trusting them and
+	// revealed one line's text against another line's voice.
 	FString AssetBaseName = TEXT("Narration");
 	{
 		TArray<UObject*> Outers;
 		StepHandle->GetOuterObjects(Outers);
 
 		FString OwnerName;
+		FString ComponentName;
+
 		if (Outers.Num() > 0 && Outers[0])
 		{
 			OwnerName = FPackageName::GetShortName(Outers[0]->GetOutermost()->GetName());
+
+			// On a placed actor this is the component instance; inside a Blueprint it is the SCS
+			// template, whose _GEN_VARIABLE suffix is noise in an asset name.
+			ComponentName = Outers[0]->GetName();
+			ComponentName.RemoveFromEnd(TEXT("_GEN_VARIABLE"));
 		}
 
 		FString StepName = StepHandle->GetProperty() ? StepHandle->GetProperty()->GetName() : TEXT("Step");
@@ -753,9 +769,13 @@ FAzr_NarrationResult FAzr_NarrationGenerator::GenerateForStepHandle(const TShare
 			StepName += FString::FromInt(ArrayIndex + 1);
 		}
 
-		AssetBaseName = OwnerName.IsEmpty()
-			? FString::Printf(TEXT("SW_%s"), *StepName)
-			: FString::Printf(TEXT("SW_%s_%s"), *OwnerName, *StepName);
+		TArray<FString> Parts;
+		Parts.Add(TEXT("SW"));
+		if (!OwnerName.IsEmpty())     { Parts.Add(OwnerName); }
+		if (!ComponentName.IsEmpty()) { Parts.Add(ComponentName); }
+		Parts.Add(StepName);
+
+		AssetBaseName = FString::Join(Parts, TEXT("_"));
 	}
 
 	Result = Generate(Text, AssetBaseName);

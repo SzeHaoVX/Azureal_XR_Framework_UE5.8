@@ -58,6 +58,7 @@ UAzr_Explain::UAzr_Explain() {
 
     static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/AzurealXR/Interaction/Cable_System/CableHead"));
     if (SphereMesh.Succeeded()) {
+        DefaultAnchorMesh = SphereMesh.Object;
         SingleExplainStep.TetherSettings.AnchorMesh = SphereMesh.Object;
         StartStep.TetherSettings.AnchorMesh = SphereMesh.Object;
         EndStep.TetherSettings.AnchorMesh = SphereMesh.Object;
@@ -65,6 +66,7 @@ UAzr_Explain::UAzr_Explain() {
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> CableMatAsset(TEXT("/AzurealXR/Interaction/Cable_System/M_Cable"));
     if (CableMatAsset.Succeeded()) {
+        DefaultCableMaterial = CableMatAsset.Object;
         SingleExplainStep.TetherSettings.CableMaterial = CableMatAsset.Object;
         StartStep.TetherSettings.CableMaterial = CableMatAsset.Object;
         EndStep.TetherSettings.CableMaterial = CableMatAsset.Object;
@@ -77,6 +79,23 @@ UAzr_Explain::UAzr_Explain() {
     static ConstructorHelpers::FObjectFinder<USoundBase> EndSoundAsset(TEXT("/AzurealXR/Interaction/Highlight/SC_Highlight_End"));
     if (EndSoundAsset.Succeeded()) SoundHighlightEnd = EndSoundAsset.Object;
 }
+
+#if WITH_EDITOR
+void UAzr_Explain::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) {
+    Super::PostEditChangeProperty(PropertyChangedEvent);
+
+    // A middle step is added to the array as a default-constructed struct, long after the constructor
+    // that seeded Single, Start and End has run -- so it arrives with no anchor mesh and no cable
+    // material, and reads as blank in the panel. Filled here so a new middle step looks like its
+    // neighbours straight away rather than only behaving like them at runtime.
+    //
+    // Only ever fills, never clears: a value a designer has chosen is left alone.
+    for (FAzr_ExplainStep& Step : MiddleSteps) {
+        if (!Step.TetherSettings.AnchorMesh)    Step.TetherSettings.AnchorMesh = DefaultAnchorMesh;
+        if (!Step.TetherSettings.CableMaterial) Step.TetherSettings.CableMaterial = DefaultCableMaterial;
+    }
+}
+#endif
 
 void UAzr_Explain::BeginPlay() {
     Super::BeginPlay();
@@ -886,16 +905,21 @@ void UAzr_Explain::ToggleTether(bool bState) {
 
     if (!MeshTarget || !WidgetTarget) return;
 
-    if (CurrentActiveStep.TetherSettings.AnchorMesh) {
-        StartAnchor->SetStaticMesh(CurrentActiveStep.TetherSettings.AnchorMesh);
-        EndAnchor->SetStaticMesh(CurrentActiveStep.TetherSettings.AnchorMesh);
+    // Falling back to the constructor's assets, so a step that was never seeded with them still draws
+    // a tether. Content authored before middle steps were filled in keeps working without being
+    // touched, which the editor-side fill alone would not manage.
+    UStaticMesh* AnchorMesh = CurrentActiveStep.TetherSettings.AnchorMesh ? CurrentActiveStep.TetherSettings.AnchorMesh : DefaultAnchorMesh;
+    if (AnchorMesh) {
+        StartAnchor->SetStaticMesh(AnchorMesh);
+        EndAnchor->SetStaticMesh(AnchorMesh);
     }
 
     StartAnchor->SetWorldScale3D(FVector(CurrentActiveStep.TetherSettings.AnchorScale));
     EndAnchor->SetWorldScale3D(FVector(CurrentActiveStep.TetherSettings.AnchorScale));
 
-    if (CurrentActiveStep.TetherSettings.CableMaterial) {
-        TetherCable->SetMaterial(0, CurrentActiveStep.TetherSettings.CableMaterial);
+    UMaterialInterface* CableMaterial = CurrentActiveStep.TetherSettings.CableMaterial ? CurrentActiveStep.TetherSettings.CableMaterial : DefaultCableMaterial;
+    if (CableMaterial) {
+        TetherCable->SetMaterial(0, CableMaterial);
     }
 
     // Assign the Width
@@ -955,7 +979,24 @@ void UAzr_Explain::ToggleTether(bool bState) {
         TetherCable->SolverIterations = 16;
     }
 
-    TetherCable->RecreatePhysicsState();
+    // Re-register, rather than RecreatePhysicsState, because the cable keeps no physics state to
+    // recreate -- it simulates a particle array of its own in TickComponent, and that array is both
+    // sized (NumSegments + 1) and laid out along the line between the anchors in OnRegister, and
+    // nowhere else in the component.
+    //
+    // So the old call did nothing, and each step of an Explain+ chain inherited the previous step's
+    // particles: settled at the previous step's mesh and widget, and counted for the previous step's
+    // segment count, which the lines above have just changed between 1 and 20 whenever two steps
+    // hang by different amounts. The solver then has to drag that stale, wrong-sized set across to
+    // anchors that may be metres away, and with stiffness enabled it knots on the way instead of
+    // falling straight -- the zig-zag.
+    //
+    // Attachment, visibility and AttachEndTo are all UPROPERTYs and survive the round trip. The
+    // particle positions do not, which is the entire point.
+    if (TetherCable->IsRegistered()) {
+        TetherCable->UnregisterComponent();
+        TetherCable->RegisterComponent();
+    }
 
     // Turn on the Anchors immediately
     StartAnchor->SetVisibility(true);

@@ -45,6 +45,26 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
+
+private:
+	/**
+	 * The tether look the constructor found, kept so a step that has none can borrow it.
+	 *
+	 * The constructor can only seed the steps that exist when it runs -- Single, Start and End. Middle
+	 * steps live in an array that is empty at that point, so each one a designer adds arrives with a
+	 * blank anchor mesh and no cable material, and its tether draws as nothing.
+	 */
+	UPROPERTY()
+	class UStaticMesh* DefaultAnchorMesh = nullptr;
+
+	UPROPERTY()
+	class UMaterialInterface* DefaultCableMaterial = nullptr;
+
+protected:
+
 public:
 	// --- CORE SETTINGS ---
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Settings")
@@ -70,10 +90,10 @@ public:
 	// --- SPOKEN TEXT REVEAL ---
 	// The sentence is readable in full as soon as the widget appears. Once the learner presses Play it
 	// is cleared and rebuilt a letter at a time alongside the narration, so a slow reading reveals
-	// slowly and a fast one reveals fast. Off by default -- existing content keeps the static sentence.
+	// slowly and a fast one reveals fast. Turn it off for a step that should simply show its text.
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Explain Settings|Text Reveal")
-	bool bRevealTextWithAudio = false;
+	bool bRevealTextWithAudio = true;
 
 	/**
 	 * Work out where the finished paragraph wraps and hold those line breaks still while it is
