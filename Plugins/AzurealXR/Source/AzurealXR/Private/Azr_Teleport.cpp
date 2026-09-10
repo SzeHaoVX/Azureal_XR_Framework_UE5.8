@@ -1,6 +1,7 @@
 
 
 #include "Azr_Teleport.h"
+#include "Azr_Debug.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/StaticMeshComponent.h"
 #include "Camera/PlayerCameraManager.h"
@@ -381,11 +382,13 @@ void UAzr_Teleport::TeleportToLocation(FVector TargetLocation)
 
 void UAzr_Teleport::EnableTeleport()
 {
+	AZR_TRACE();
 	bIsTeleportEnabled = true;
 }
 
 void UAzr_Teleport::DisableTeleport()
 {
+	AZR_TRACE();
 	bIsTeleportEnabled = false;
 
 	if (bIsAiming)

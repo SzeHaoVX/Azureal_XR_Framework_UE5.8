@@ -1,6 +1,7 @@
 
 
 #include "Azr_Touch.h"
+#include "Azr_Debug.h"
 #include "Azr_TouchZone.h"
 #include "Azr_HandScanner.h"
 #include "Azr_Indicator.h"
@@ -134,6 +135,7 @@ void UAzr_Touch::AutoDetectTouchZone()
 
 void UAzr_Touch::EnableTouch()
 {
+	AZR_TRACE();
 	if (bIsTouchEnabled) return;
 	bIsTouchEnabled = true;
 
@@ -217,6 +219,7 @@ void UAzr_Touch::EnableTouch()
 
 void UAzr_Touch::DisableTouch()
 {
+	AZR_TRACE();
 	if (!bIsTouchEnabled) return;
 	bIsTouchEnabled = false;
 	bHasTetherSettled = false;
@@ -263,6 +266,7 @@ void UAzr_Touch::BeginTouch(USceneComponent* Hand)
 		PC->PlayHapticEffect(HapticOnTouch, bIsRight ? EControllerHand::Right : EControllerHand::Left, 1.5f, false);
 	}
 
+	AZR_TRACE_EVENT("OnTouched");
 	OnTouched.Broadcast();
 }
 
@@ -278,6 +282,7 @@ void UAzr_Touch::EndTouch()
 
 	if (SoundOnUntouch && GetOwner()) UGameplayStatics::SpawnSoundAttached(SoundOnUntouch, GetOwner()->GetRootComponent());
 
+	AZR_TRACE_EVENT("OnUntouched");
 	OnUntouched.Broadcast();
 }
 

@@ -28,6 +28,7 @@ public class AzurealXREditor : ModuleRules
                 "BlueprintGraph",        // FGraphNodeCreator, UK2Node_*, UEdGraphSchema_K2
                 "SubobjectDataInterface",// USubobjectDataSubsystem (component add)
                 "ToolMenus",             // UToolMenus toolbar button + content-browser entry
+                "WorkspaceMenuStructure",// puts the Azureal Debugger under Window > Developer Tools
                 "ContentBrowser",        // UContentBrowserAssetContextMenuContext
                 "PropertyEditor",        // details-panel Generate Narration buttons
                 "AssetTools",            // IAssetTools::ImportAssetTasks (generated narration -> USoundWave)

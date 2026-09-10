@@ -1,6 +1,7 @@
 
 
 #include "Azr_Action.h"
+#include "Azr_Debug.h"
 #include "Azr_Interactable.h"
 #include "Azr_Pointer.h"
 #include "Azr_Pawn.h"
@@ -214,6 +215,7 @@ void UAzr_Action::TickComponent(float DeltaTime, ELevelTick TickType, FActorComp
 				// We reached the end!
 				bIsProcessing = false;
 				ActiveActionUI->SetActionCompleted();
+				AZR_TRACE_EVENT("OnActionCompleted");
 				OnActionCompleted.Broadcast();
 			}
 		}
@@ -284,6 +286,7 @@ void UAzr_Action::TickComponent(float DeltaTime, ELevelTick TickType, FActorComp
 void UAzr_Action::HandleExecuteClicked()
 {
 	// 1. Fire the Start Button Event immediately for all modes
+	AZR_TRACE_EVENT("OnStartButtonPressed");
 	OnStartButtonPressed.Broadcast();
 
 	// 2. Route the logic based on the mode
@@ -304,6 +307,7 @@ void UAzr_Action::HandleExecuteClicked()
 void UAzr_Action::HandleCompletedClicked()
 {
 	// 1. Fire the Completed Button Event
+	AZR_TRACE_EVENT("OnCompletedButtonPressed");
 	OnCompletedButtonPressed.Broadcast();
 
 	// 2. Automatically disable the Action system so the UI disappears cleanly
@@ -318,6 +322,7 @@ void UAzr_Action::ExecuteTeleport()
 	// Check if the soft pointer is valid
 	if (!TeleportTargetPoint.IsValid())
 	{
+		AZR_TRACE_EVENT("OnActionCompleted");
 		OnActionCompleted.Broadcast();
 		return;
 	}
@@ -326,6 +331,7 @@ void UAzr_Action::ExecuteTeleport()
 	AActor* Target = TeleportTargetPoint.Get();
 	if (!Target)
 	{
+		AZR_TRACE_EVENT("OnActionCompleted");
 		OnActionCompleted.Broadcast();
 		return;
 	}
@@ -353,6 +359,7 @@ void UAzr_Action::ExecuteTeleport()
 		{
 			if (UAzr_Action* StrongThis = WeakThis.Get())
 			{
+				AZR_TRACE_FOR(StrongThis);
 				StrongThis->OnActionCompleted.Broadcast();
 			}
 		}), 0.5f, false);
@@ -406,6 +413,7 @@ void UAzr_Action::ExecuteAnimations()
 	{
 		// Failsafe: if array was empty or animations were invalid, complete immediately
 		if (ActiveActionUI) ActiveActionUI->SetActionCompleted();
+		AZR_TRACE_EVENT("OnActionCompleted");
 		OnActionCompleted.Broadcast();
 	}
 }
@@ -423,6 +431,7 @@ void UAzr_Action::ExecuteCustomTimer()
 	{
 		// Failsafe
 		if (ActiveActionUI) ActiveActionUI->SetActionCompleted();
+		AZR_TRACE_EVENT("OnActionCompleted");
 		OnActionCompleted.Broadcast();
 	}
 }

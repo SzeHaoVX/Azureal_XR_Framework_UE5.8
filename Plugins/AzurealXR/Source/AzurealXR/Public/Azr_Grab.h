@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Azr_Debug.h"
 #include "Components/ActorComponent.h"
 #include "Materials/MaterialParameterCollection.h" 
 #include "CableComponent.h" 
@@ -106,9 +107,15 @@ struct FAzr_GrabTriggerConfig : public FAzr_GrabConfig
 };
 
 UCLASS(ClassGroup = (AzurealXR), meta = (BlueprintSpawnableComponent))
-class AZUREALXR_API UAzr_Grab : public UActorComponent
+class AZUREALXR_API UAzr_Grab : public UActorComponent, public IAzr_Debuggable
 {
 	GENERATED_BODY()
+
+public:
+	// --- Azureal Debugger ---
+	// Reports this component's own state and its own setup rules; see IAzr_Debuggable.
+	virtual void GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const override;
+	virtual void ValidateAzrSetup(TArray<FString>& OutProblems) const override;
 
 public:
 	UAzr_Grab();

@@ -1,6 +1,7 @@
 
 
 #include "Azr_GazeManager.h"
+#include "Azr_Debug.h"
 #include "Azr_Gaze.h"
 #include "Azr_Pawn.h"                           
 #include "Azr_Pointer.h"                        
@@ -16,6 +17,7 @@ UAzr_GazeManager::UAzr_GazeManager()
 
 void UAzr_GazeManager::EnableManager()
 {
+	AZR_TRACE();
 	if (bIsManagerActive || GazeList.Num() == 0) return;
 	bIsManagerActive = true;
 	CurrentIndex = 0;
@@ -62,6 +64,7 @@ void UAzr_GazeManager::EnableManager()
 
 void UAzr_GazeManager::DisableManager()
 {
+	AZR_TRACE();
 	if (!bIsManagerActive) return;
 	bIsManagerActive = false;
 

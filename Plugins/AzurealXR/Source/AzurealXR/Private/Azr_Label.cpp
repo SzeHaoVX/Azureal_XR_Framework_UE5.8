@@ -1,6 +1,7 @@
 
 
 #include "Azr_Label.h"
+#include "Azr_Debug.h"
 #include "Azr_LabelWidget.h"
 #include "Components/WidgetComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -42,6 +43,7 @@ void UAzr_Label::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UAzr_Label::EnableLabel()
 {
+	AZR_TRACE();
 	if (bIsActive) return;
 	bIsActive = true;
 
@@ -76,6 +78,7 @@ void UAzr_Label::EnableLabel()
 
 void UAzr_Label::DisableLabel()
 {
+	AZR_TRACE();
 	if (!bIsActive) return;
 	bIsActive = false;
 

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Azr_Debug.h"
 #include "Components/ActorComponent.h"
 #include "Azr_Types.h" 
 #include "Azr_ActionWidget.h"
@@ -45,9 +46,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnActionFinished);
  * The logic manager for AzurealXR active executions (Teleport, Animations, Custom Timers).
  */
 UCLASS(ClassGroup = (AzurealXR), meta = (BlueprintSpawnableComponent, DisplayName = "Azr Action Logic"))
-class AZUREALXR_API UAzr_Action : public UActorComponent
+class AZUREALXR_API UAzr_Action : public UActorComponent, public IAzr_Debuggable
 {
 	GENERATED_BODY()
+
+public:
+	// --- Azureal Debugger ---
+	// Reports this component's own state and its own setup rules; see IAzr_Debuggable.
+	virtual void GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const override;
+	virtual void ValidateAzrSetup(TArray<FString>& OutProblems) const override;
 
 public:
 	UAzr_Action();

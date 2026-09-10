@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Azr_Debug.h"
 #include "Components/SceneComponent.h"
 #include "Materials/MaterialParameterCollection.h" 
 #include "Azr_Types.h"
@@ -55,9 +56,15 @@ enum class EAzr_AllowedHand : uint8
 UCLASS(ClassGroup = (AzurealXR), meta = (BlueprintSpawnableComponent))
 
 
-class AZUREALXR_API UAzr_Latch : public USceneComponent
+class AZUREALXR_API UAzr_Latch : public USceneComponent, public IAzr_Debuggable
 {
 	GENERATED_BODY()
+
+public:
+	// --- Azureal Debugger ---
+	// Reports this component's own state and its own setup rules; see IAzr_Debuggable.
+	virtual void GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const override;
+	virtual void ValidateAzrSetup(TArray<FString>& OutProblems) const override;
 
 public:
 	UAzr_Latch();

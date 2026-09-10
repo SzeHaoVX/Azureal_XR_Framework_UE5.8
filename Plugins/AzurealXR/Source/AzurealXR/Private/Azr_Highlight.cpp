@@ -1,6 +1,7 @@
 
 
 #include "Azr_Highlight.h"
+#include "Azr_Debug.h"
 #include "GameFramework/Actor.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/MeshComponent.h"
@@ -61,6 +62,7 @@ void UAzr_Highlight::EnsureInitialized()
 
 void UAzr_Highlight::EnableHighlight()
 {
+	AZR_TRACE();
 	EnsureInitialized();
 
 	if (IsComponentTickEnabled()) return;
@@ -80,6 +82,7 @@ void UAzr_Highlight::EnableHighlight()
 
 void UAzr_Highlight::DisableHighlight()
 {
+	AZR_TRACE();
 	if (!IsComponentTickEnabled()) return;
 
 	SetComponentTickEnabled(false);

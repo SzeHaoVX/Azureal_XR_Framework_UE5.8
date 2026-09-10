@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Azr_Debug.h"
 #include "Components/ActorComponent.h"
 #include "Azr_Types.h" 
 #include "Azr_ExplainWidget.h" 
@@ -33,9 +34,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnExplainPlusStarted, int32, StepIn
  * Handles single-shot explains or multi-step (Start -> Middle -> End) sequences.
  */
 UCLASS(ClassGroup = (AzurealXR), meta = (BlueprintSpawnableComponent, DisplayName = "Azr Explain Logic"))
-class AZUREALXR_API UAzr_Explain : public UActorComponent
+class AZUREALXR_API UAzr_Explain : public UActorComponent, public IAzr_Debuggable
 {
 	GENERATED_BODY()
+
+public:
+	// --- Azureal Debugger ---
+	// Reports this component's own state and its own setup rules; see IAzr_Debuggable.
+	virtual void GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const override;
+	virtual void ValidateAzrSetup(TArray<FString>& OutProblems) const override;
 
 public:
 	UAzr_Explain();

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Azr_Debug.h"
 #include "Components/BoxComponent.h"
 #include "Azr_Types.h"
 #include "Engine/SCS_Node.h"
@@ -19,9 +20,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGazeEvent, UAzr_Gaze*, TriggeredZ
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGazeProgressEvent, float, Progress);
 
 UCLASS(ClassGroup = (AzurealXR), meta = (BlueprintSpawnableComponent, DisplayName = "Azr Gaze Zone"))
-class AZUREALXR_API UAzr_Gaze : public UBoxComponent
+class AZUREALXR_API UAzr_Gaze : public UBoxComponent, public IAzr_Debuggable
 {
 	GENERATED_BODY()
+
+public:
+	// --- Azureal Debugger ---
+	// Reports this component's own state and its own setup rules; see IAzr_Debuggable.
+	virtual void GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const override;
+	virtual void ValidateAzrSetup(TArray<FString>& OutProblems) const override;
 
 public:
 	UAzr_Gaze();

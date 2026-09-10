@@ -1,6 +1,7 @@
 
 
 #include "Azr_Explain.h"
+#include "Azr_Debug.h"
 #include "Azr_Interactable.h"
 #include "Azr_Pointer.h"
 #include "Azr_SessionSubsystem.h"
@@ -183,6 +184,7 @@ void UAzr_Explain::DisableExplain() {
     // already treats a programmatic Disable: it drops what it is holding without broadcasting
     // OnReleased, because that is not the player letting go.
     if (!bIsPlusMode && !bTearingDown) {
+        AZR_TRACE_EVENT("OnExplainCompleted");
         OnExplainCompleted.Broadcast();
     }
 
@@ -396,10 +398,10 @@ void UAzr_Explain::HandlePlayAudioClicked() {
 
     if (!bIsActive) return;
     
-    if (CurrentStepType == EAzr_ExplainStepType::Single) OnExplainStarted.Broadcast();
-    else if (CurrentStepType == EAzr_ExplainStepType::Start) OnExplainPlusStarted.Broadcast(1);
-    else if (CurrentStepType == EAzr_ExplainStepType::Middle) OnExplainPlusStarted.Broadcast(2 + CurrentMiddleIndex);
-    else if (CurrentStepType == EAzr_ExplainStepType::End) OnExplainPlusStarted.Broadcast(2 + MiddleSteps.Num());
+    if (CurrentStepType == EAzr_ExplainStepType::Single) { AZR_TRACE_EVENT("OnExplainStarted"); OnExplainStarted.Broadcast(); }
+    else if (CurrentStepType == EAzr_ExplainStepType::Start) { AZR_TRACE_EVENT("OnExplainPlusStarted"); OnExplainPlusStarted.Broadcast(1); }
+    else if (CurrentStepType == EAzr_ExplainStepType::Middle) { AZR_TRACE_EVENT("OnExplainPlusStarted"); OnExplainPlusStarted.Broadcast(2 + CurrentMiddleIndex); }
+    else if (CurrentStepType == EAzr_ExplainStepType::End) { AZR_TRACE_EVENT("OnExplainPlusStarted"); OnExplainPlusStarted.Broadcast(2 + MiddleSteps.Num()); }
 
     
     StepStartTime = GetWorld()->GetTimeSeconds();
@@ -835,6 +837,7 @@ void UAzr_Explain::HandleProceedClicked() {
     }
     // 2. Start Step (Outputs 1)
     else if (CurrentStepType == EAzr_ExplainStepType::Start) {
+        AZR_TRACE_EVENT("OnExplainPlusCompleted");
         OnExplainPlusCompleted.Broadcast(1);
 
         if (MiddleSteps.Num() > 0) {
@@ -847,6 +850,7 @@ void UAzr_Explain::HandleProceedClicked() {
     }
     // 3. Middle Steps (Outputs 2, 3, 4...)
     else if (CurrentStepType == EAzr_ExplainStepType::Middle) {
+        AZR_TRACE_EVENT("OnExplainPlusCompleted");
         OnExplainPlusCompleted.Broadcast(2 + CurrentMiddleIndex);
 
         CurrentMiddleIndex++;
@@ -859,6 +863,7 @@ void UAzr_Explain::HandleProceedClicked() {
     }
     // 4. End Step (Outputs Final Count)
     else if (CurrentStepType == EAzr_ExplainStepType::End) {
+        AZR_TRACE_EVENT("OnExplainPlusCompleted");
         OnExplainPlusCompleted.Broadcast(2 + MiddleSteps.Num());
         DisableExplain();
     }

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Azr_Debug.h"
 #include "Components/ActorComponent.h"
 #include "Materials/MaterialParameterCollection.h" 
 #include "Azr_Types.h"
@@ -24,9 +25,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTouchStateEvent);
  * Searches for a physical Azr_TouchZone via InteractID and manages visuals/events.
  */
 UCLASS(ClassGroup = (AzurealXR), meta = (BlueprintSpawnableComponent, DisplayName = "Azr Touch Logic"))
-class AZUREALXR_API UAzr_Touch : public UActorComponent
+class AZUREALXR_API UAzr_Touch : public UActorComponent, public IAzr_Debuggable
 {
 	GENERATED_BODY()
+
+public:
+	// --- Azureal Debugger ---
+	// Reports this component's own state and its own setup rules; see IAzr_Debuggable.
+	virtual void GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const override;
+	virtual void ValidateAzrSetup(TArray<FString>& OutProblems) const override;
 
 public:
 	UAzr_Touch();

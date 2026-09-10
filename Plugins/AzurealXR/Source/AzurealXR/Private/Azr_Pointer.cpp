@@ -1,6 +1,7 @@
 
 
 #include "Azr_Pointer.h"
+#include "Azr_Debug.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/KismetMathLibrary.h"
 
@@ -27,6 +28,7 @@ void UAzr_Pointer::BeginPlay()
 
 void UAzr_Pointer::EnablePointer_TargetComponent(USceneComponent* Target)
 {
+	AZR_TRACE();
 	if (!Target)
 	{
 		DisablePointer();
@@ -45,6 +47,7 @@ void UAzr_Pointer::EnablePointer_TargetComponent(USceneComponent* Target)
 
 void UAzr_Pointer::EnablePointer_TargetLocation(FVector TargetLocation)
 {
+	AZR_TRACE();
 	TrackedLocation = TargetLocation;
 	TrackingMode = 1;
 
@@ -56,6 +59,7 @@ void UAzr_Pointer::EnablePointer_TargetLocation(FVector TargetLocation)
 
 void UAzr_Pointer::DisablePointer()
 {
+	AZR_TRACE();
 	TrackingMode = 0;
 	TrackedComponent = nullptr;
 

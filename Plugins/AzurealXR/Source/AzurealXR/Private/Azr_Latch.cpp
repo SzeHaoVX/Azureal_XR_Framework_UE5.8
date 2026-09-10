@@ -1,6 +1,7 @@
 
 
 #include "Azr_Latch.h"
+#include "Azr_Debug.h"
 #include "Azr_Interactable.h"
 #include "Azr_Indicator.h"
 #include "Azr_Pointer.h" 
@@ -191,6 +192,7 @@ void UAzr_Latch::BeginPlay()
 
 void UAzr_Latch::EnableLatch()
 {
+	AZR_TRACE();
 	if (bIsGrabEnabled) return;
 	bIsGrabEnabled = true;
 
@@ -270,6 +272,7 @@ void UAzr_Latch::EnableLatch()
 
 void UAzr_Latch::DisableLatch()
 {
+	AZR_TRACE();
 	if (!bIsGrabEnabled) return;
 
 	// --- NEW: AUTO-RELEASE GATE ---
@@ -652,6 +655,7 @@ void UAzr_Latch::GrabLatch(USceneComponent* Hand)
 		else GrabOffsetValue = CalculateLinearDist(Hand->GetComponentLocation()) - CurrentRawValue;
 	}
 
+	AZR_TRACE_EVENT("OnLatched");
 	OnLatched.Broadcast();
 }
 
@@ -750,6 +754,7 @@ void UAzr_Latch::ReleaseSpecificHand(USceneComponent* Hand)
 			SetComponentTickEnabled(false);
 		}
 
+		AZR_TRACE_EVENT("OnLatchReleased");
 		OnLatchReleased.Broadcast();
 	}
 	else if (bWasLeader)
@@ -964,8 +969,10 @@ void UAzr_Latch::ApplyConstraints(float PrePhysicsRawValue)
 
 	if (!FMath::IsNearlyEqual(PrePhysicsRawValue, CurrentRawValue, 0.001f))
 	{
+		AZR_TRACE_EVENT("OnRawValueChanged");
 		OnRawValueChanged.Broadcast(CurrentRawValue);
 		float Norm = (LimitMax - LimitMin) != 0.0f ? (CurrentRawValue - LimitMin) / (LimitMax - LimitMin) : 0.0f;
+		AZR_TRACE_EVENT("OnValueChanged");
 		OnValueChanged.Broadcast(Norm);
 
 		if (bHapticOnStep && FMath::Abs(CurrentRawValue - LastHapticValue) >= StepSize)

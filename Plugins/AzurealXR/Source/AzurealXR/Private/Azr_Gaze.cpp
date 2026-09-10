@@ -3,6 +3,7 @@
 
 
 #include "Azr_Gaze.h"
+#include "Azr_Debug.h"
 #include "Azr_Interactable.h"
 #include "Azr_Pointer.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -101,6 +102,7 @@ void UAzr_Gaze::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 void UAzr_Gaze::EnableGaze()
 {
+	AZR_TRACE();
 	if (bIsGazeEnabled) return;
 
 	EnsureInitialized();
@@ -145,10 +147,12 @@ void UAzr_Gaze::EnableGaze()
 
 void UAzr_Gaze::DisableGaze()
 {
+	AZR_TRACE();
 	if (!bIsGazeEnabled) return;
 
 	bIsGazeEnabled = false;
 	CurrentChargeTime = 0.0f;
+	AZR_TRACE_EVENT("OnGazeProgressUpdated");
 	OnGazeProgressUpdated.Broadcast(0.0f);
 
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
@@ -299,6 +303,7 @@ void UAzr_Gaze::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 		if (!FMath::IsNearlyEqual(PreviousTime, CurrentChargeTime, 0.001f))
 		{
 			float Progress = (GazeDuration > 0.0f) ? (CurrentChargeTime / GazeDuration) : 1.0f;
+			AZR_TRACE_EVENT("OnGazeProgressUpdated");
 			OnGazeProgressUpdated.Broadcast(Progress);
 
 			if (AAzr_Pawn* Pawn = Cast<AAzr_Pawn>(UGameplayStatics::GetPlayerPawn(this, 0)))
@@ -325,11 +330,13 @@ void UAzr_Gaze::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 					PC->SetHapticsByValue(0.0f, 0.0f, EControllerHand::Right);
 				}
 
+				AZR_TRACE_EVENT("OnGazeTriggered");
 				OnGazeTriggered.Broadcast(this);
 
 				if (bResetOnTrigger)
 				{
 					CurrentChargeTime = 0.0f;
+					AZR_TRACE_EVENT("OnGazeProgressUpdated");
 					OnGazeProgressUpdated.Broadcast(0.0f);
 
 					if (AAzr_Pawn* Pawn = Cast<AAzr_Pawn>(UGameplayStatics::GetPlayerPawn(this, 0)))

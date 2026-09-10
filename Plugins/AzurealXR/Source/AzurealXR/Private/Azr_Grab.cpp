@@ -1,6 +1,7 @@
 
 
 #include "Azr_Grab.h"
+#include "Azr_Debug.h"
 #include "GameFramework/Actor.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/WidgetComponent.h"
@@ -194,6 +195,7 @@ void UAzr_Grab::EnsureInitialized()
 
 void UAzr_Grab::EnableGrab()
 {
+	AZR_TRACE();
 	EnsureInitialized();
 	if (bIsGrabEnabled) return;
 	bIsGrabEnabled = true;
@@ -257,6 +259,7 @@ void UAzr_Grab::EnableGrab()
 
 void UAzr_Grab::EnableGrabAttach(int32 SequenceID)
 {
+	AZR_TRACE();
 	EnsureInitialized();
 	if (bIsGrabEnabled) return;
 	bIsGrabEnabled = true;
@@ -315,6 +318,7 @@ void UAzr_Grab::EnableGrabAttach(int32 SequenceID)
 
 void UAzr_Grab::EnableGrabRemove()
 {
+	AZR_TRACE();
 	EnsureInitialized();
 	if (bIsGrabEnabled) return;
 	bIsGrabEnabled = true;
@@ -375,6 +379,7 @@ void UAzr_Grab::EnableGrabRemove()
 
 void UAzr_Grab::EnableGrabTrigger()
 {
+	AZR_TRACE();
 	EnsureInitialized();
 	if (bIsGrabEnabled) return;
 	bIsGrabEnabled = true;
@@ -435,6 +440,7 @@ void UAzr_Grab::EnableGrabTrigger()
 
 void UAzr_Grab::DisableGrab()
 {
+	AZR_TRACE();
 	if (!bIsGrabEnabled) return;
 	bIsGrabEnabled = false;
 	bHasTetherSettled = false;
@@ -484,11 +490,13 @@ void UAzr_Grab::DisableGrab()
 
 void UAzr_Grab::DisableGrabAttach()
 {
+	AZR_TRACE();
 	DisableGrab();
 }
 
 void UAzr_Grab::DisableGrabRemove(bool bResetTransform)
 {
+	AZR_TRACE();
 	bIsGrabRemoveMode = false;
 	DisableGrab();
 	ForceRelease();
@@ -501,6 +509,7 @@ void UAzr_Grab::DisableGrabRemove(bool bResetTransform)
 
 void UAzr_Grab::DisableGrabTrigger(bool bResetTransform)
 {
+	AZR_TRACE();
 	bIsGrabTriggerMode = false;
 	DisableGrab();
 	ForceRelease();
@@ -598,6 +607,7 @@ void UAzr_Grab::SnapActorToHand(USceneComponent* Hand, USceneComponent* SnapPoin
 		if (OnGrabDetached.IsBound())
 		{
 			int32 OldID = CurrentAttachedSocket->AttachSequenceID;
+			AZR_TRACE_EVENT("OnGrabDetached");
 			OnGrabDetached.Broadcast(OldID, CurrentAttachedSocket.Get());
 		}
 		CurrentAttachedSocket->NotifyObjectDetached();
@@ -672,6 +682,7 @@ void UAzr_Grab::SnapActorToHand(USceneComponent* Hand, USceneComponent* SnapPoin
 		TargetRelativeTransform = FTransform::Identity;
 	}
 
+	AZR_TRACE_EVENT("OnGrabbed");
 	if (OnGrabbed.IsBound()) OnGrabbed.Broadcast();
 }
 
@@ -745,6 +756,7 @@ void UAzr_Grab::ReleaseHand()
 		}
 	}
 
+	AZR_TRACE_EVENT("OnReleased");
 	if (OnReleased.IsBound()) OnReleased.Broadcast();
 }
 
@@ -791,6 +803,7 @@ void UAzr_Grab::NotifyAttached(int32 ID, UAzr_AttachTarget* Target)
 	{
 		if (IsValid(Target))
 		{
+			AZR_TRACE_EVENT("OnGrabAttached");
 			OnGrabAttached.Broadcast(ID, Target);
 		}
 	}
@@ -821,6 +834,7 @@ void UAzr_Grab::HandleTriggerInput(float Value)
 
 			if (OnGrabTriggered.IsBound())
 			{
+				AZR_TRACE_EVENT("OnGrabTriggered");
 				OnGrabTriggered.Broadcast(Value);
 			}
 		}
@@ -832,6 +846,7 @@ void UAzr_Grab::HandleTriggerInput(float Value)
 			bIsTriggerPressed = false;
 			if (OnGrabTriggerReleased.IsBound())
 			{
+				AZR_TRACE_EVENT("OnGrabTriggerReleased");
 				OnGrabTriggerReleased.Broadcast(Value);
 			}
 		}
@@ -879,6 +894,7 @@ void UAzr_Grab::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 
 			if (OnGrabRemoved.IsBound())
 			{
+				AZR_TRACE_EVENT("OnGrabRemoved");
 				OnGrabRemoved.Broadcast();
 			}
 		}
