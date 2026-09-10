@@ -104,6 +104,10 @@ void UAzr_Explain::BeginPlay() {
 }
 
 void UAzr_Explain::EndPlay(const EEndPlayReason::Type EndPlayReason) {
+    // Still disabled, so the widgets, tether, highlight and audio are all put away properly -- just
+    // without the completion that a disable normally means. See bTearingDown.
+    bTearingDown = true;
+
     if (bIsActive) DisableExplain();
     Super::EndPlay(EndPlayReason);
 }
@@ -174,8 +178,11 @@ void UAzr_Explain::DisableExplain() {
     ToggleHighlight(false);
     UpdatePointer(false);
 
-    // FIX: Only broadcast the generic event if this was a Single Explain
-    if (!bIsPlusMode) {
+    // Only for a Single Explain -- and never while the component is being torn down, or a map
+    // restart or a level change would report every open explanation as finished. Matches how Grab
+    // already treats a programmatic Disable: it drops what it is holding without broadcasting
+    // OnReleased, because that is not the player letting go.
+    if (!bIsPlusMode && !bTearingDown) {
         OnExplainCompleted.Broadcast();
     }
 

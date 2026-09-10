@@ -232,6 +232,19 @@ private:
 	// --- STATE TRACKING ---
 	bool bIsActive;
 	bool bIsPlusMode;
+
+	/**
+	 * Set while the component is being torn down, so the shutdown does not announce a completion.
+	 *
+	 * DisableExplain is where a finished Single explain broadcasts OnExplainCompleted -- it is the
+	 * only place that event comes from -- and EndPlay calls DisableExplain to clean up a step the
+	 * learner was still reading. Restarting the map or travelling to another one therefore reported
+	 * every open explanation as finished, which downstream advances the step and records it to the
+	 * LMS. A programmatic teardown is not a learner pressing Confirm.
+	 *
+	 * Never cleared: nothing runs on this component after EndPlay.
+	 */
+	bool bTearingDown = false;
 	int32 CurrentMiddleIndex;
 	EAzr_ExplainStepType CurrentStepType;
 
