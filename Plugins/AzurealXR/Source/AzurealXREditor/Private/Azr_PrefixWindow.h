@@ -2,7 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Azr_RenamerRules.h"
+#include "Azr_PrefixRules.h"
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Views/SListView.h"
 
@@ -20,7 +20,7 @@ struct FAzr_RenameRecord
 {
 	TWeakObjectPtr<UObject> Object;
 
-	/** The folder both names live in. The renamer only ever changes a name, never a location. */
+	/** The folder both names live in. The panel only ever changes a name, never a location. */
 	FString PackagePath;
 
 	FString FromName;
@@ -59,7 +59,7 @@ struct FAzr_ScanSource
 };
 
 /**
- * The Azureal Renamer.
+ * The Azureal Prefixes.
  *
  * Point it at content and it puts the project's prefixes right: SM_ on a static mesh, M_ on a
  * material, WBP_ on a widget blueprint. Assets already named correctly are shown and skipped, not
@@ -73,10 +73,10 @@ struct FAzr_ScanSource
  * applies only the rows still ticked when Rename is pressed. Ctrl+Z then puts a batch back, for as
  * long as the panel stays open.
  */
-class SAzr_RenamerWindow : public SCompoundWidget
+class SAzr_PrefixWindow : public SCompoundWidget
 {
 public:
-	SLATE_BEGIN_ARGS(SAzr_RenamerWindow) {}
+	SLATE_BEGIN_ARGS(SAzr_PrefixWindow) {}
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);

@@ -1,9 +1,9 @@
 
-#include "Azr_RenamerRules.h"
+#include "Azr_PrefixRules.h"
 
 #include "UObject/Class.h"
 
-const TArray<FAzr_PrefixRule>& FAzr_RenamerRules::GetRules()
+const TArray<FAzr_PrefixRule>& FAzr_PrefixRules::GetRules()
 {
 	// Ordered most-derived first, because the lookup walks up from the asset's own class and takes the
 	// first match. WidgetBlueprint has to be seen before Blueprint, MaterialInstanceConstant before
@@ -68,7 +68,7 @@ const TArray<FAzr_PrefixRule>& FAzr_RenamerRules::GetRules()
 	return Rules;
 }
 
-const TArray<FString>& FAzr_RenamerRules::GetAllPrefixes()
+const TArray<FString>& FAzr_PrefixRules::GetAllPrefixes()
 {
 	static TArray<FString> Prefixes;
 	if (Prefixes.IsEmpty())
@@ -85,7 +85,7 @@ const TArray<FString>& FAzr_RenamerRules::GetAllPrefixes()
 	return Prefixes;
 }
 
-const TArray<FString>& FAzr_RenamerRules::GetRespectedPrefixes()
+const TArray<FString>& FAzr_PrefixRules::GetRespectedPrefixes()
 {
 	static const TArray<FString> Respected =
 	{
@@ -97,7 +97,7 @@ const TArray<FString>& FAzr_RenamerRules::GetRespectedPrefixes()
 	return Respected;
 }
 
-FString FAzr_RenamerRules::ResolvePrefix(const FAssetData& Asset)
+FString FAzr_PrefixRules::ResolvePrefix(const FAssetData& Asset)
 {
 	UClass* AssetClass = Asset.GetClass();
 	if (!AssetClass) return FString();
@@ -120,7 +120,7 @@ FString FAzr_RenamerRules::ResolvePrefix(const FAssetData& Asset)
 	return FString();
 }
 
-bool FAzr_RenamerRules::BuildPlan(const FAssetData& Asset, FAzr_RenamePlan& OutPlan)
+bool FAzr_PrefixRules::BuildPlan(const FAssetData& Asset, FAzr_RenamePlan& OutPlan)
 {
 	const FString Prefix = ResolvePrefix(Asset);
 	if (Prefix.IsEmpty())

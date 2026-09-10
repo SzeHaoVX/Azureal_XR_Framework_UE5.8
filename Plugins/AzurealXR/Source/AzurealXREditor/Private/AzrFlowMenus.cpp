@@ -18,7 +18,7 @@
 #include "Toolkits/AssetEditorToolkit.h"
 
 #include "ContentBrowserMenuContexts.h"             // UContentBrowserAssetContextMenuContext, UContentBrowserFolderContext
-#include "Azr_RenamerWindow.h"                      // the renamer, opened straight from a right-click
+#include "Azr_PrefixWindow.h"                      // Azureal Prefixes, opened straight from a right-click
 #include "AssetRegistry/AssetData.h"
 
 #include "Engine/Blueprint.h"
@@ -234,12 +234,12 @@ namespace
 		}));
 	}
 
-	// ---- Content Browser: send a folder or a selection straight to the Azureal Renamer ----
+	// ---- Content Browser: send a folder or a selection straight to Azureal Prefixes ----
 	//
-	// The renamer can be told what to look at three ways -- this one, its own folder picker, and by
+	// The panel can be told what to look at three ways -- this one, its own folder picker, and by
 	// dragging onto the panel. All three exist because the one it started with, typing a path into a
 	// text box, is the one nobody wants to use.
-	void RegisterRenamerEntries()
+	void RegisterPrefixEntries()
 	{
 		if (UToolMenu* FolderMenu = UToolMenus::Get()->ExtendMenu(TEXT("ContentBrowser.FolderContextMenu")))
 		{
@@ -263,12 +263,12 @@ namespace
 
 				InSection.AddMenuEntry(
 					TEXT("AzurealRenameFolder"),
-					LOCTEXT("RenameFolder", "Fix Prefixes (Azureal Renamer)"),
-					LOCTEXT("RenameFolderTip", "Open the Azureal Renamer on this folder and list what its prefixes should be."),
+					LOCTEXT("RenameFolder", "Fix Prefixes"),
+					LOCTEXT("RenameFolderTip", "Open Azureal Prefixes on this folder and list what its prefixes should be."),
 					AzrIcon(),
 					FToolUIActionChoice(FExecuteAction::CreateLambda([Paths]()
 					{
-						SAzr_RenamerWindow::OpenForFolders(Paths);
+						SAzr_PrefixWindow::OpenForFolders(Paths);
 					})));
 			}));
 		}
@@ -288,12 +288,12 @@ namespace
 
 				InSection.AddMenuEntry(
 					TEXT("AzurealRenameAssets"),
-					LOCTEXT("RenameAssets", "Fix Prefixes (Azureal Renamer)"),
-					LOCTEXT("RenameAssetsTip", "Open the Azureal Renamer on the selected asset(s) and list what their prefixes should be."),
+					LOCTEXT("RenameAssets", "Fix Prefixes"),
+					LOCTEXT("RenameAssetsTip", "Open Azureal Prefixes on the selected asset(s) and list what their prefixes should be."),
 					AzrIcon(),
 					FToolUIActionChoice(FExecuteAction::CreateLambda([Assets]()
 					{
-						SAzr_RenamerWindow::OpenForAssets(Assets);
+						SAzr_PrefixWindow::OpenForAssets(Assets);
 					})));
 			}));
 		}
@@ -304,7 +304,7 @@ namespace
 		FToolMenuOwnerScoped OwnerScope(GAzrMenuOwner);
 		RegisterBlueprintToolbarButton();
 		RegisterContentBrowserEntry();
-		RegisterRenamerEntries();
+		RegisterPrefixEntries();
 	}
 }
 

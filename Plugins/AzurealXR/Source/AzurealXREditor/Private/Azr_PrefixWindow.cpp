@@ -1,5 +1,5 @@
 
-#include "Azr_RenamerWindow.h"
+#include "Azr_PrefixWindow.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "AssetToolsModule.h"
@@ -26,14 +26,14 @@
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
 
-#define LOCTEXT_NAMESPACE "AzurealRenamer"
+#define LOCTEXT_NAMESPACE "AzurealPrefixes"
 
-const FName SAzr_RenamerWindow::TabId(TEXT("AzurealRenamer"));
+const FName SAzr_PrefixWindow::TabId(TEXT("AzurealPrefixes"));
 
 namespace
 {
 	/** Kept as a weak handle so the Content Browser entries reuse the open panel rather than stacking them. */
-	TWeakPtr<SAzr_RenamerWindow> GOpenRenamer;
+	TWeakPtr<SAzr_PrefixWindow> GOpenPanel;
 
 	FSlateColor NoteColour(const FAzr_RenamePlan& Plan)
 	{
@@ -145,32 +145,32 @@ FString FAzr_ScanSource::Describe(bool bRecursive) const
 //  Tab
 // ============================================================================
 
-void SAzr_RenamerWindow::RegisterTabSpawner()
+void SAzr_PrefixWindow::RegisterTabSpawner()
 {
 	FGlobalTabmanager::Get()
 		->RegisterNomadTabSpawner(TabId, FOnSpawnTab::CreateLambda([](const FSpawnTabArgs&)
 			{
-				TSharedRef<SAzr_RenamerWindow> Panel = SNew(SAzr_RenamerWindow);
-				GOpenRenamer = Panel;
+				TSharedRef<SAzr_PrefixWindow> Panel = SNew(SAzr_PrefixWindow);
+				GOpenPanel = Panel;
 
 				return SNew(SDockTab).TabRole(ETabRole::NomadTab)[ Panel ];
 			}))
-		.SetDisplayName(LOCTEXT("TabTitle", "Azureal Renamer"))
+		.SetDisplayName(LOCTEXT("TabTitle", "Azureal Prefixes"))
 		.SetTooltipText(LOCTEXT("TabTooltip", "Put the project's asset prefixes right."))
 		.SetGroup(WorkspaceMenu::GetMenuStructure().GetDeveloperToolsMiscCategory())
 		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Adjust"));
 }
 
-void SAzr_RenamerWindow::UnregisterTabSpawner()
+void SAzr_PrefixWindow::UnregisterTabSpawner()
 {
 	FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(TabId);
 }
 
-void SAzr_RenamerWindow::OpenForFolders(const TArray<FString>& Folders)
+void SAzr_PrefixWindow::OpenForFolders(const TArray<FString>& Folders)
 {
 	FGlobalTabmanager::Get()->TryInvokeTab(TabId);
 
-	if (TSharedPtr<SAzr_RenamerWindow> Panel = GOpenRenamer.Pin())
+	if (TSharedPtr<SAzr_PrefixWindow> Panel = GOpenPanel.Pin())
 	{
 		FAzr_ScanSource NewSource;
 		NewSource.Folders = Folders;
@@ -178,11 +178,11 @@ void SAzr_RenamerWindow::OpenForFolders(const TArray<FString>& Folders)
 	}
 }
 
-void SAzr_RenamerWindow::OpenForAssets(const TArray<FAssetData>& Assets)
+void SAzr_PrefixWindow::OpenForAssets(const TArray<FAssetData>& Assets)
 {
 	FGlobalTabmanager::Get()->TryInvokeTab(TabId);
 
-	if (TSharedPtr<SAzr_RenamerWindow> Panel = GOpenRenamer.Pin())
+	if (TSharedPtr<SAzr_PrefixWindow> Panel = GOpenPanel.Pin())
 	{
 		FAzr_ScanSource NewSource;
 		NewSource.Assets = Assets;
@@ -194,7 +194,7 @@ void SAzr_RenamerWindow::OpenForAssets(const TArray<FAssetData>& Assets)
 //  Layout
 // ============================================================================
 
-void SAzr_RenamerWindow::Construct(const FArguments& InArgs)
+void SAzr_PrefixWindow::Construct(const FArguments& InArgs)
 {
 	// The whole panel is wrapped so that a drop anywhere on it counts, not only on the list. Slate
 	// routes a drag to whatever is under the cursor and lets it bubble up from there, so without an
@@ -230,7 +230,7 @@ void SAzr_RenamerWindow::Construct(const FArguments& InArgs)
 	Scan();
 }
 
-TSharedRef<SWidget> SAzr_RenamerWindow::BuildToolbar()
+TSharedRef<SWidget> SAzr_PrefixWindow::BuildToolbar()
 {
 	return SNew(SVerticalBox)
 
@@ -255,7 +255,7 @@ TSharedRef<SWidget> SAzr_RenamerWindow::BuildToolbar()
 			[
 				SAssignNew(PathPickerButton, SComboButton)
 				.ToolTipText(LOCTEXT("BrowseTip", "Pick a content folder to scan."))
-				.OnGetMenuContent(this, &SAzr_RenamerWindow::BuildPathPicker)
+				.OnGetMenuContent(this, &SAzr_PrefixWindow::BuildPathPicker)
 				.ButtonContent()
 				[ SNew(STextBlock).Text(LOCTEXT("Browse", "Choose Folder")) ]
 			]
@@ -280,7 +280,7 @@ TSharedRef<SWidget> SAzr_RenamerWindow::BuildToolbar()
 							: LOCTEXT("ApplyNone", "Rename");
 					})
 				.IsEnabled_Lambda([this]() { return CountSelected() > 0; })
-				.OnClicked(this, &SAzr_RenamerWindow::Apply)
+				.OnClicked(this, &SAzr_PrefixWindow::Apply)
 			]
 
 			+ SHorizontalBox::Slot().AutoWidth().Padding(4, 6, 8, 6)
@@ -292,7 +292,7 @@ TSharedRef<SWidget> SAzr_RenamerWindow::BuildToolbar()
 					"This is the panel's own history and lasts only while the panel is open -- the "
 					"editor's Ctrl+Z has never covered asset renames."))
 				.IsEnabled_Lambda([this]() { return UndoStack.Num() > 0; })
-				.OnClicked(this, &SAzr_RenamerWindow::Undo)
+				.OnClicked(this, &SAzr_PrefixWindow::Undo)
 			]
 		]
 
@@ -327,7 +327,7 @@ TSharedRef<SWidget> SAzr_RenamerWindow::BuildToolbar()
 		];
 }
 
-TSharedRef<SWidget> SAzr_RenamerWindow::BuildPathPicker()
+TSharedRef<SWidget> SAzr_PrefixWindow::BuildPathPicker()
 {
 	FContentBrowserModule& ContentBrowserModule = FModuleManager::LoadModuleChecked<FContentBrowserModule>(TEXT("ContentBrowser"));
 
@@ -339,7 +339,7 @@ TSharedRef<SWidget> SAzr_RenamerWindow::BuildPathPicker()
 	// nothing whatsoever.
 	Config.bAllowContextMenu = false;
 	Config.bAllowClassesFolder = false;
-	Config.OnPathSelected = FOnPathSelected::CreateSP(this, &SAzr_RenamerWindow::HandlePathPicked);
+	Config.OnPathSelected = FOnPathSelected::CreateSP(this, &SAzr_PrefixWindow::HandlePathPicked);
 
 	return SNew(SBox)
 		.WidthOverride(320.0f)
@@ -347,7 +347,7 @@ TSharedRef<SWidget> SAzr_RenamerWindow::BuildPathPicker()
 		[ ContentBrowserModule.Get().CreatePathPicker(Config) ];
 }
 
-void SAzr_RenamerWindow::HandlePathPicked(const FString& Path)
+void SAzr_PrefixWindow::HandlePathPicked(const FString& Path)
 {
 	// An internal path, not a virtual one: FPathPickerConfig::bOnPathSelectedPassesVirtualPaths is left
 	// at its default of false, so this arrives as "/Game/Props" rather than "/All/Game/Props".
@@ -365,7 +365,7 @@ void SAzr_RenamerWindow::HandlePathPicked(const FString& Path)
 //  Drag and drop
 // ============================================================================
 
-bool SAzr_RenamerWindow::ReadDrag(const FDragDropEvent& Event, FAzr_ScanSource& OutSource)
+bool SAzr_PrefixWindow::ReadDrag(const FDragDropEvent& Event, FAzr_ScanSource& OutSource)
 {
 	// Content Browser drags arrive as FContentBrowserDataDragDropOp, which derives from this, so asking
 	// for the base covers both a folder drag and an asset drag. Collections use a different operation
@@ -395,7 +395,7 @@ bool SAzr_RenamerWindow::ReadDrag(const FDragDropEvent& Event, FAzr_ScanSource& 
 	return !OutSource.IsEmpty();
 }
 
-void SAzr_RenamerWindow::OnDragEnter(const FGeometry& Geometry, const FDragDropEvent& Event)
+void SAzr_PrefixWindow::OnDragEnter(const FGeometry& Geometry, const FDragDropEvent& Event)
 {
 	FAzr_ScanSource Peek;
 	bDragUsable = ReadDrag(Event, Peek);
@@ -405,15 +405,15 @@ void SAzr_RenamerWindow::OnDragEnter(const FGeometry& Geometry, const FDragDropE
 	{
 		Op->SetToolTip(
 			bDragUsable
-				? LOCTEXT("DropOk", "Scan this with the Azureal Renamer")
-				: LOCTEXT("DropNo", "The Azureal Renamer cannot use this"),
+				? LOCTEXT("DropOk", "Check prefixes on this")
+				: LOCTEXT("DropNo", "Azureal Prefixes cannot use this"),
 			FAppStyle::GetBrush(bDragUsable ? "Icons.Adjust" : "Icons.Error"));
 	}
 
 	SCompoundWidget::OnDragEnter(Geometry, Event);
 }
 
-void SAzr_RenamerWindow::OnDragLeave(const FDragDropEvent& Event)
+void SAzr_PrefixWindow::OnDragLeave(const FDragDropEvent& Event)
 {
 	bDragHovered = false;
 	bDragUsable = false;
@@ -428,7 +428,7 @@ void SAzr_RenamerWindow::OnDragLeave(const FDragDropEvent& Event)
 	SCompoundWidget::OnDragLeave(Event);
 }
 
-FReply SAzr_RenamerWindow::OnDragOver(const FGeometry& Geometry, const FDragDropEvent& Event)
+FReply SAzr_PrefixWindow::OnDragOver(const FGeometry& Geometry, const FDragDropEvent& Event)
 {
 	// Recomputed rather than relying on what OnDragEnter worked out: a drag can begin over a child
 	// widget and reach the panel without an enter of its own, and Slate routes one last synthetic move
@@ -440,7 +440,7 @@ FReply SAzr_RenamerWindow::OnDragOver(const FGeometry& Geometry, const FDragDrop
 	return bDragUsable ? FReply::Handled() : FReply::Unhandled();
 }
 
-FReply SAzr_RenamerWindow::OnDrop(const FGeometry& Geometry, const FDragDropEvent& Event)
+FReply SAzr_PrefixWindow::OnDrop(const FGeometry& Geometry, const FDragDropEvent& Event)
 {
 	bDragHovered = false;
 	bDragUsable = false;
@@ -463,13 +463,13 @@ FReply SAzr_RenamerWindow::OnDrop(const FGeometry& Geometry, const FDragDropEven
 //  Scan
 // ============================================================================
 
-void SAzr_RenamerWindow::SetSource(FAzr_ScanSource&& NewSource)
+void SAzr_PrefixWindow::SetSource(FAzr_ScanSource&& NewSource)
 {
 	Source = MoveTemp(NewSource);
 	Scan();
 }
 
-void SAzr_RenamerWindow::Scan()
+void SAzr_PrefixWindow::Scan()
 {
 	Plans.Reset();
 
@@ -523,7 +523,7 @@ void SAzr_RenamerWindow::Scan()
 		if (Asset.AssetClassPath.GetAssetName() == TEXT("World")) continue;
 
 		FAzr_RenamePlan Plan;
-		if (!FAzr_RenamerRules::BuildPlan(Asset, Plan))
+		if (!FAzr_PrefixRules::BuildPlan(Asset, Plan))
 		{
 			++Uncovered;
 			continue;
@@ -552,7 +552,7 @@ void SAzr_RenamerWindow::Scan()
 	if (PlanList.IsValid()) PlanList->RequestListRefresh();
 }
 
-int32 SAzr_RenamerWindow::CountSelected() const
+int32 SAzr_PrefixWindow::CountSelected() const
 {
 	int32 Count = 0;
 	for (const TSharedPtr<FAzr_RenamePlan>& Plan : Plans)
@@ -566,7 +566,7 @@ int32 SAzr_RenamerWindow::CountSelected() const
 //  Renaming
 // ============================================================================
 
-void SAzr_RenamerWindow::RunRenames(const TArray<FAzr_RenameRecord>& Records, TArray<FAzr_RenameRecord>& OutDone, TArray<FString>& OutBlocked)
+void SAzr_PrefixWindow::RunRenames(const TArray<FAzr_RenameRecord>& Records, TArray<FAzr_RenameRecord>& OutDone, TArray<FString>& OutBlocked)
 {
 	if (Records.IsEmpty()) return;
 
@@ -640,7 +640,7 @@ void SAzr_RenamerWindow::RunRenames(const TArray<FAzr_RenameRecord>& Records, TA
 	}
 }
 
-TArray<FString> SAzr_RenamerWindow::FoldersForFixup(const TArray<FAzr_RenameRecord>& Done) const
+TArray<FString> SAzr_PrefixWindow::FoldersForFixup(const TArray<FAzr_RenameRecord>& Done) const
 {
 	TArray<FString> Folders = Source.Folders;
 
@@ -654,7 +654,7 @@ TArray<FString> SAzr_RenamerWindow::FoldersForFixup(const TArray<FAzr_RenameReco
 	return Folders;
 }
 
-void SAzr_RenamerWindow::FixupRedirectors(IAssetTools& AssetTools, const TArray<FString>& Folders)
+void SAzr_PrefixWindow::FixupRedirectors(IAssetTools& AssetTools, const TArray<FString>& Folders)
 {
 	// An asset-registry filter carrying a class but no path matches everything of that class in the
 	// project, so an empty folder list here would quietly turn a three-asset tidy-up into a
@@ -694,7 +694,7 @@ void SAzr_RenamerWindow::FixupRedirectors(IAssetTools& AssetTools, const TArray<
 	}
 }
 
-void SAzr_RenamerWindow::RefreshContentBrowser()
+void SAzr_PrefixWindow::RefreshContentBrowser()
 {
 	// The Content Browser keeps its own view of a folder and does not always notice assets renamed from
 	// outside it -- the folder had to be left and re-entered before the new names showed up.
@@ -721,7 +721,7 @@ void SAzr_RenamerWindow::RefreshContentBrowser()
 	}
 }
 
-void SAzr_RenamerWindow::PushUndo(FAzr_RenameBatch&& Batch)
+void SAzr_PrefixWindow::PushUndo(FAzr_RenameBatch&& Batch)
 {
 	UndoStack.Add(MoveTemp(Batch));
 
@@ -735,7 +735,7 @@ void SAzr_RenamerWindow::PushUndo(FAzr_RenameBatch&& Batch)
 //  Apply / Undo
 // ============================================================================
 
-FReply SAzr_RenamerWindow::Apply()
+FReply SAzr_PrefixWindow::Apply()
 {
 	TArray<FAzr_RenameRecord> Records;
 	for (const TSharedPtr<FAzr_RenamePlan>& Plan : Plans)
@@ -793,7 +793,7 @@ FReply SAzr_RenamerWindow::Apply()
 	return FReply::Handled();
 }
 
-FReply SAzr_RenamerWindow::Undo()
+FReply SAzr_PrefixWindow::Undo()
 {
 	if (UndoStack.IsEmpty()) return FReply::Handled();
 
@@ -830,7 +830,7 @@ FReply SAzr_RenamerWindow::Undo()
 	return FReply::Handled();
 }
 
-FReply SAzr_RenamerWindow::OnKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent)
+FReply SAzr_PrefixWindow::OnKeyDown(const FGeometry& Geometry, const FKeyEvent& KeyEvent)
 {
 	// Reaching here means no child wanted the key first.
 	//
@@ -853,7 +853,7 @@ FReply SAzr_RenamerWindow::OnKeyDown(const FGeometry& Geometry, const FKeyEvent&
 //  List
 // ============================================================================
 
-TSharedRef<SWidget> SAzr_RenamerWindow::BuildList()
+TSharedRef<SWidget> SAzr_PrefixWindow::BuildList()
 {
 	return SAssignNew(PlanList, SListView<TSharedPtr<FAzr_RenamePlan>>)
 		.ListItemsSource(&Plans)

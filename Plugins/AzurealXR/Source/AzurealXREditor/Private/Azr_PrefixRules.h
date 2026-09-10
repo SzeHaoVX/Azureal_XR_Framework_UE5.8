@@ -20,7 +20,7 @@ struct FAzr_PrefixRule
 	FString Prefix;
 };
 
-/** What the renamer proposes to do with one asset. */
+/** What the panel proposes to do with one asset. */
 struct FAzr_RenamePlan
 {
 	FAssetData Asset;
@@ -47,7 +47,7 @@ struct FAzr_RenamePlan
 	bool bSelected = true;
 };
 
-class FAzr_RenamerRules
+class FAzr_PrefixRules
 {
 public:
 	/** The project's conventions. Ordered most-derived first, since the lookup walks up from the asset's class. */
