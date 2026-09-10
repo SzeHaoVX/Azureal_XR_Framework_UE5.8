@@ -265,7 +265,7 @@ void UAzr_Latch::EnableLatch()
 	ToggleTether(true);
 
 	// 6. Register with Pointer System
-	UpdatePointer(false);
+	UpdatePointer();
 
 	SetComponentTickEnabled(true);
 }
@@ -447,7 +447,7 @@ void UAzr_Latch::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompo
 
 	if (bIsGrabEnabled)
 	{
-		UpdatePointer(ActiveHands.Num() > 0);
+		UpdatePointer();
 	}
 
 	// Highlight Pulse logic when not being held
@@ -645,7 +645,7 @@ void UAzr_Latch::GrabLatch(USceneComponent* Hand)
 	ToggleHighlight(false);
 	ToggleTether(false);
 	if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(false);
-	UpdatePointer(true);
+	UpdatePointer();
 
 	// --- LEADER LOGIC ---
 	if (ActiveHands.Num() == 1)
@@ -671,7 +671,7 @@ void UAzr_Latch::ReleaseSpecificHand(USceneComponent* Hand)
 		if (GetWorld()) { LastValue = 0.0f; bWasRising = true; }
 		ToggleTether(true);
 		if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(true);
-		UpdatePointer(false);
+		UpdatePointer();
 
 		// --- THE FIX: Bring UI back when released ---
 		if (LinkedLatchZone && LinkedLatchZone->SpawnedLatchIndicator)
@@ -746,7 +746,7 @@ void UAzr_Latch::ReleaseSpecificHand(USceneComponent* Hand)
 			if (GetWorld()) { LastValue = 0.0f; bWasRising = true; }
 			ToggleTether(true);
 			if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(true);
-			UpdatePointer(false);
+			UpdatePointer();
 		}
 		else
 		{
@@ -1050,7 +1050,7 @@ void UAzr_Latch::AutoDetectLatchZone()
 
 // --- VISUAL HELPERS ---
 
-void UAzr_Latch::UpdatePointer(bool bIsGrabbing)
+void UAzr_Latch::UpdatePointer()
 {
 	UAzr_Pointer* Pointer = FindPlayerPointer();
 	if (!Pointer) return;

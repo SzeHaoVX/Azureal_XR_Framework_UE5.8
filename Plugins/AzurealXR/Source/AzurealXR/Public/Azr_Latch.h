@@ -319,7 +319,8 @@ private:
 	void AutoDetectLatchZone();
 	void ToggleTether(bool bState);
 	void ToggleHighlight(bool bState);
-	void UpdatePointer(bool bIsGrabbing);
+	/** Aims the player pointer at this latch. Called while enabled; the pointer follows the handle on its own from there. */
+	void UpdatePointer();
 	FVector CalculateSurfaceAnchor(USceneComponent* Target, EAzr_TetherPos Pos, const FAzr_TetherConfig& TetherConfig);
 
 	UPrimitiveComponent* FindMeshByName(FName Name);

@@ -184,7 +184,8 @@ private:
 	void AutoDetectTouchZone();
 	void ToggleTether(bool bState);
 	void ToggleHighlight(bool bState);
-	void UpdatePointer(bool bForceActive); // Parameter renamed to prevent C4458 shadowing
+	/** Aims the player pointer at this touch target. Called while enabled; the pointer follows on its own from there. */
+	void UpdatePointer();
 
 	FVector CalculateSurfaceAnchor(USceneComponent* Target, EAzr_TetherPos Pos, const FAzr_TetherConfig& Config);
 

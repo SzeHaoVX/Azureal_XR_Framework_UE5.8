@@ -212,7 +212,7 @@ void UAzr_Touch::EnableTouch()
 
 	ToggleHighlight(true);
 	ToggleTether(true);
-	UpdatePointer(false);
+	UpdatePointer();
 
 	SetComponentTickEnabled(true);
 }
@@ -394,7 +394,7 @@ void UAzr_Touch::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompo
 		}
 	}
 
-	if (bIsTouchEnabled) UpdatePointer(ActiveHands.Num() > 0);
+	if (bIsTouchEnabled) UpdatePointer();
 
 	// 2. STABILIZED PULSE & AUDIO
 	if (bIsTouchEnabled && ActiveHands.Num() == 0 && HighlightMPC)
@@ -577,7 +577,7 @@ void UAzr_Touch::ToggleHighlight(bool bState)
 	for (UMeshComponent* Mesh : Meshes) { if (Mesh) { Mesh->SetRenderCustomDepth(bState); Mesh->SetCustomDepthStencilValue(StencilID); } }
 }
 
-void UAzr_Touch::UpdatePointer(bool bForceActive)
+void UAzr_Touch::UpdatePointer()
 {
 	if (UAzr_Pointer* P = FindPlayerPointer())
 	{
