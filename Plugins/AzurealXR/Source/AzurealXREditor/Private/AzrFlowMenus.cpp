@@ -17,7 +17,8 @@
 #include "Toolkits/AssetEditorToolkitMenuContext.h" // UAssetEditorToolkitMenuContext
 #include "Toolkits/AssetEditorToolkit.h"
 
-#include "ContentBrowserMenuContexts.h"             // UContentBrowserAssetContextMenuContext, EIncludeSubclasses
+#include "ContentBrowserMenuContexts.h"             // UContentBrowserAssetContextMenuContext, UContentBrowserFolderContext
+#include "Azr_RenamerWindow.h"                      // the renamer, opened straight from a right-click
 #include "AssetRegistry/AssetData.h"
 
 #include "Engine/Blueprint.h"
@@ -233,11 +234,77 @@ namespace
 		}));
 	}
 
+	// ---- Content Browser: send a folder or a selection straight to the Azureal Renamer ----
+	//
+	// The renamer can be told what to look at three ways -- this one, its own folder picker, and by
+	// dragging onto the panel. All three exist because the one it started with, typing a path into a
+	// text box, is the one nobody wants to use.
+	void RegisterRenamerEntries()
+	{
+		if (UToolMenu* FolderMenu = UToolMenus::Get()->ExtendMenu(TEXT("ContentBrowser.FolderContextMenu")))
+		{
+			// Its own section rather than joining Bulk Operations: that section is only added when the
+			// folder is writable, so extending it would put this entry in an unnamed section of its own
+			// on any read-only folder anyway.
+			FToolMenuSection& Section = FolderMenu->FindOrAddSection(TEXT("AzurealTools"), LOCTEXT("AzurealSection", "Azureal"));
+			Section.AddDynamicEntry(TEXT("AzurealRenameFolder"), FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
+			{
+				const UContentBrowserFolderContext* Ctx = InSection.FindContext<UContentBrowserFolderContext>();
+
+				// bCanBeModified is false for engine and other read-only folders. Without this the entry
+				// would appear there and the renames would fail much later, down inside AssetTools.
+				if (!Ctx || !Ctx->bCanBeModified || Ctx->GetSelectedPackagePaths().Num() == 0)
+				{
+					return;
+				}
+
+				// Internal paths ("/Game/Props"), which is what the asset registry wants.
+				const TArray<FString> Paths = Ctx->GetSelectedPackagePaths();
+
+				InSection.AddMenuEntry(
+					TEXT("AzurealRenameFolder"),
+					LOCTEXT("RenameFolder", "Fix Prefixes (Azureal Renamer)"),
+					LOCTEXT("RenameFolderTip", "Open the Azureal Renamer on this folder and list what its prefixes should be."),
+					AzrIcon(),
+					FToolUIActionChoice(FExecuteAction::CreateLambda([Paths]()
+					{
+						SAzr_RenamerWindow::OpenForFolders(Paths);
+					})));
+			}));
+		}
+
+		if (UToolMenu* AssetMenu = UToolMenus::Get()->ExtendMenu(TEXT("ContentBrowser.AssetContextMenu")))
+		{
+			FToolMenuSection& Section = AssetMenu->FindOrAddSection(TEXT("AzurealTools"), LOCTEXT("AzurealSection", "Azureal"));
+			Section.AddDynamicEntry(TEXT("AzurealRenameAssets"), FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
+			{
+				const UContentBrowserAssetContextMenuContext* Ctx = InSection.FindContext<UContentBrowserAssetContextMenuContext>();
+				if (!Ctx || Ctx->SelectedAssets.Num() == 0)
+				{
+					return;
+				}
+
+				const TArray<FAssetData> Assets = Ctx->SelectedAssets;
+
+				InSection.AddMenuEntry(
+					TEXT("AzurealRenameAssets"),
+					LOCTEXT("RenameAssets", "Fix Prefixes (Azureal Renamer)"),
+					LOCTEXT("RenameAssetsTip", "Open the Azureal Renamer on the selected asset(s) and list what their prefixes should be."),
+					AzrIcon(),
+					FToolUIActionChoice(FExecuteAction::CreateLambda([Assets]()
+					{
+						SAzr_RenamerWindow::OpenForAssets(Assets);
+					})));
+			}));
+		}
+	}
+
 	void RegisterMenus()
 	{
 		FToolMenuOwnerScoped OwnerScope(GAzrMenuOwner);
 		RegisterBlueprintToolbarButton();
 		RegisterContentBrowserEntry();
+		RegisterRenamerEntries();
 	}
 }
 

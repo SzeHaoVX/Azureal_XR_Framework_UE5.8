@@ -4,6 +4,7 @@
 #include "AzrFlowMenus.h"
 #include "AzrHandScannerVisualizer.h"
 #include "Azr_DebuggerWindow.h"
+#include "Azr_RenamerWindow.h"
 #include "Azr_ExplainCustomization.h"
 #include "Azr_HandScanner.h"
 #include "Azr_NarrationSettings.h"
@@ -41,6 +42,9 @@ public:
 		// The Azureal Debugger, under Window > Developer Tools > Debug. A nomad tab so it can be
 		// docked anywhere and comes back where it was left after a restart.
 		SAzr_DebuggerWindow::RegisterTabSpawner();
+
+		// The Azureal Renamer, under Window > Developer Tools.
+		SAzr_RenamerWindow::RegisterTabSpawner();
 
 		// Generate Narration buttons: one on each Explain step, one for the whole component. These are
 		// details-panel customizations rather than CallInEditor functions because CallInEditor buttons
@@ -127,6 +131,7 @@ public:
 
 		// Safe here, unlike the settings below: this touches only the tab manager, no UObjects.
 		SAzr_DebuggerWindow::UnregisterTabSpawner();
+		SAzr_RenamerWindow::UnregisterTabSpawner();
 
 		// Unregistered from names captured at startup, never by asking the settings objects again.
 		// Module shutdown runs while the object system is being torn down, so GetDefault() there can

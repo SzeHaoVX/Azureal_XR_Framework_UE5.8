@@ -29,9 +29,11 @@ public class AzurealXREditor : ModuleRules
                 "SubobjectDataInterface",// USubobjectDataSubsystem (component add)
                 "ToolMenus",             // UToolMenus toolbar button + content-browser entry
                 "WorkspaceMenuStructure",// puts the Azureal Debugger under Window > Developer Tools
-                "ContentBrowser",        // UContentBrowserAssetContextMenuContext
+                "ContentBrowser",        // UContentBrowserAssetContextMenuContext, refreshing the view after a rename
+                "ContentBrowserData",    // FContentBrowserItemPath (which folder the browser is showing)
                 "PropertyEditor",        // details-panel Generate Narration buttons
                 "AssetTools",            // IAssetTools::ImportAssetTasks (generated narration -> USoundWave)
+                "AssetRegistry",         // the renamer scans by FARFilter; was only ever transitive before
                 "DeveloperSettings",     // UAzr_NarrationSettings (per-user ElevenLabs config)
                 "Settings",              // ISettingsModule (this module loads too late for the automatic sweep)
                 "HTTP",                  // ElevenLabs text-to-speech with timestamps
