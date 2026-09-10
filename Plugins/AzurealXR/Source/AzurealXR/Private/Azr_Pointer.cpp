@@ -28,12 +28,27 @@ void UAzr_Pointer::BeginPlay()
 
 void UAzr_Pointer::EnablePointer_TargetComponent(USceneComponent* Target)
 {
-	AZR_TRACE();
 	if (!Target)
 	{
 		DisablePointer();
 		return;
 	}
+
+	// Already pointing at exactly this, so there is nothing to do.
+	//
+	// Callers drive this from Tick -- Latch does, every frame it is enabled -- on the assumption that
+	// the pointer needs re-aiming at a handle that moves. It does not: this component's own Tick reads
+	// the tracked component's location afresh each frame, so once told, it follows. Re-assigning the
+	// same target was costing a visibility change and a tick-enable per frame for no change at all.
+	//
+	// The trace sits after this guard on purpose. A call that changes nothing is not an event, and
+	// logging it buried the debugger's own trail the first time it was opened.
+	if (TrackingMode == 2 && TrackedComponent.Get() == Target)
+	{
+		return;
+	}
+
+	AZR_TRACE();
 
 	// Smart Pointer Assignment (Safe)
 	TrackedComponent = Target;
@@ -47,6 +62,13 @@ void UAzr_Pointer::EnablePointer_TargetComponent(USceneComponent* Target)
 
 void UAzr_Pointer::EnablePointer_TargetLocation(FVector TargetLocation)
 {
+	// Same guard as the component version, for the same reason. A location has to compare loosely --
+	// an aim recomputed each frame will not land on the identical float twice.
+	if (TrackingMode == 1 && TrackedLocation.Equals(TargetLocation, 0.01f))
+	{
+		return;
+	}
+
 	AZR_TRACE();
 	TrackedLocation = TargetLocation;
 	TrackingMode = 1;
