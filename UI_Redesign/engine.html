@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Engine check — what survives UE 5.8</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  [hidden] { display: none !important; }
+
+  .verdict {
+    background: var(--surface); border-radius: var(--r-hero); box-shadow: var(--sh-panel);
+    padding: clamp(24px,4vw,38px); margin-top: 30px;
+  }
+  .verdict .kicker { font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+                     color: var(--live); }
+  .verdict h3 { margin-top: 12px; font-size: clamp(22px,3.4vw,30px); font-weight: 650; letter-spacing: -0.02em;
+                line-height: 1.2; }
+  .verdict p { margin-top: 13px; font-size: 16px; line-height: 1.7; color: var(--text-body); }
+
+  .ini { margin-top: 22px; font-family: var(--mono); font-size: 13px; line-height: 2.05;
+         background: #1d1d1f; color: #e8e8ed; border-radius: var(--r-card); padding: 18px 20px;
+         overflow-x: auto; white-space: pre; }
+  .ini .k { color: #7fd1ff; } .ini .v2 { color: #a0e8a0; } .ini .c { color: #86868b; }
+  .ini .miss { color: #ff9f6b; }
+
+  .rows { margin-top: 10px; }
+  .rw { display: flex; gap: 18px; align-items: flex-start; padding: 16px clamp(17px,3vw,24px); }
+  .rw + .rw { border-top: 1px solid var(--hairline); }
+  .rw-main { flex: 1; min-width: 0; }
+  .rw-t { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.45; }
+  .rw-d { margin-top: 6px; font-size: 14px; color: var(--text-2); line-height: 1.68; }
+  code { font-family: var(--mono); font-size: 0.88em; background: rgba(0,0,0,0.05);
+         padding: 1px 5px; border-radius: 5px; color: var(--text-body); }
+  .ini code, .verdict .ini code { background: none; padding: 0; }
+  .vv { flex: none; width: 92px; text-align: right; padding-top: 2px; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em;
+          padding: 4px 9px; border-radius: var(--r-pill); }
+  .chip--free { color: #1d7a3d; background: rgba(48,209,88,0.14); }
+  .chip--work { color: #a35a00; background: var(--heat-bg); }
+  .chip--no   { color: #b3261e; background: rgba(215,0,21,0.09); }
+
+  h2.sec { font-size: clamp(21px,3.2vw,27px); font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+
+  .calc { display: grid; grid-template-columns: 300px 1fr; gap: 32px; align-items: start; margin-top: 26px; }
+  @media (max-width: 860px) { .calc { grid-template-columns: 1fr; } }
+  .ctl { display: flex; flex-direction: column; gap: 19px; }
+  .ctl label { display: block; font-size: 13px; font-weight: 600; color: var(--text-2); }
+  .ctl label .num { float: right; color: var(--text); font-variant-numeric: tabular-nums; }
+  .ctl input[type=range] { width: 100%; margin-top: 9px; accent-color: var(--accent); }
+
+  .prev { position: relative; border-radius: var(--r-card); overflow: hidden; aspect-ratio: 16/10;
+          box-shadow: var(--sh-card); background: #2a2f36; }
+  .prev-bg { position: absolute; inset: -10%; }
+  .prev-glass {
+    position: absolute; left: 11%; top: 12%; width: 50%; height: 64%; border-radius: 22px;
+    background: rgba(28,28,30,0.80);
+    box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.16), 0 8px 30px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column; justify-content: flex-end; padding: 16px 18px;
+    color: #fff; font-family: 'Montserrat', var(--font);
+  }
+  .prev-glass .gt { font-size: 15px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.1; }
+  .prev-glass .gs { font-size: 11px; font-weight: 500; color: rgba(235,235,245,0.68); margin-top: 4px; }
+
+  .readout { display: flex; gap: 26px; flex-wrap: wrap; }
+  .ro { font-size: 12px; color: var(--text-3); }
+  .ro b { display: block; font-size: 21px; font-weight: 650; color: var(--text);
+          font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-top: 3px; }
+  .ro b.zero { color: var(--heat); }
+  .src { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); line-height: 1.85; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="nav-brand" href="index.html">Azureal&nbsp;·&nbsp;Engine check</a>
+    <nav class="nav-links">
+      <a href="csm.html">CSM board</a>
+      <a href="cable.html">The cable</a>
+      <a href="overhaul.html" class="hide-sm">World widgets</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="read">
+    <div class="eyebrow"><span class="dot"></span> Checked against UE 5.8 source</div>
+    <h1 style="margin-top:15px;">The glass is real.<br>It just isn't UMG's.</h1>
+    <p class="lede">
+      You remembered right: a world-space widget cannot do the frosted-transparent effect, and I can now
+      show you exactly why in the 5.8 source. But the answer to <i>“can we customise the engine to get
+      it”</i> turned out better than expected — <b>you don't have to.</b> Your project is already configured
+      for a path that does work.
+    </p>
+  </section>
+
+  <div class="wrap">
+
+    <div class="verdict">
+      <div class="kicker">The short answer</div>
+      <h3>Substrate rough refraction is already switched on in your DefaultEngine.ini. It's waiting for a material, not an engine patch.</h3>
+      <p>
+        Rough refraction blurs the scene behind translucent geometry. It runs in the distortion pass, it
+        builds its blur pyramid <b>per view</b> so it is stereo-correct, and it has a shader permutation for
+        MSAA. Three of the four things it needs are already in your config. The fourth isn't a switch — it's
+        the widget's material, which is still the stock <code>Widget3DPassThrough_Translucent</code> and refracts nothing.
+      </p>
+      <div class="ini"><span class="c">; Config/DefaultEngine.ini — what you already have</span>
+<span class="k">r.Substrate</span>=<span class="v2">True</span>          <span class="c">; line 155 — required</span>
+<span class="k">r.Refraction.Blur</span>=<span class="v2">True</span>    <span class="c">; line 161 — required. Engine default is 0.</span>
+<span class="k">r.ForwardShading</span>=<span class="v2">True</span>     <span class="c">; line 73  — not a blocker; no forward gate in the pass</span>
+<span class="c">; r.DisableDistortion unset → 0  — not a blocker</span>
+
+<span class="miss">; the one piece that is missing:</span>
+<span class="miss">Widget3DPassThrough_Translucent → no refraction input. Nothing blurs.</span></div>
+      <p style="font-size:14px;color:var(--text-2);margin-top:16px;">
+        And it costs you nothing today. The pyramid is only built when a refracting primitive is actually in
+        view — <code>ShouldRenderDistortion()</code> returns false unless <code>View.bHasDistortionPrimitives</code> is set. The cost
+        arrives with the material, which is also the moment you can measure it.
+      </p>
+    </div>
+
+    <!-- 1 -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">1 — Why UMG's own Background Blur can never work here</h2>
+        <p class="lede" style="margin-top:12px;">
+          Worth being precise about the <i>why</i>, because it decides whether an engine patch is a weekend or a rewrite.
+        </p>
+      </div>
+
+      <div class="panel rows" style="margin-top:22px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The blur has two possible inputs, and world space only ever gets the wrong one</div>
+            <div class="rw-d">
+              <code>SlateRHIRenderingPolicy.cpp:1720</code> takes the real path only
+              <code>if (Inputs.SceneViewportTexture &amp;&amp; SceneViewportTexture != ElementsTexture)</code>; otherwise line 1733
+              falls back to <code>BlurInputs.InputTexture = Inputs.ElementsTexture</code>. A widget component renders
+              through <code>Slate3DRenderer.cpp</code>, whose <code>FSlateDrawElementsPassInputs</code> (line 174) sets
+              <code>.ElementsTexture</code> and nothing else. So it blurs its own render target — which contains only
+              the widget. That's why any blur strength above 0 turns the panel into a near-opaque sheet.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Dead end</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">And wiring the scene texture in would still not fix it</div>
+            <div class="rw-d">
+              This is the part that matters for your question. Slate's blur is a <b>screen-space rectangle</b>
+              blur — it blurs the region of the input matching the widget's own 2D coordinates. Those
+              coordinates are 0–500 inside a 500&nbsp;×&nbsp;500 texture. They have no relationship to where the panel
+              lands on screen, which changes every time the trainee's head moves. There is no mapping to
+              supply. It isn't an unplugged wire, it's the wrong coordinate space — <b>a patch here means
+              writing a new pass, not connecting an existing one.</b>
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Dead end</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Easy to fool yourself — a white tint reads as blur in a screenshot</div>
+            <div class="rw-d">
+              Lerping the panel toward white washes out low-contrast detail behind it, which looks like blur
+              in a still. Judge any blur with the tint at zero, against high-contrast geometry — a window
+              grid, thin bright conduit — or you will ship a tint and call it glass.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Careful</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">2 — The route that works: Substrate rough refraction</h2>
+        <p class="lede" style="margin-top:12px;">
+          The distortion pass builds a gaussian mip pyramid of scene colour and samples it through the
+          translucent surface. The blur strength is not a number you type — <b>it comes from the distance
+          between the panel and whatever is behind it</b>, which is exactly why Apple's glass looks the way it
+          does. Drag the sliders; the maths is the engine's, transcribed line for line.
+        </p>
+      </div>
+
+      <div class="calc">
+        <div class="ctl">
+          <div>
+            <label>Panel roughness <span class="num" id="o-r">0.30</span></label>
+            <input type="range" id="s-r" min="0" max="0.8" step="0.01" value="0.30">
+          </div>
+          <div>
+            <label>Panel distance from eye <span class="num" id="o-d">60 cm</span></label>
+            <input type="range" id="s-d" min="35" max="150" step="1" value="60">
+          </div>
+          <div>
+            <label>Gap — panel to what's behind it <span class="num" id="o-g">250 cm</span></label>
+            <input type="range" id="s-g" min="0" max="900" step="5" value="250">
+          </div>
+          <div class="readout">
+            <div class="ro">Blur &sigma; (per eye)<b id="o-sig">&mdash;</b></div>
+            <div class="ro">Mip level<b id="o-mip">&mdash;</b></div>
+          </div>
+          <div class="src" id="o-src"></div>
+        </div>
+
+        <div>
+          <div class="prev">
+            <div class="prev-bg" id="bg"></div>
+            <div class="prev-glass">
+              <div class="gt">Overhanging<br>Collapse</div>
+              <div class="gs">Procedure 2 of 6</div>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-2);line-height:1.68;margin-top:12px;">
+            The radius is computed with the engine's formula for a Quest-3-sized eye buffer, then rescaled to
+            this preview's width — so the <i>relationship</i> is exact even though the pixels aren't. Panel
+            fill is the same <code>rgba(28,28,30,0.80)</code> as the board. Pull the gap to 0 and watch it go sharp:
+            that is not a bug, that is the model.
+          </p>
+        </div>
+      </div>
+
+      <div class="panel rows" style="margin-top:32px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Blur scales with the gap, not with a setting</div>
+            <div class="rw-d">
+              <code>DistortApplyScreenPS.usf:128</code> —
+              <code>FrontSurfaceRefractionDepthCm = max(0, SceneDepthMeter − RefractionDepthMeter) × 100</code>, and
+              line 132 multiplies the roughness-derived &sigma; by it. Panel floating in the middle of a
+              substation bay: heavy blur. Panel pushed up against a cabinet door: sharp. That is physically
+              right, and it is the single biggest reason this reads as glass rather than as a filter.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Free</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Stereo-correct, and MSAA-aware</div>
+            <div class="rw-d">
+              <code>DistortionRendering.cpp:590</code> loops <code>ViewIndex</code> over <code>Views.Num()</code> and builds a separate mip
+              chain per eye — unlike a SceneCapture, which is always mono (<code>StereoViewIndex = INDEX_NONE</code>) and
+              would need two extra full scene renders. The apply shader carries a <code>FUseMSAADim</code> permutation,
+              so your <code>r.AntiAliasingMethod=3</code> / <code>r.MSAACount=4</code> setup is handled. I found no forward-shading
+              gate anywhere in the file.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Free</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Below roughness ≈ 0.18 you get <i>nothing</i></div>
+            <div class="rw-d">
+              <code>GetVarianceFromRoughness</code> (<code>Substrate.ush:1021</code>) is a quartic Epic deliberately shifted so it
+              returns 0 at roughness 0 — but the polynomial stays negative until about 0.175, and it is
+              wrapped in <code>saturate()</code>. Author the panel at 0.1 “for a subtle frost” and you get a perfectly
+              sharp refraction and a lost afternoon. The usable band is narrow: 0.18 is barely visible, 0.25&ndash;0.30 is the frosted-glass look, and past 0.40 the background is gone. Beyond that it stops mattering anyway &mdash; <code>r.Refraction.Blur.MaxStandardDeviationInScreenRatio</code> clamps the radius to 5% of the screen.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Gotcha</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">It forces velocity output</div>
+            <div class="rw-d">
+              <code>DeferredShadingRenderer.cpp:2447</code> —
+              <code>bForceVelocityOutput = bHairStrandsEnable || ShouldRenderDistortion()</code>. Adding the material turns
+              on a velocity pass you currently don't pay for. Measure this one; at 90&nbsp;Hz stereo it is not free.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Cost</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Turn its temporal filter off first</div>
+            <div class="rw-d">
+              <code>r.Refraction.Blur.TemporalAA</code> defaults to <b>1</b> and keeps its own history
+              (<code>PrevViewInfo.RoughRefractionHistory</code>). You render with MSAA and no TAA/TSR, on a camera that
+              reprojects every frame from head tracking. If you see smear or ghosting behind the panel, this
+              is the first suspect — set it to 0 and accept a little flicker instead.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Tune</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">What you actually have to build</div>
+            <div class="rw-d">
+              One material. Translucent, refraction driven by roughness, and the widget's render target wired
+              to emissive exactly the way the stock pass-through does it — then <code>SetMaterial</code> on the widget
+              component. No C++, no engine change, no plugin.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">1 asset</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">3 — The fallback that is already proven in this project</h2>
+        <p class="lede" style="margin-top:12px;">
+          If refraction turns out too expensive at 90&nbsp;Hz, there is a recipe that was built and measured in
+          this exact forward-shaded setup: a post-process material masked by custom stencil.
+        </p>
+      </div>
+
+      <div class="panel rows" style="margin-top:22px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The recipe</div>
+            <div class="rw-d">
+              Blur <code>SceneTexture:PostProcessInput0</code> over ~16 offsets, mask it with
+              <code>saturate(1 − abs(CustomStencil − N))</code>, Blendable Location <b>Scene Color Before DOF</b> so the UMG
+              widget still draws sharp on top. The mask comes from an invisible box at the panel:
+              <code>bRenderInMainPass=false</code>, <code>bRenderInDepthPass=false</code>, <code>bRenderCustomDepth=true</code>. Widget
+              component + stencil box + an unbound PostProcessComponent all fit on one droppable Blueprint.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Proven</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Use stencil 250 — 252 is taken</div>
+            <div class="rw-d">
+              252 is the outline system, shared by Grab, Latch, Touch, Gaze, Explain, Action and Highlight plus
+              the outline post-process material. Reuse it and every highlighted object in the level blurs.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Gotcha</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The panel must stay a separate mesh from the mask</div>
+            <div class="rw-d">
+              A translucent material cannot write custom stencil at all, so “make the panel itself write the
+              stencil” is not available — hence the invisible box. And <code>bRenderInMainPass=false</code> alone is not
+              enough: in forward shading it still writes the depth prepass, occludes the sky, and you get a
+              grey rectangle plus the tiled skydome warning. You need <code>bRenderInDepthPass=false</code> too.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Gotcha</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Its real weakness: it's a screen-space rectangle</div>
+            <div class="rw-d">
+              The mask is whatever the stencil box projects to, so the blur does not follow the panel's 30&nbsp;px
+              rounded corners unless you shape the mask mesh to match — and never exactly, at an angle.
+              Refraction gets the silhouette right for free, because the silhouette <i>is</i> the geometry.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Limit</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">4 — Everything else on the board</h2>
+        <p class="lede" style="margin-top:12px;">
+          The good news is how little of this is a fight. Most of what reads as “Apple” on that board is one
+          Slate brush type you probably aren't using yet.
+        </p>
+      </div>
+
+      <div class="panel rows" style="margin-top:22px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Every rounded corner — 30&nbsp;px panel, 22&nbsp;px lists, 20&nbsp;px options, pill buttons</div>
+            <div class="rw-d">
+              <code>FSlateBrush.DrawAs = ESlateBrushDrawType::RoundedBox</code>. <code>CornerRadii</code> is an <code>FVector4</code>, so
+              per-corner radii work; <code>RoundingType = HalfHeightRadius</code> gives you the pill without computing
+              anything. This is the single most useful thing to adopt — it replaces nine-slice textures everywhere.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Native</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Every hairline ring — <code>box-shadow: inset 0 0 0 3px</code></div>
+            <div class="rw-d">
+              Same brush: <code>OutlineSettings.Color</code> and <code>OutlineSettings.Width</code>. Not an approximation — literally
+              the same struct, drawn in the same draw call as the fill.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Native</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Letter-spacing — −0.026&nbsp;em on the headline, +0.12&nbsp;em on the eyebrow</div>
+            <div class="rw-d">
+              <code>FSlateFontInfo::LetterSpacing</code>, <code>int32</code>, EditAnywhere, in thousandths of an em. So −26 and
+              +120. Exact, both directions. The tight headline tracking is a large part of why the board reads
+              premium, and it costs one field.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Native</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Breadcrumb truncation, selected-row tint, segmented meter, 84&nbsp;px rows, 80&nbsp;px buttons</div>
+            <div class="rw-d">
+              <code>ETextOverflowPolicy::Ellipsis</code>, brush swaps, a HorizontalBox of rounded images, SizeBoxes. The
+              <code>color-mix()</code> values just get pre-computed to RGBA.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Native</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The fade at the bottom of a scrolling list</div>
+            <div class="rw-d">
+              Slate has no gradient brush. An Image in an Overlay with a two-stop gradient material, or a
+              1&nbsp;×&nbsp;64 texture. Ten minutes, but not free.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Small build</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Rounded clipping does not exist — this one will surprise you</div>
+            <div class="rw-d">
+              <code>EWidgetClipping::ClipToBounds</code> clips to an <b>axis-aligned rectangle</b>. A list with a 22&nbsp;px
+              radius whose rows have their own fill will show square corners poking out past the rounded
+              container, and no clipping setting fixes it. Give the first and last row their own brush with
+              only the top or bottom corners rounded — <code>CornerRadii</code> being an <code>FVector4</code> is what makes that possible.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Design for it</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The thin scroll rail</div>
+            <div class="rw-d">
+              <code>FScrollBarStyle</code> on the ScrollBox gets you close; a hand-drawn Image gets you exact. Either
+              way it's authoring, not engineering.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Small build</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The outer drop shadow — <code>0 30px 70px rgba(0,0,0,.52)</code></div>
+            <div class="rw-d">
+              Slate has no shadow primitive; you'd need a pre-blurred nine-slice behind the panel. <b>But you
+              should drop it regardless</b> — a drop shadow on a panel floating in mid-air is a lie. There is no
+              surface behind it to catch a shadow, and in stereo the brain notices: it reads as a sticker
+              pasted onto the world. The depth cue you get for free is parallax, and if you take route 2, real
+              refraction. <b>I'd cut it from the design.</b>
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Cut it</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Tabular figures — measured, and they aren't</div>
+            <div class="rw-d">
+              I measured Montserrat's digits in all three shipped weights. At 100&nbsp;px Medium the “1” is
+              <b>37&nbsp;px</b> and the “4” is <b>66.9&nbsp;px</b> — proportional, not tabular. Slate exposes no OpenType
+              feature switches, so no font setting fixes this. Anything that counts will jitter: the session
+              timer every second, “Procedure 2 of 6” as it climbs. The fix is layout — put the number in a
+              fixed-width SizeBox, or right-align it in a box sized for the widest digit string.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Layout fix</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">5 — The typeface: what was wrong, and what I changed</h2>
+        <p class="lede" style="margin-top:12px;">
+          Nothing is broken in the design. The mockup was simply drawing in a font your project does not
+          have, which meant you were approving something the engine could never render.
+        </p>
+      </div>
+
+      <div class="panel rows" style="margin-top:22px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The board was rendering in Segoe UI</div>
+            <div class="rw-d">
+              My CSS asked for <code>-apple-system</code> first. On a Mac that's SF Pro; on your Windows machine every
+              Apple entry misses and it falls through to Segoe UI. So the shapes, the widths and the line
+              breaks you were judging were Microsoft's, not yours.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Was lying</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Your project ships Montserrat — and exactly three faces of it</div>
+            <div class="rw-d">
+              <code>Plugins/AzurealXR/Content/Interaction/Explain_Action_Tag_Label/</code> holds Montserrat
+              <b>Medium&nbsp;500</b>, <b>SemiBold&nbsp;600</b> and <b>ExtraBold&nbsp;800</b>, and they're the fonts
+              <code>Explain_Widget</code> and <code>Action_Widget</code> actually reference. Since the whole plan is for the CSM
+              panel to match those two, that is the target — and it means there is <b>no Regular and no
+              Bold</b>. Body text cannot go lighter than Medium, and headings jump straight to ExtraBold.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Constraint</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">I had written weights that don't exist as files</div>
+            <div class="rw-d">
+              400, 550, 650, 700. On the web the browser synthesises those. Slate does not — it picks a named
+              typeface out of the font asset, so every one of them would have silently snapped to whichever
+              face was nearest, and the careful weight hierarchy on that board would have collapsed into two
+              steps without anyone noticing.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Was lying</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Fixed — the board now loads only 500 / 600 / 800, in Montserrat</div>
+            <div class="rw-d">
+              Go and look at <a href="csm.html" style="color:var(--accent-link);text-decoration:none;">the CSM board</a> again. It is
+              heavier and wider than it was, which is the truth. I checked every one of the nine boards
+              afterwards: nothing overflows, the only differences are 2–3&nbsp;px of extra line height on the
+              headings from Montserrat's taller metrics. <b>The design survives its real typeface.</b>
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Fixed</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">6 — Four render settings that will bite this panel</h2>
+      </div>
+
+      <div class="panel rows" style="margin-top:22px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Bloom on, auto-exposure off — the light material is the risk</div>
+            <div class="rw-d">
+              <code>r.DefaultFeature.Bloom=True</code> with <code>r.DefaultFeature.AutoExposure=False</code> means a bright panel
+              never adapts down and bloom smears it into its own dark text. The light variant on the board is
+              deliberately mid-value frosted grey, never white. This is the one decision on the whole board a
+              screenshot cannot settle — it needs the headset, with bloom on.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Test in HMD</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">MSAA does nothing for anything inside the panel</div>
+            <div class="rw-d">
+              The widget is a texture by the time the scene renders. <code>r.MSAACount=4</code> antialiases the quad's
+              silhouette, not its contents — the text is smoothed by Slate's own rasteriser on the way into
+              the render target. So the quality lever is resolution match, not AA: keep the 500&nbsp;×&nbsp;500 target
+              close to the number of screen pixels the panel actually covers.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Know it</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Turn <code>bDrawAtDesiredSize</code> off</div>
+            <div class="rw-d">
+              It is currently on, alongside DrawSize 500&nbsp;×&nbsp;500. For a design that is deliberately a fixed
+              square, let the component own the size — otherwise the render target silently resizes whenever
+              content changes, and every measurement on the board stops being true.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Change it</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Foveation is on</div>
+            <div class="rw-d">
+              <code>xr.VRS.FoveationLevel=2</code> with dynamic foveation off. Text you are looking at is fine. Text
+              parked in the periphery — exactly where the shrunk token will live — is rendered coarser. Keep
+              the token a shape and a colour, not a word.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Know it</span></div>
+        </div>
+      </div>
+    </section>
+
+    <footer style="margin:72px auto 60px; max-width:var(--max-read); padding:26px var(--pad-x) 0;
+                   border-top:1px solid var(--hairline); font-size:13px; color:var(--text-3); line-height:1.8;">
+      Source checked against UE 5.8 at <code>C:\Program Files\Epic Games\UE_5.8</code>; config against
+      <code>Config/DefaultEngine.ini</code>. ·
+      <a href="csm.html" style="color:var(--accent-link); text-decoration:none;">CSM board</a> ·
+      <a href="cable.html" style="color:var(--accent-link); text-decoration:none;">the cable</a>
+    </footer>
+
+  </div>
+</main>
+
+<script src="app.js"></script>
+<script>
+/* ── The engine's own maths, transcribed ──────────────────────────────
+   Substrate.ush:1021           GetVarianceFromRoughness (quartic, saturated)
+   DistortApplyScreenPS.usf:128 gap  = max(0, sceneDepth - panelDepth) * 100
+   DistortApplyScreenPS.usf:131 sigmaCm = sqrt(variance)
+   DistortApplyScreenPS.usf:132 sigmaAtGap = sigmaCm * gapCm
+   DistortApplyScreenPS.usf:136 pixelRadiusCm = 100 * sceneDepthM * tanHalfFOV / viewPx
+   DistortApplyScreenPS.usf:158 mip = log2(sigmaPx / 2)        // FilterSigmaPixel = 2
+   ──────────────────────────────────────────────────────────────────── */
+const EYE_PX = 1832, TAN_HALF = 1.11;   // a Quest-3-ish eye buffer
+
+function varianceFromRoughness(R) {
+  const R2 = R * R, R3 = R2 * R, R4 = R2 * R2;
+  return Math.min(1, Math.max(0,
+    -0.000332564 * R - 0.0168059 * R2 + 0.115569 * R3 - 0.0526336 * R4));
+}
+
+const el = id => document.getElementById(id);
+
+function draw() {
+  const R     = +el('s-r').value;
+  const panel = +el('s-d').value;               // cm from eye
+  const gap   = +el('s-g').value;               // cm behind the panel
+  const sceneDepthM = (panel + gap) / 100;
+
+  const sigmaCm       = Math.sqrt(varianceFromRoughness(R));
+  const sigmaAtGapCm  = sigmaCm * gap;
+  const pixelRadiusCm = 100 * sceneDepthM * TAN_HALF / EYE_PX;
+  const sigmaPx = pixelRadiusCm > 0 ? sigmaAtGapCm / pixelRadiusCm : 0;
+  const mip     = sigmaPx > 2 ? Math.log2(sigmaPx / 2) : 0;
+
+  el('o-r').textContent = R.toFixed(2);
+  el('o-d').textContent = panel + ' cm';
+  el('o-g').textContent = gap + ' cm';
+
+  const sig = el('o-sig');
+  sig.textContent = sigmaPx < 0.05 ? 'none' : sigmaPx.toFixed(1) + ' px';
+  sig.classList.toggle('zero', sigmaPx < 0.05);
+  el('o-mip').textContent = mip.toFixed(2);
+
+  el('o-src').innerHTML = varianceFromRoughness(R) === 0
+    ? 'variance(' + R.toFixed(2) + ') saturates to 0 &rarr; no blur at any gap.'
+    : gap === 0
+      ? 'gap = 0 &rarr; nothing behind to blur.'
+      : '&sigma; = sqrt(var) &times; gap = ' + sigmaCm.toFixed(4) + ' &times; ' + gap +
+        ' = ' + sigmaAtGapCm.toFixed(1) + ' cm<br>1 px at ' + sceneDepthM.toFixed(2) +
+        ' m = ' + pixelRadiusCm.toFixed(3) + ' cm';
+
+  /* rescale from the eye buffer to this preview so the relationship holds */
+  const w = el('bg').parentElement.clientWidth || 600;
+  el('bg').style.filter = 'blur(' + (sigmaPx / EYE_PX * w).toFixed(2) + 'px)';
+}
+
+/* high-contrast background — blur is only judgeable against hard edges */
+el('bg').style.background =
+  'repeating-linear-gradient(90deg, #2a2f36 0 38px, #cfd6de 38px 43px),' +
+  'repeating-linear-gradient(0deg, rgba(0,0,0,0.42) 0 64px, rgba(255,190,90,0.55) 64px 70px)';
+el('bg').style.backgroundBlendMode = 'multiply';
+
+['s-r', 's-d', 's-g'].forEach(id => el(id).addEventListener('input', draw));
+window.addEventListener('resize', draw);
+draw();
+</script>
+</body>
+</html>

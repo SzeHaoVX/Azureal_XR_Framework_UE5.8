@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The token — how it snaps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  [hidden] { display: none !important; }
+
+  /* ═══ the stage: one spot in the world, seen head-on ═══ */
+  .stage2 {
+    position: relative; border-radius: var(--r-hero); overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 70% 8%,  rgba(126,158,198,0.26) 0%, rgba(0,0,0,0) 56%),
+      radial-gradient(90%  70% at 12% 96%, rgba(196,146,94,0.18)  0%, rgba(0,0,0,0) 60%),
+      linear-gradient(168deg, #2b2f37 0%, #191c21 48%, #0e1014 100%);
+    box-shadow: var(--sh-panel);
+    height: 700px;
+  }
+  .stage2 .cap {
+    position: absolute; left: 20px; top: 16px; z-index: 5;
+    font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    color: rgba(235,235,245,0.40);
+  }
+  /* the thing being explained, so the dock has something to be near */
+  .cab {
+    position: absolute; left: 20%; top: 50%; transform: translate(-50%,-50%);
+    width: 250px; height: 440px; border-radius: 10px;
+    background: linear-gradient(150deg,#4a5058,#31363d 60%,#23272c);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.07), 0 20px 50px rgba(0,0,0,0.5);
+  }
+  .cab i { position: absolute; left: 24px; right: 24px; height: 4px; border-radius: 2px;
+           background: rgba(255,255,255,0.10); }
+  .dial { position: absolute; left: 50%; top: 130px; transform: translateX(-50%);
+          width: 76px; height: 76px; border-radius: 50%;
+          background: #1b1e22; box-shadow: inset 0 0 0 4px #6f7782, 0 0 0 3px rgba(255,159,10,0.55); }
+
+  /* the rig holding surface + token: this is ONE spot in the world */
+  .rig { position: absolute; right: 9%; top: 40px; width: 500px; }
+  .surfwrap { position: relative; width: 500px; height: 500px; }
+
+  /* ═══ the 50 × 50 cm surface ═══ */
+  .surf {
+    position: absolute; inset: 0;
+    border-radius: 30px; overflow: hidden;
+    font-family: 'Montserrat','Segoe UI',sans-serif; font-weight: 500; color: #fff;
+    background: rgba(28,28,30,0.80);
+    backdrop-filter: blur(26px) saturate(160%); -webkit-backdrop-filter: blur(26px) saturate(160%);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.13), inset 0 2px 0 0 rgba(255,255,255,0.10);
+    display: flex; flex-direction: column;
+    transform-origin: 50% 118%;   /* it grows out of the dock, not out of itself */
+    transition: opacity .26s cubic-bezier(0.32,0.72,0,1),
+                transform .40s cubic-bezier(0.32,0.72,0,1);
+  }
+  .surf[data-off] { opacity: 0; transform: scale(0.32); pointer-events: none; }
+
+  /* ═══ the token — 20 × 8 cm, docked 2 cm under the surface ═══ */
+  .dock { margin-top: 20px; display: flex; justify-content: center; }
+  .tok {
+    height: 80px; border-radius: 999px; overflow: hidden; cursor: pointer; border: none;
+    font-family: 'Montserrat','Segoe UI',sans-serif; color: #fff;
+    background: rgba(28,28,30,0.84);
+    backdrop-filter: blur(26px) saturate(160%); -webkit-backdrop-filter: blur(26px) saturate(160%);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.15), inset 0 2px 0 0 rgba(255,255,255,0.11);
+    display: flex; align-items: center; gap: 14px; padding: 0 22px; width: 200px;
+    transition: width .42s cubic-bezier(0.32,0.72,0,1), box-shadow .18s linear, transform .12s ease-out;
+  }
+  .tok[data-alert] { width: 360px; }
+  .tok:active { transform: scale(0.97); }
+  .tok.aim { box-shadow: inset 0 0 0 3px #0a84ff, inset 0 2px 0 0 rgba(255,255,255,0.11),
+                         0 0 0 4px rgba(10,132,255,0.28); }
+  .tok .pip { flex: none; width: 18px; height: 18px; border-radius: 50%; }
+  .tok .lbl { font-size: 25px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+  .tok .cnt { margin-left: auto; font-size: 25px; font-weight: 600; flex: none;
+              min-width: 78px; text-align: right; }   /* pinned width — the digits are not tabular */
+  .tok .mtr { display: flex; gap: 4px; flex: 1; min-width: 0; }
+  .tok .mtr i { flex: 1; height: 9px; border-radius: 999px; background: rgba(120,120,128,0.32); }
+  .tok .mtr i.on { background: #30d158; } .tok .mtr i.now { background: #0a84ff; }
+
+  /* surface chrome — same scale as the CSM board */
+  .s-bar { flex: none; height: 62px; display: flex; align-items: center; gap: 9px; padding: 0 22px;
+           border-bottom: 3px solid rgba(255,255,255,0.10); font-size: 21px; font-weight: 600;
+           color: rgba(235,235,245,0.68); }
+  .s-bar .now { color: #fff; } .s-bar .sep { color: rgba(235,235,245,0.26); }
+  .s-bar .r { margin-left: auto; display: flex; align-items: center; gap: 9px; font-size: 19px; flex: none; }
+  .s-bar .r em { width: 12px; height: 12px; border-radius: 50%; display: block; }
+  .s-body { flex: 1; padding: 24px 22px; display: flex; flex-direction: column; min-height: 0; }
+  .eyeb { font-size: 17px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+          color: rgba(235,235,245,0.46); }
+  .h2b { font-size: 36px; font-weight: 800; letter-spacing: -0.022em; line-height: 1.14; margin-top: 8px; }
+  .txt { margin-top: 16px; font-size: 25px; line-height: 1.45; color: rgba(235,235,245,0.68); min-height: 4.4em; }
+  .mtr2 { display: flex; gap: 4px; margin-top: 18px; }
+  .mtr2 i { flex: 1; height: 9px; border-radius: 999px; background: rgba(120,120,128,0.28); }
+  .mtr2 i.on { background: #30d158; } .mtr2 i.now { background: #0a84ff; }
+  .lst { margin-top: 20px; background: rgba(120,120,128,0.14); border-radius: 22px; overflow: hidden;
+         box-shadow: inset 0 0 0 2px rgba(255,255,255,0.10); }
+  .itm { display: flex; align-items: center; gap: 16px; padding: 14px 18px; min-height: 84px; }
+  .itm + .itm { border-top: 3px solid rgba(255,255,255,0.10); }
+  .nn { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+        font-size: 22px; font-weight: 600; color: rgba(235,235,245,0.46);
+        box-shadow: inset 0 0 0 3px rgba(255,255,255,0.10); }
+  .nn.done { background: #30d158; color: #05261a; box-shadow: none; }
+  .nn.now  { background: #0a84ff; color: #04223d; box-shadow: none; }
+  .it2 { font-size: 29px; font-weight: 600; letter-spacing: -0.006em; line-height: 1.2; }
+  .sp { flex: 1; }
+
+  /* Explain's real bindings: InteractionButton + ActionText + AudioProgressBar.
+     I had left all three off the mock — this is what the widget actually has. */
+  .s-foot { flex: none; padding: 0 22px 20px; }
+  .abar { height: 8px; border-radius: 999px; background: rgba(120,120,128,0.30); overflow: hidden; }
+  .abar i { display: block; height: 100%; border-radius: 999px; background: #ff9f0a; width: 46%; }
+  .sbtn { margin-top: 14px; width: 100%; height: 80px; border: none; border-radius: 999px;
+          font-family: 'Montserrat','Segoe UI',sans-serif; font-size: 24px; font-weight: 600;
+          background: rgba(120,120,128,0.22); color: #fff;
+          box-shadow: inset 0 0 0 3px rgba(255,255,255,0.10); cursor: pointer; }
+  .sbtn--go { background: #0a84ff; color: #04223d; box-shadow: none; }
+
+  /* Grab / Latch don't get a panel. They get a tag — "Grab Chainsaw". */
+  .tag {
+    position: absolute; left: 34%; top: 36%; padding: 0 22px; height: 64px; border-radius: 999px;
+    display: flex; align-items: center; gap: 12px;
+    font-family: 'Montserrat','Segoe UI',sans-serif; font-size: 25px; font-weight: 600; color: #fff;
+    background: rgba(28,28,30,0.84); backdrop-filter: blur(26px) saturate(160%);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.15);
+    white-space: nowrap;
+  }
+  /* with no surface to dock to, the token falls back to the body leash */
+  .leash { position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%); }
+  .leash .ring { position: absolute; left: 50%; top: -18px; transform: translateX(-50%);
+                 font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+                 color: rgba(235,235,245,0.34); white-space: nowrap; }
+
+  .cable { position: absolute; inset: 0; pointer-events: none; }
+
+  .drive { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; justify-content: center; }
+  .drive button {
+    border: none; cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 600;
+    padding: 11px 18px; border-radius: var(--r-pill); background: rgba(0,0,0,0.05); color: var(--text);
+  }
+  .drive button:hover { background: rgba(0,0,0,0.09); }
+  .drive button.p { background: var(--accent); color: #fff; }
+  .hint { text-align: center; margin-top: 12px; font-size: 13.5px; color: var(--text-2); }
+
+  .rows { margin-top: 10px; }
+  .rw { display: flex; gap: 18px; align-items: flex-start; padding: 16px clamp(17px,3vw,24px); }
+  .rw + .rw { border-top: 1px solid var(--hairline); }
+  .rw-main { flex: 1; min-width: 0; }
+  .rw-t { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.45; }
+  .rw-d { margin-top: 6px; font-size: 14px; color: var(--text-2); line-height: 1.68; }
+  code { font-family: var(--mono); font-size: 0.88em; background: rgba(0,0,0,0.05);
+         padding: 1px 5px; border-radius: 5px; color: var(--text-body); }
+  .vv { flex: none; width: 86px; text-align: right; padding-top: 2px; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 9px;
+          border-radius: var(--r-pill); }
+  .chip--b { color: #1d7a3d; background: rgba(48,209,88,0.14); }
+  .chip--c { color: #b3261e; background: rgba(215,0,21,0.09); }
+  h2.sec { font-size: clamp(21px,3.2vw,27px); font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="nav-brand" href="index.html">Azureal&nbsp;·&nbsp;The token</a>
+    <nav class="nav-links">
+      <a href="csm.html">CSM board</a>
+      <a href="engine.html">Engine check</a>
+      <a href="placement.html" class="hide-sm">Placement</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="read">
+    <div class="eyebrow"><span class="dot"></span> One spot · one open surface</div>
+    <h1 style="margin-top:15px;">Two panels, one place.<br>They trade.</h1>
+    <p class="lede">
+      The rule is a single sentence: <b>there is one 50&nbsp;cm surface at the work spot, and everything else
+      is a 20&nbsp;×&nbsp;8&nbsp;cm token docked under it.</b> Press a token and it becomes the surface; whatever
+      was the surface drops into the dock. Nothing resizes, nothing new appears, and the view never holds
+      more than one reading surface plus one handle.
+    </p>
+  </section>
+
+  <div class="wrap">
+
+    <div class="stage2">
+      <span class="cap" id="cap">Explain is the surface · CSM is the token</span>
+      <div class="cab" aria-hidden="true">
+        <i style="top:36px"></i><i style="top:280px"></i><i style="top:320px"></i><i style="top:360px"></i>
+        <div class="dial"></div>
+      </div>
+      <svg class="cable" id="cable" aria-hidden="true"></svg>
+
+      <div class="tag" id="tag" hidden>
+        <span style="width:16px;height:16px;border-radius:50%;background:#30d158;display:block"></span>
+        Grab Chainsaw
+      </div>
+      <div class="leash" id="leash" hidden>
+        <span class="ring">no surface &middot; token rides the body leash</span>
+        <button class="tok" id="tok2"></button>
+      </div>
+
+      <div class="rig" id="rig">
+        <div class="surfwrap">
+          <!-- EXPLAIN -->
+          <div class="surf" id="s-explain">
+            <div class="s-bar"><span class="now">Explain</span><span class="sep">/</span><span>VCB 9</span>
+              <span class="r"><em style="background:#ff9f0a"></em>Speaking</span></div>
+            <div class="s-body">
+              <div class="eyeb">Interlock</div>
+              <div class="h2b">Trip coil<br>supervision</div>
+              <div class="txt" id="reveal"></div>
+              <div class="sp"></div>
+            </div>
+            <div class="s-foot">
+              <div class="abar"><i></i></div>
+              <button class="sbtn">Playing audio…</button>
+            </div>
+          </div>
+
+          <!-- CSM -->
+          <div class="surf" id="s-csm" data-off>
+            <div class="s-bar"><span>Ch 1</span><span class="sep">/</span><span class="now">Proc 1 of 1</span>
+              <span class="r"><em style="background:#30d158"></em>2/5</span></div>
+            <div class="s-body">
+              <div class="h2b" style="margin-top:0">Understand the scenario</div>
+              <div class="mtr2"><i class="on"></i><i class="on"></i><i class="now"></i><i></i><i></i></div>
+              <div class="lst">
+                <div class="itm"><span class="nn done">&#10003;</span><span class="it2">Read the instruction</span></div>
+                <div class="itm"><span class="nn done">&#10003;</span><span class="it2">Identify VCB 9</span></div>
+                <div class="itm"><span class="nn now">3</span><span class="it2">Confirm isolation</span></div>
+              </div>
+              <div class="sp"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dock">
+          <button class="tok" id="tok"></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="drive">
+      <button class="p" id="b-swap">Press the token</button>
+      <button id="b-grab">Scenario: Explain / Grab</button>
+      <button id="b-anchor">Cable anchor: Bottom / Left</button>
+      <button id="b-alert">Fire an alert</button>
+    </div>
+    <p class="hint" id="hint">The token is the only new object in the scene. Everything else is the panel you already have.</p>
+
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">How the snap works</h2>
+        <p class="lede" style="margin-top:12px;">
+          The token does not float free and it does not follow the head. It is <b>parented to the same anchor
+          the Explain/Action panel already uses</b> — so it inherits a position that is already solved,
+          already clear of the geometry, and already pointed at the right part of the machine.
+        </p>
+      </div>
+
+      <div class="panel rows" style="margin-top:22px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The dock is one offset, not a second placement system</div>
+            <div class="rw-d">
+              The token sits centred <b>2&nbsp;cm below the surface's bottom edge</b>, on the same plane, sharing
+              the same billboarding. Because it hangs off a panel already anchored to the component being
+              explained, there is no new trace, no new avoidance, no new “where should this go”.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--b">Free</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Exactly one surface open at a time — this is the whole idea</div>
+            <div class="rw-d">
+              Press the CSM token and the checklist grows out of the dock into the same 500&nbsp;×&nbsp;500 footprint
+              Explain was occupying, while Explain drops into the dock as its own token. It is also why
+              nothing ever changes size: <b>every surface is 50&nbsp;cm, every token is 20&nbsp;×&nbsp;8&nbsp;cm</b> — which
+              was your objection to the old design.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--b">Free</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The panel grows out of the token, not out of its own centre</div>
+            <div class="rw-d">
+              <code>transform-origin</code> sits on the dock, so the expand reads as the token unfolding rather than a
+              window appearing. Same trick the Dynamic Island uses, and the reason it reads as one object in
+              two shapes instead of two separate things.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--b">Free</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">8&nbsp;cm tall, because that is the laser floor</div>
+            <div class="rw-d">
+              200&nbsp;×&nbsp;80&nbsp;px at scale 0.1 — 20&nbsp;×&nbsp;8&nbsp;cm. I had it at 6&nbsp;cm before, which contradicted the
+              button sizing on the CSM board. Eight centimetres is the floor for a laser target with no
+              magnetism, and the token is the one thing a trainee must be able to hit while holding a tool.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--b">Fixed</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">What the token is allowed to say</div>
+            <div class="rw-d">
+              A colour pip, a five-segment meter, and “2/5”. That is all. At 8&nbsp;cm and off-axis — where
+              <code>xr.VRS.FoveationLevel=2</code> renders coarser — a word is not readable anyway. The alert state widens
+              to 36&nbsp;cm for about two seconds to say one thing, then narrows back. Motion in the periphery is
+              what gets noticed, not text.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--b">Free</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Pressing it is not a new button to learn</div>
+            <div class="rw-d">
+              It's the laser and trigger already used for every widget in the framework. No face button, no
+              wrist raise, no gesture. That objection is what killed the summon designs, and the dock removes
+              it — the token is always beside the panel they are already looking at.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--b">Free</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The real hazard: the token is a hit-testable widget</div>
+            <div class="rw-d">
+              <code>AAzr_Pawn::ProcessStickInput</code> returns early and kills <b>all</b> locomotion — teleport, snap turn,
+              blink-step, smooth move — the moment <b>either</b> hand's laser crosses any hit-test-visible widget.
+              A token parked permanently in front of the trainee would freeze them whenever a laser grazed it.
+              It has to sit at <code>NoCollision</code> unless a laser is deliberately on it, the same way the zones do.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--c">Design in</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Explain cannot simply be “paused” while the checklist is open</div>
+            <div class="rw-d">
+              <code>DisableExplain</code> stops the audio, calls <code>ShowFullExplainText()</code>, nulls the UI and then
+              <b>broadcasts <code>OnExplainCompleted</code></b> — which advances the training. So collapsing Explain into its
+              token cannot reuse it. It needs a new <code>SetPresentationMuted(bool)</code> that ducks audio and hides
+              visuals without touching progression; <code>ToggleTether</code> and <code>ToggleHighlight</code> are both <code>private:</code>
+              today, so it is a small header change rather than a workaround.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--c">Needs C++</span></div>
+        </div>
+      </div>
+    </section>
+
+    <footer style="margin:72px auto 60px; max-width:var(--max-read); padding:26px var(--pad-x) 0;
+                   border-top:1px solid var(--hairline); font-size:13px; color:var(--text-3); line-height:1.8;">
+      <a href="csm.html" style="color:var(--accent-link); text-decoration:none;">CSM board</a> ·
+      <a href="engine.html" style="color:var(--accent-link); text-decoration:none;">engine check</a> ·
+      <a href="placement.html" style="color:var(--accent-link); text-decoration:none;">placement</a>
+    </footer>
+
+  </div>
+</main>
+
+<script src="app.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const surf = { explain: $('#s-explain'), csm: $('#s-csm') };
+const tok = $('#tok'), tok2 = $('#tok2');
+let open = 'explain';                 // which surface is the 50 cm one
+let scenario = 'panel';               // 'panel' = Explain/Action active, 'grab' = Grab/Latch active
+let anchor = 'bottom';                // EAzr_TetherPos on the widget. Bottom is the CODE DEFAULT.
+let alerting = false;
+
+const csmFace =
+  '<span class="pip" style="background:#0a84ff"></span>' +
+  '<span class="mtr"><i class="on"></i><i class="on"></i><i class="now"></i><i></i><i></i></span>' +
+  '<span class="cnt">2/5</span>';
+const explainFace =
+  '<span class="pip" style="background:#ff9f0a"></span>' +
+  '<span class="mtr"><i class="now" style="flex:3"></i><i style="flex:2"></i></span>' +
+  '<span class="cnt">0:18</span>';
+const alertFace =
+  '<span class="pip" style="background:#30d158"></span>' +
+  '<span class="lbl">Step complete</span><span class="cnt">3/5</span>';
+
+function render() {
+  const grab = scenario === 'grab';
+
+  /* Grab / Latch put no surface in the world — only a tag. So the rig goes away
+     and the CSM token falls back to the body leash from placement.html. */
+  $('#rig').hidden = grab;
+  $('#tag').hidden = !grab;
+  $('#leash').hidden = !grab;
+
+  if (grab) {
+    tok2.innerHTML = alerting ? alertFace : csmFace;
+    tok2.toggleAttribute('data-alert', alerting);
+    $('#cap').textContent = 'Grab is active · no surface · CSM token on the leash';
+    $('#hint').textContent =
+      'Grab and Latch only ever show a tag — "Grab Chainsaw". There is nothing to dock to, so the ' +
+      'token sits at its leashed body anchor instead. Press it and the checklist opens there.';
+  } else {
+    surf.explain.toggleAttribute('data-off', open !== 'explain');
+    surf.csm.toggleAttribute('data-off',     open !== 'csm');
+    tok.innerHTML = alerting ? alertFace : (open === 'explain' ? csmFace : explainFace);
+    tok.toggleAttribute('data-alert', alerting);
+    $('#cap').textContent = open === 'explain'
+      ? 'Explain is the surface · CSM is the token'
+      : 'CSM is the surface · Explain is the token';
+    $('#hint').textContent = anchor === 'bottom'
+      ? 'Cable anchor = Bottom, which is the code default — and it runs straight through the token. This is the collision you spotted.'
+      : 'Cable anchor = Left, the edge facing the mesh. It clears the token, and it stops the cable wrapping round the panel.';
+  }
+  drawCable();
+}
+
+/* the cable is kept — it still points at the part being explained */
+function drawCable() {
+  const svg = $('#cable'), stage = svg.parentElement;
+  svg.innerHTML = '';
+  const R = stage.getBoundingClientRect();
+  const d = $('.dial').getBoundingClientRect();
+  const x2 = d.left - R.left + d.width / 2, y2 = d.top - R.top + d.height / 2;
+
+  let x1, y1;
+  if (scenario === 'grab') {
+    const t = $('#tag').getBoundingClientRect();          // the tag tethers to the object too
+    x1 = t.left - R.left; y1 = t.top - R.top + t.height / 2;
+  } else {
+    const p = $('.surfwrap').getBoundingClientRect();
+    if (anchor === 'bottom') { x1 = p.left - R.left + p.width / 2; y1 = p.top - R.top + p.height; }
+    else                     { x1 = p.left - R.left;               y1 = p.top - R.top + p.height * 0.55; }
+  }
+
+  const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2 + (anchor === 'bottom' && scenario !== 'grab' ? 130 : 50);
+  svg.setAttribute('viewBox', '0 0 ' + R.width + ' ' + R.height);
+  svg.innerHTML =
+    '<defs><linearGradient id="cg" x1="1" y1="0" x2="0" y2="0">' +
+      '<stop offset="0%"   stop-color="#ff9f0a" stop-opacity="0"/>' +
+      '<stop offset="40%"  stop-color="#ff9f0a" stop-opacity="0.7"/>' +
+      '<stop offset="100%" stop-color="#ff9f0a" stop-opacity="1"/>' +
+    '</linearGradient></defs>' +
+    '<path d="M' + x1 + ' ' + y1 + ' Q' + cx + ' ' + cy + ' ' + x2 + ' ' + y2 + '" ' +
+      'fill="none" stroke="url(#cg)" stroke-width="4" stroke-linecap="round"/>' +
+    '<circle cx="' + x2 + '" cy="' + y2 + '" r="7" fill="#ff9f0a"/>';
+}
+
+/* the letter-by-letter reveal stays */
+const LINE = 'Prove the trip coil is healthy before the breaker is racked out.';
+let ri = 0;
+setInterval(() => {
+  if (scenario !== 'panel' || open !== 'explain') return;
+  ri = ri >= LINE.length + 14 ? 0 : ri + 1;
+  $('#reveal').textContent = LINE.slice(0, ri);
+}, 55);
+
+function swap() { if (!alerting && scenario === 'panel') { open = open === 'explain' ? 'csm' : 'explain'; render(); } }
+tok.addEventListener('click', swap);
+$('#b-swap').addEventListener('click', swap);
+$('#b-grab').addEventListener('click', () => { scenario = scenario === 'panel' ? 'grab' : 'panel'; render(); });
+$('#b-anchor').addEventListener('click', () => { anchor = anchor === 'bottom' ? 'left' : 'bottom'; render(); });
+$('#b-alert').addEventListener('click', () => {
+  if (alerting) return;
+  alerting = true; render();
+  setTimeout(() => { alerting = false; render(); }, 2200);
+});
+window.addEventListener('resize', drawCable);
+render();
+</script>
+</body>
+</html>

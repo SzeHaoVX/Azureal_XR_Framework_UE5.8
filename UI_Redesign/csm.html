@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSM board — 500 × 500</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- ONLY 500/600/800 — the exact three Montserrat faces shipped in
+     Plugins/AzurealXR/Content/Interaction/Explain_Action_Tag_Label/ -->
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  [hidden] { display: none !important; }
+
+  .scene {
+    position: relative; border-radius: var(--r-hero); overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 72% 6%,  rgba(126,158,198,0.30) 0%, rgba(0,0,0,0) 58%),
+      radial-gradient(90%  70% at 10% 96%, rgba(196,146,94,0.20)  0%, rgba(0,0,0,0) 62%),
+      linear-gradient(168deg, #2b2f37 0%, #191c21 48%, #0e1014 100%);
+    box-shadow: var(--sh-panel);
+    display: grid; place-items: center; padding: 30px; min-height: 560px;
+  }
+  .scene::after {
+    content: ''; position: absolute; inset: auto 0 0 0; height: 18%;
+    background: linear-gradient(180deg, rgba(150,110,72,0) 0%, rgba(150,110,72,0.22) 60%, rgba(120,86,55,0.38) 100%);
+    pointer-events: none;
+  }
+
+  .step { padding-block: clamp(26px, 4vw, 44px); }
+  .step + .step { border-top: 1px solid var(--hairline); }
+  .step-head { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+  .step-n {
+    flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--text); color: #fff;
+    display: grid; place-items: center; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .step-n--opt { background: var(--faint); color: var(--text-2); }
+  .step-head h2 { font-size: clamp(20px, 2.7vw, 25px); }
+  .step-head p { margin-top: 7px; font-size: 14.5px; color: var(--text-2); line-height: 1.6; max-width: 600px; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 880px) { .pair { grid-template-columns: 1fr; } }
+  .cap { text-align: center; margin-top: 9px; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+         text-transform: uppercase; color: var(--text-3); }
+
+  .toggle {
+    display: inline-flex; background: rgba(0,0,0,0.05); border-radius: var(--r-pill); padding: 3px; gap: 2px;
+  }
+  .toggle button {
+    border: none; cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 550;
+    padding: 9px 18px; border-radius: var(--r-pill); background: transparent; color: var(--text-2);
+    transition: all .22s var(--ease-out-quart);
+  }
+  .toggle button.on { background: var(--surface); color: var(--text); font-weight: 650; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
+  /* ════════ THE WIDGET — 500 × 500 px at scale 0.1 = 50 × 50 cm ════════ */
+  .bd {
+    width: 500px; height: 500px; border-radius: 30px;
+    /* Montserrat Medium is the FLOOR — the project ships no Regular.
+       Every weight below is 500, 600 or 800. Nothing else exists. */
+    --wfont: 'Montserrat', 'Segoe UI', sans-serif;
+    font-family: var(--wfont); font-weight: 500; display: flex; flex-direction: column; overflow: hidden;
+    position: relative;
+  }
+
+  /* dark material (default) */
+  .bd {
+    --t:#fff; --t2:rgba(235,235,245,0.68); --t3:rgba(235,235,245,0.46); --t4:rgba(235,235,245,0.26);
+    --div:rgba(255,255,255,0.10); --fill:rgba(120,120,128,0.22); --fill2:rgba(120,120,128,0.14);
+    --blue:#0a84ff; --green:#30d158; --red:#ff453a; --track:rgba(120,120,128,0.28);
+    --onAccent:#04223d; --onGreen:#05261a; --danger:#ff8a80;
+    color: var(--t);
+    background: rgba(28,28,30,0.80);
+    backdrop-filter: blur(26px) saturate(160%);
+    -webkit-backdrop-filter: blur(26px) saturate(160%);
+    box-shadow:
+      inset 0 0 0 2px rgba(255,255,255,0.13), inset 0 2px 0 0 rgba(255,255,255,0.10),
+      0 3px 12px rgba(0,0,0,0.34), 0 30px 70px rgba(0,0,0,0.52);
+  }
+  /* light material */
+  .bd[data-theme="light"] {
+    --t:#1d1d1f; --t2:#4b4b50; --t3:#6e6e73; --t4:#aeaeb2;
+    --div:rgba(0,0,0,0.12); --fill:rgba(120,120,128,0.13); --fill2:rgba(120,120,128,0.08);
+    --blue:#0071e3; --green:#1d9a47; --red:#d70015; --track:rgba(120,120,128,0.22);
+    --onAccent:#fff; --onGreen:#fff; --danger:#c4271d;
+    color: var(--t);
+    background: rgba(238,238,243,0.88);
+    box-shadow:
+      inset 0 0 0 2px rgba(255,255,255,0.75), inset 0 2px 0 0 rgba(255,255,255,0.9),
+      0 3px 12px rgba(0,0,0,0.30), 0 30px 70px rgba(0,0,0,0.45);
+  }
+
+  .bar {
+    flex: none; display: flex; align-items: center; gap: 10px; padding: 0 22px; height: 62px;
+    border-bottom: 3px solid var(--div);
+  }
+  .bar--foot { border-bottom: none; border-top: 3px solid var(--div); height: 98px; gap: 12px; }
+  .crumb { font-size: 19px; font-weight: 600; color: var(--t2); display: flex; gap: 9px; align-items: center; min-width: 0; }
+  .crumb .now { color: var(--t); } .crumb .sep { color: var(--t4); }
+  .crumb span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .status { margin-left: auto; font-size: 17px; font-weight: 500; color: var(--t2);
+            display: flex; align-items: center; gap: 9px; flex: none; font-variant-numeric: tabular-nums; }
+  .status .pip { width: 12px; height: 12px; border-radius: 50%; background: var(--green); flex: none; }
+  .status .pip--idle { background: var(--t4); }
+
+  .body { flex: 1; padding: 24px 22px; display: flex; flex-direction: column; min-height: 0; }
+  .eyeb { font-size: 15px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--t3); }
+  .h1 { font-size: 40px; font-weight: 800; letter-spacing: -0.026em; line-height: 1.08; }
+  .h2 { font-size: 31px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.16; }
+  .lede2 { font-size: 22px; line-height: 1.45; color: var(--t2); }
+
+  /* the scroll region — at 50 cm this is load-bearing, not decorative */
+  .scroll { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+  .scroll::after {
+    content: ''; position: absolute; inset: auto 0 0 0; height: 44px; pointer-events: none;
+    background: linear-gradient(180deg, rgba(28,28,30,0) 0%, rgba(28,28,30,0.85) 100%);
+  }
+  .bd[data-theme="light"] .scroll::after {
+    background: linear-gradient(180deg, rgba(238,238,243,0) 0%, rgba(238,238,243,0.92) 100%);
+  }
+  .rail {
+    position: absolute; right: 2px; top: 6px; bottom: 6px; width: 4px; border-radius: 999px;
+    background: var(--track);
+  }
+  .rail i { position: absolute; left: 0; width: 4px; border-radius: 999px; background: var(--t3); }
+
+  .list { background: var(--fill2); border-radius: 22px; overflow: hidden; box-shadow: inset 0 0 0 2px var(--div); }
+
+  /* A 50 cm panel cannot show five long sub-procedures at once — so it doesn't try.
+     In a read-only list every row is one clipped line EXCEPT the active one, which
+     opens to its full text. The trainee is on step 3; step 3 is what must be readable.
+     Rows here are read, not pressed, so they are allowed below the 80 px laser floor —
+     the chapter list, whose rows ARE buttons, keeps it. */
+  .list--proc .item { min-height: 60px; padding: 10px 16px; }
+  .list--proc .it   { font-size: 21px; -webkit-line-clamp: 1; line-height: 1.3; }
+  .list--proc .item--now { min-height: 84px; background: color-mix(in srgb, var(--blue) 10%, transparent); }
+  .list--proc .item--now .it { font-size: 24px; -webkit-line-clamp: 4; font-weight: 600; }
+  .item { display: flex; align-items: center; gap: 14px; padding: 13px 17px; min-height: 80px; }
+  .item + .item { border-top: 3px solid var(--div); }
+  .item--sel { background: color-mix(in srgb, var(--blue) 16%, transparent); box-shadow: inset 0 0 0 3px var(--blue); }
+  .n {
+    flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 20px; font-weight: 600; color: var(--t3); box-shadow: inset 0 0 0 3px var(--div);
+    font-variant-numeric: tabular-nums;
+  }
+  .n--now  { background: var(--blue);  color: var(--onAccent); box-shadow: none; }
+  .n--done { background: var(--green); color: var(--onGreen);  box-shadow: none; }
+    /* Sub-procedures run long. The row grows to fit up to three lines, then
+     clamps — in Slate that is ETextOverflowPolicy::MultilineEllipsis plus a
+     max height, not a CSS-only trick. */
+  .it { font-size: 24px; font-weight: 600; letter-spacing: -0.004em; line-height: 1.26; display: -webkit-box;
+        -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .is { margin-top: 4px; font-size: 19px; color: var(--t3); display: block; font-variant-numeric: tabular-nums; }
+  .here { margin-left: auto; flex: none; color: var(--blue); display: flex; align-items: center; }
+
+  /* the step meter rides directly under the top bar instead of costing a block */
+  .meter { display: flex; gap: 4px; }
+  .meter--rail { gap: 3px; margin: 0 -22px; padding: 0 22px 0; }
+  .meter--rail i { height: 6px; border-radius: 0; }
+  .meter i { flex: 1; height: 9px; border-radius: 999px; background: var(--track); }
+  .meter i.on { background: var(--green); } .meter i.now { background: var(--blue); }
+
+  .defs { display: flex; flex-direction: column; }
+  .def { display: flex; align-items: baseline; gap: 16px; padding: 15px 0; }
+  .def + .def { border-top: 3px solid var(--div); }
+  .def dt { font-size: 22px; color: var(--t2); }
+  .def dd { margin-left: auto; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* 80 px is the practical floor for a laser target at scale 0.1 (8 cm) */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    height: 80px; padding: 0 26px; border-radius: 999px; border: none; cursor: pointer;
+    font-family: var(--wfont); font-size: 24px; font-weight: 600; color: var(--t);
+    background: var(--fill); box-shadow: inset 0 0 0 3px var(--div); white-space: nowrap;
+  }
+  .btn--go { background: var(--blue); color: var(--onAccent); box-shadow: none; font-weight: 600; }
+  .bd[data-theme="light"] .btn--go { color: #fff; }
+  .btn--grow { flex: 1; min-width: 0; }
+  .btn[disabled] { color: var(--t4); background: var(--fill2); }
+  .btn--danger { background: var(--red); color: #fff; box-shadow: none; font-weight: 600; }
+
+  .opt { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-radius: 20px;
+         background: var(--fill2); box-shadow: inset 0 0 0 2px var(--div); font-size: 23px; font-weight: 500; line-height: 1.25; }
+  .opt + .opt { margin-top: 10px; }
+  .opt .k { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+            font-size: 18px; font-weight: 600; color: var(--t3); box-shadow: inset 0 0 0 3px var(--div); }
+  .opt--right { background: color-mix(in srgb, var(--green) 18%, transparent); box-shadow: inset 0 0 0 3px var(--green); }
+  .opt--right .k { background: var(--green); color: var(--onGreen); box-shadow: none; }
+
+  .spacer { flex: 1; }
+  .changed { margin-top: 14px; }
+  .changed li { list-style: none; font-size: 14px; color: var(--text-body); line-height: 1.6; padding: 8px 0; display: flex; gap: 10px; }
+  .changed li + li { border-top: 1px solid var(--hairline); }
+  .changed b { color: var(--text); font-weight: 600; }
+  .chg-i { flex: none; width: 17px; height: 17px; margin-top: 3px; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="nav-brand" href="index.html">Azureal&nbsp;·&nbsp;CSM board</a>
+    <nav class="nav-links">
+      <a href="cable.html">The cable</a>
+      <a href="overhaul.html">World widgets</a>
+      <a href="engine.html">Engine check</a>
+      <a href="token.html" class="hide-sm">Token</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="read">
+    <div class="eyebrow"><span class="dot"></span> Every screen · 500 × 500</div>
+    <h1 style="margin-top:15px;">Same size as Explain.<br>Which means it scrolls.</h1>
+    <p class="lede">
+      Measured off your built widget: <b>DrawSize 500&nbsp;&times;&nbsp;500 at scale 0.1 — a 50&nbsp;cm
+      square.</b> Every board below is that exact size, so when the token expands it always opens to the
+      same panel the trainee already knows.
+    </p>
+    <p class="lede" style="margin-top:12px;">
+      Both materials are here. Switch them and judge for yourself — but read the note under the first one
+      before you pick.
+    </p>
+  </section>
+
+  <div class="wrap">
+
+  <!-- ═══════════ 1 — both materials side by side ═══════════ -->
+  <section class="step">
+    <div class="read step-head" style="padding:0;">
+      <span class="step-n">1</span>
+      <div>
+        <h2>Session start &mdash; dark and light</h2>
+        <p>The same screen in both materials, so the comparison is like for like.</p>
+      </div>
+    </div>
+
+    <div class="pair">
+      <div>
+        <div class="scene"><div class="bd" data-theme="dark">
+          <div class="bar">
+            <div class="crumb"><span class="now">Rescue</span></div>
+            <div class="status"><span class="pip pip--idle"></span> Not started</div>
+          </div>
+          <div class="body">
+            <div class="eyeb">Training module</div>
+            <h1 class="h1" style="margin-top:10px;">Overhanging<br>Collapse</h1>
+            <dl class="defs" style="margin-top:20px;">
+              <div class="def"><dt>Chapters</dt><dd>2</dd></div>
+              <div class="def"><dt>Procedures</dt><dd>6</dd></div>
+            </dl>
+            <div class="spacer"></div>
+          </div>
+          <div class="bar bar--foot">
+            <button class="btn">Chapters</button>
+            <button class="btn btn--go btn--grow">Begin</button>
+          </div>
+        </div></div>
+        <div class="cap">Dark</div>
+      </div>
+      <div>
+        <div class="scene"><div class="bd" data-theme="light">
+          <div class="bar">
+            <div class="crumb"><span class="now">Rescue</span></div>
+            <div class="status"><span class="pip pip--idle"></span> Not started</div>
+          </div>
+          <div class="body">
+            <div class="eyeb">Training module</div>
+            <h1 class="h1" style="margin-top:10px;">Overhanging<br>Collapse</h1>
+            <dl class="defs" style="margin-top:20px;">
+              <div class="def"><dt>Chapters</dt><dd>2</dd></div>
+              <div class="def"><dt>Procedures</dt><dd>6</dd></div>
+            </dl>
+            <div class="spacer"></div>
+          </div>
+          <div class="bar bar--foot">
+            <button class="btn">Chapters</button>
+            <button class="btn btn--go btn--grow">Begin</button>
+          </div>
+        </div></div>
+        <div class="cap">Light</div>
+      </div>
+    </div>
+
+    <div class="read" style="padding:0; margin-top:20px;">
+      <div class="note note--warn">
+        <h3>Before you pick light</h3>
+        <p>Light is the better-looking one on this web page, and that is exactly the trap. In the headset
+          your config runs <code>r.DefaultFeature.AutoExposure=False</code> with
+          <code>r.DefaultFeature.Bloom=True</code> — a bright panel never gets adapted down, and bloom
+          smears a near-white fill into the dark text sitting on it. At 50&nbsp;cm and arm&rsquo;s length in
+          a dim substation, it is also a small lamp pointed at the trainee.</p>
+        <p>If you want light, the safe version is the one above: a <b>mid-value frosted grey</b>
+          (<code>rgba(238,238,243,0.88)</code>), never white, with the accent darkened to
+          <code>#0071e3</code> so it still reads against a pale ground. Judge it in the headset with bloom
+          on before committing — it is the one decision on this page a screenshot cannot settle.</p>
+      </div>
+    </div>
+  </section>
+
+  </div>
+
+  <div class="wrap" style="display:flex; justify-content:center; gap:14px; align-items:center; padding-bottom:10px;">
+    <span style="font-size:13px; color:var(--text-2); font-weight:550;">Everything below:</span>
+    <div class="toggle" id="theme">
+      <button data-th="dark" class="on">Dark</button>
+      <button data-th="light">Light</button>
+    </div>
+  </div>
+
+  <div class="wrap" id="rest">
+
+  <!-- ═══════════ 2 ═══════════ -->
+  <section class="step">
+    <div class="read step-head" style="padding:0;">
+      <span class="step-n">2</span>
+      <div>
+        <h2>Chapter select</h2>
+        <p>At 50 cm the list scrolls. The current chapter is marked, the picked one is the row&rsquo;s own
+          state — two different facts, two different shapes.</p>
+      </div>
+    </div>
+    <div class="scene"><div class="bd">
+      <div class="bar">
+        <div class="crumb"><span>Rescue</span><span class="sep">/</span><span class="now">Chapters</span></div>
+      </div>
+      <div class="body">
+        <div class="scroll">
+          <div class="list">
+            <div class="item">
+              <span class="n n--now">1</span>
+              <span style="flex:1; min-width:0;"><span class="it">Briefing</span><span class="is">0 of 1</span></span>
+              <span class="here"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9"/></svg></span>
+            </div>
+            <div class="item item--sel">
+              <span class="n">2</span>
+              <span style="flex:1; min-width:0;"><span class="it">Preparation</span><span class="is">0 of 5</span></span>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.4"
+                   stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>
+            </div>
+            <div class="item">
+              <span class="n">3</span>
+              <span style="flex:1; min-width:0;"><span class="it">Isolation</span><span class="is">0 of 4</span></span>
+            </div>
+          </div>
+          <div class="rail"><i style="top:0; height:62%;"></i></div>
+        </div>
+      </div>
+      <div class="bar bar--foot">
+        <button class="btn">Back</button>
+        <button class="btn btn--go btn--grow">Start 2</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 3 ═══════════ -->
+  <section class="step">
+    <div class="read step-head" style="padding:0;">
+      <span class="step-n">3</span>
+      <div>
+        <h2>Chapter briefing</h2>
+        <p>Title, one real sentence, and what it contains. No dead space, because the panel is no longer
+          bigger than its content.</p>
+      </div>
+    </div>
+    <div class="scene"><div class="bd">
+      <div class="bar">
+        <div class="crumb"><span>Rescue</span><span class="sep">/</span><span class="now">Chapter 1</span></div>
+        <div class="status"><span class="pip pip--idle"></span> 1 proc</div>
+      </div>
+      <div class="body">
+        <div class="eyeb">Briefing</div>
+        <h2 class="h2" style="margin-top:8px;">VCB 9 shutdown</h2>
+        <p class="lede2" style="margin-top:14px;">
+          Take VCB&nbsp;9 out of service and prove it dead before work begins.
+        </p>
+        <div class="list" style="margin-top:18px;">
+          <div class="item"><span class="n">1</span><span class="it">Understand the scenario</span></div>
+        </div>
+        <div class="spacer"></div>
+      </div>
+      <div class="bar bar--foot">
+        <button class="btn">Back</button>
+        <button class="btn btn--go btn--grow">Start</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 4 ═══════════ -->
+  <section class="step">
+    <div class="read step-head" style="padding:0;">
+      <span class="step-n">4</span>
+      <div>
+        <h2>Procedure</h2>
+        <p>Four rows visible of five, and the list follows the active step. This is the screen the shrink
+          costs the most, and the one <code>MainScrollBox</code> was already built for.</p>
+      </div>
+    </div>
+    <div class="scene"><div class="bd">
+      <div class="bar">
+        <div class="crumb"><span>Ch 1</span><span class="sep">/</span><span class="now">Proc 1 of 1</span></div>
+        <div class="status"><span class="pip"></span> 2/5</div>
+      </div>
+      <div class="meter meter--rail"><i class="on"></i><i class="on"></i><i class="now"></i><i></i><i></i></div>
+      <div class="body" style="padding-top:16px;">
+        <h2 class="h2" style="font-size:28px;">Understand the scenario</h2>
+        <div class="scroll" style="margin-top:14px;">
+          <div class="list list--proc">
+            <div class="item"><span class="n n--done">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3"
+                   stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg></span>
+              <span class="it" style="color:var(--t2);">Read the instruction</span></div>
+            <div class="item"><span class="n n--done">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3"
+                   stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg></span>
+              <span class="it" style="color:var(--t2);">Identify VCB 9</span></div>
+            <div class="item item--now"><span class="n n--now">3</span>
+              <span class="it" style="flex:1;">Confirm the isolation points are locked and tagged before approaching the panel</span>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" stroke-width="2"
+                   stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+            <div class="item"><span class="n">4</span><span class="it">Check the permit to work matches the switching instruction reference number</span></div>
+            <div class="item"><span class="n">5</span><span class="it">Confirm the boundary</span></div>
+          </div>
+          <div class="rail"><i style="top:16%; height:56%;"></i></div>
+        </div>
+      </div>
+      <div class="bar bar--foot">
+        <button class="btn" style="width:80px; padding:0;">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <button class="btn">Back</button>
+        <button class="btn btn--go btn--grow" disabled>Next</button>
+      </div>
+    </div></div>
+    <div class="read" style="padding:0;">
+      <ul class="changed">
+        <li><svg class="chg-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>
+          <span><b>Scrolling stops being decorative.</b> <code>ScrollWidgetIntoView</code> is called from
+          exactly one place — <code>AdvanceProgress</code>. Never on page turn, back, jump, init, or for
+          quiz pages. At 1900&nbsp;px that is a harmless no-op; at 500&nbsp;px it is the only thing keeping
+          the active row on screen.</span></li>
+        <li><svg class="chg-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>
+          <span><b>Change <code>IntoView</code> to <code>Center</code>.</b> On a short viewport
+          &ldquo;minimum scroll&rdquo; parks the active row flush against the bottom edge — exactly the row
+          the trainee is meant to be doing.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ═══════════ 5 ═══════════ -->
+  <section class="step">
+    <div class="read step-head" style="padding:0;">
+      <span class="step-n">5</span>
+      <div>
+        <h2>Menu</h2>
+        <p>Navigation and destruction, separated — the change worth making regardless of anything else on
+          this page.</p>
+      </div>
+    </div>
+    <div class="scene"><div class="bd">
+      <div class="bar">
+        <div class="crumb"><span>Ch 1</span><span class="sep">/</span><span class="now">Menu</span></div>
+      </div>
+      <div class="body">
+        <div class="list">
+          <div class="item">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+            <span class="it" style="flex:1;">Chapters</span>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <div class="item">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--t3)" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><circle cx="12" cy="12" r="9"/><path d="M12 8v5l3 2"/></svg>
+            <span class="it" style="flex:1;">Controller guide</span>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--t4)" stroke-width="1.9"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+        <div class="eyeb" style="margin-top:22px;">Start over</div>
+        <div class="list" style="margin-top:10px;">
+          <div class="item"><span class="it" style="flex:1; color:var(--danger);">Restart chapter</span>
+            <span class="is" style="margin:0;">loses 0/1</span></div>
+          <div class="item"><span class="it" style="flex:1; color:var(--danger);">Restart module</span>
+            <span class="is" style="margin:0;">loses all 6</span></div>
+        </div>
+        <div class="spacer"></div>
+      </div>
+      <div class="bar bar--foot">
+        <button class="btn btn--grow">Back to the procedure</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 6 ═══════════ -->
+  <section class="step">
+    <div class="read step-head" style="padding:0;">
+      <span class="step-n step-n--opt">6</span>
+      <div>
+        <h2>Restart confirmation</h2>
+        <p>Required by the C++ whether or not it has been designed — <code>RestartChapterCompletedPanel</code>,
+          <code>RestartMessageText</code>, <code>Btn_ConfirmRestart</code>, <code>Btn_CancelRestart</code>
+          are all mandatory binds.</p>
+      </div>
+    </div>
+    <div class="scene"><div class="bd">
+      <div class="body" style="padding:30px 26px;">
+        <div class="eyeb" style="color:var(--danger);">Cannot be undone</div>
+        <h2 class="h2" style="margin-top:12px;">Restart chapter 1?</h2>
+        <p class="lede2" style="margin-top:16px;">
+          You have completed <b style="color:var(--t);">0 of 1</b> procedures. Restarting clears them.
+        </p>
+        <div class="spacer"></div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <button class="btn btn--grow">Keep going</button>
+          <button class="btn btn--danger btn--grow">Restart</button>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 7 ═══════════ -->
+  <section class="step">
+    <div class="read step-head" style="padding:0;">
+      <span class="step-n step-n--opt">7</span>
+      <div>
+        <h2>Quiz</h2>
+        <p>Options scroll too. <code>EvaluateCurrentPageType()</code> is an empty stub — the WBP must call
+          <code>ForceQuizStateFromBlueprint()</code> or quizzes silently do nothing.</p>
+      </div>
+    </div>
+    <div class="scene"><div class="bd">
+      <div class="bar">
+        <div class="crumb"><span class="now">Question 1 of 3</span></div>
+        <div class="status"><span class="pip"></span></div>
+      </div>
+      <div class="body">
+        <h2 class="h2" style="font-size:27px;">Before racking out, what must be confirmed?</h2>
+        <div class="scroll" style="margin-top:14px;">
+          <div>
+            <div class="opt"><span class="k">A</span> Breaker is open</div>
+            <div class="opt opt--right"><span class="k">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="3"
+                   stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg></span>
+              Open and spring discharged</div>
+            <div class="opt"><span class="k">C</span> Earth switch closed</div>
+          </div>
+          <div class="rail"><i style="top:0; height:78%;"></i></div>
+        </div>
+      </div>
+      <div class="bar bar--foot">
+        <button class="btn">Back</button>
+        <button class="btn btn--go btn--grow">Next</button>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ═══════════ 8 ═══════════ -->
+  <section class="step">
+    <div class="read step-head" style="padding:0;">
+      <span class="step-n step-n--opt">8</span>
+      <div>
+        <h2>Chapter complete</h2>
+        <p>The only moment of a 30-minute session anyone remembers. Two numbers, both real — there is no
+          SaveGame anywhere, so no score and no time.</p>
+      </div>
+    </div>
+    <div class="scene"><div class="bd">
+      <div class="body" style="padding:26px; align-items:center; text-align:center;">
+        <svg width="120" height="120" viewBox="0 0 120 120" style="margin-top:14px;">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--track)" stroke-width="8"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="var(--green)" stroke-width="8"
+                  stroke-linecap="round" transform="rotate(-90 60 60)"/>
+          <path d="M40 61l13 13 27-30" fill="none" stroke="var(--green)" stroke-width="9"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="eyeb" style="margin-top:14px; color:var(--green);">Chapter complete</div>
+        <h2 class="h2" style="margin-top:8px; font-size:31px;">VCB 9 shutdown</h2>
+        <dl class="defs" style="margin-top:16px; width:100%;">
+          <div class="def"><dt>Procedures</dt><dd>1 of 1</dd></div>
+          <div class="def"><dt>Module</dt><dd>1 of 6</dd></div>
+        </dl>
+        <div class="spacer"></div>
+        <button class="btn btn--go" style="width:100%;">Start chapter 2</button>
+      </div>
+    </div></div>
+  </section>
+
+  </div>
+
+  <footer class="wrap">
+    <div style="border-top:1px solid var(--hairline); padding-top:20px;">
+      Azureal XR Framework · CSM board at 500 × 500 ·
+      <a href="cable.html" style="color:var(--accent-link); text-decoration:none;">the cable</a> ·
+      <a href="overhaul.html" style="color:var(--accent-link); text-decoration:none;">world widgets</a>
+    </div>
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+<script>
+/* The toggle changes the WIDGET's material, not the page. The first
+   section keeps one of each on purpose, so it is excluded. */
+document.getElementById('theme').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#theme button').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  document.querySelectorAll('#rest .bd').forEach(bd => bd.dataset.theme = b.dataset.th);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel placement — four ways</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .sim {
+    display: grid; grid-template-columns: 1fr 340px; gap: 22px; align-items: start;
+  }
+  @media (max-width: 900px) { .sim { grid-template-columns: 1fr; } }
+
+  .board {
+    position: relative; border-radius: var(--r-panel); overflow: hidden;
+    background: #12141a; box-shadow: var(--sh-panel); touch-action: none; cursor: grab;
+  }
+  .board.dragging { cursor: grabbing; }
+  .board canvas { display: block; width: 100%; height: auto; }
+
+  .hint {
+    position: absolute; left: 14px; bottom: 12px; z-index: 4;
+    font-size: 12px; color: rgba(255,255,255,0.45); pointer-events: none;
+  }
+
+  .readout { display: flex; flex-direction: column; gap: 10px; }
+  .stat {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    padding: 11px 15px; border-radius: var(--r-thumb); background: var(--surface);
+    box-shadow: var(--sh-card); font-size: 13.5px;
+  }
+  .stat b { font-size: 16px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .stat .k { color: var(--text-2); }
+  .stat--warn b { color: var(--heat); }
+  .stat--ok b   { color: #1a8a3c; }
+
+  /* A class selector beats the UA stylesheet's [hidden] rule, so the
+     leash sliders would show in every mode without this. */
+  [hidden] { display: none !important; }
+
+  .ctl { display: flex; flex-direction: column; gap: 13px; padding: 16px 18px; }
+  .ctl label { font-size: 12.5px; color: var(--text-2); display: flex; justify-content: space-between; gap: 10px; }
+  .ctl label b { color: var(--text); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .ctl input[type=range] { width: 100%; accent-color: var(--accent); }
+
+  .fov { margin-top: 10px; }
+  .fov canvas { display: block; width: 100%; height: auto; border-radius: var(--r-thumb); }
+
+  .modes { display: flex; flex-wrap: wrap; gap: 6px; }
+  .modes button {
+    border: none; cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 550;
+    padding: 9px 15px; border-radius: var(--r-pill); background: rgba(0,0,0,0.05); color: var(--text-2);
+    transition: all .2s var(--ease-out-quart);
+  }
+  .modes button.active { background: var(--text); color: #fff; }
+
+  .verdict { padding: 15px 18px; font-size: 14px; line-height: 1.65; color: var(--text-body); }
+  .verdict b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="nav-brand" href="index.html">Azureal&nbsp;·&nbsp;Chapter Select</a>
+    <nav class="nav-links">
+      <a href="index.html#audit">Audit</a>
+      <a href="index.html#redesign">Redesign</a>
+      <a href="placement.html">Placement</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="read">
+    <div class="eyebrow">Where the panel lives</div>
+    <h1 style="margin-top:15px;">Four ways to place it.<br>Only one of them survives walking.</h1>
+    <p class="lede">
+      Drag the trainee around the substation. Drag the small handle to turn them. Watch what the panel
+      does in each mode — and watch the two numbers on the right, which are the ones that decide whether
+      this is readable or not.
+    </p>
+  </section>
+
+  <section class="wrap">
+    <div class="modes" style="margin-bottom:16px;">
+      <button data-mode="fixed" class="active">1 · Fixed board (today)</button>
+      <button data-mode="head">2 · Head-locked HUD (you rejected)</button>
+      <button data-mode="wrist">3 · Wrist panel</button>
+      <button data-mode="leash">4 · Body-anchored + leash</button>
+    </div>
+
+    <div class="sim">
+      <div class="board" id="board">
+        <canvas id="cv" width="1280" height="820"></canvas>
+        <div class="hint">Drag the trainee to walk · drag the small dot to turn</div>
+      </div>
+
+      <div class="readout">
+        <div class="stat" id="s-dist"><span class="k">Reading distance</span><b>—</b></div>
+        <div class="stat" id="s-ang"><span class="k">Off your forward</span><b>—</b></div>
+        <div class="stat" id="s-state"><span class="k">Panel state</span><b>—</b></div>
+
+        <div class="fov">
+          <canvas id="fov" width="680" height="130"></canvas>
+        </div>
+
+        <div class="panel ctl" id="leash-ctl" hidden>
+          <label>Follow distance <b><span id="v-d">1.2</span> m</b></label>
+          <input type="range" id="r-d" min="0.8" max="2.0" step="0.05" value="1.2">
+          <label>Leash angle <b><span id="v-a">30</span>°</b></label>
+          <input type="range" id="r-a" min="10" max="60" step="1" value="30">
+          <label>Catch-up smoothing <b><span id="v-k">0.10</span> s</b></label>
+          <input type="range" id="r-k" min="0.04" max="0.6" step="0.01" value="0.10">
+          <label style="align-items:center;">
+            <span>Keep clear of equipment</span>
+            <input type="checkbox" id="avoid" checked style="width:auto; accent-color:var(--accent);">
+          </label>
+          <label style="align-items:center;">
+            <span>Pin to world (stop following)</span>
+            <input type="checkbox" id="pin" style="width:auto; accent-color:var(--accent);">
+          </label>
+        </div>
+
+        <div class="panel verdict" id="verdict"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="sec-head read" style="padding:0;">
+      <h2>So what is it, in plain terms</h2>
+    </div>
+    <div class="read" style="padding:0;">
+      <div class="panel">
+        <div class="row">
+          <div class="row-t">It is not parented to the pawn</div>
+          <p class="row-d">That is the part worth getting right. If you attach the widget to the pawn it is
+            <em>welded</em> — it translates and rotates with you exactly, which is a head-locked HUD wearing
+            a disguise. The panel is its own thing in the world. Every frame it asks one question: “am I
+            still somewhere the trainee can comfortably read me?” If yes, it does nothing at all.</p>
+        </div>
+        <div class="row">
+          <div class="row-t">The leash is a dead zone, not a spring</div>
+          <p class="row-d">It only starts moving once you have turned further than the leash angle away
+            from it, or walked outside its distance band. Then it glides to a fresh spot in front of you and
+            stops again. Stand still and read, and it is perfectly static — which matters more than it
+            sounds (see below).</p>
+        </div>
+        <div class="row">
+          <div class="row-t">Yes, it is scaled down</div>
+          <p class="row-d">From a 1.9 m board to roughly 40–50 cm. That is a component scale change and
+            nothing else — there is no SizeBox or DrawSize override anywhere in the widget, so the size is
+            purely <code>desired size × scale</code>. The type has to be re-set for the new distance, which
+            is the actual work.</p>
+        </div>
+        <div class="row">
+          <div class="row-t">Summon and dismiss, not always-on</div>
+          <p class="row-d">A button brings it up and puts it away. This is not polish — it is the fix for
+            the locomotion bug. <code>ProcessStickInput</code> kills teleport and snap turn whenever either
+            laser is over a hit-test-visible widget, so a panel that is always up and always hittable would
+            freeze the trainee in place. Stowed means <code>NoCollision</code>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="sec-head read" style="padding:0;">
+      <h2>Why it must stop moving while you read</h2>
+    </div>
+    <div class="read" style="padding:0;">
+      <div class="note">
+        <h3>The measurement that settles it</h3>
+        <p>Your vestibulo-ocular reflex stabilises your gaze on <em>the world</em>. So anything pinned to
+          your head is, from your eye's point of view, the thing that is moving. Kang et al. measured
+          retinal slip while reading during walking: <b>6.3°/s for an earth-fixed display against 13.7°/s
+          for a head-fixed one</b> — and reading acuity falls off a cliff at about 6°/s.</p>
+        <p>That is the mechanism behind your own instinct about HUDs, and it is also why a panel that
+          followed you <em>continuously</em> would be nearly as bad as one welded to your face. Follow while
+          walking, hold still while read. The dead zone is what buys you that.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="sec-head read" style="padding:0;">
+      <h2>The numbers, and where they come from</h2>
+      <p class="lede">Defaults for the sliders above. Two of these are published; one has to be tuned in a
+        headset because nobody publishes it.</p>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th style="width:26%">Parameter</th><th style="width:16%">Suggested</th><th>Source</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Follow distance</td>
+            <td class="num">1.0 – 1.5 m</td>
+            <td>Microsoft optimal 1.25–5 m; Meta ~1 m for menus; Oculus comfort zone 0.75–3.5 m derived from
+              Shibata et al. MRTK's RadialView solver ships 1–2 m.</td>
+          </tr>
+          <tr>
+            <td>Height</td>
+            <td class="num">10 – 20° below horizon</td>
+            <td>Microsoft's optimal resting gaze; their content region is 0–35° below. Penumudi et al. found
+              neutral-to-15°-down best for neck load across five tested heights.</td>
+          </tr>
+          <tr>
+            <td>Leash angle</td>
+            <td class="num">30°</td>
+            <td>MRTK RadialView's max view angle default. Apple's lazy-follow patent describes a dead zone of
+              0–5° or 0–50 cm, which is far tighter — worth trying both.</td>
+          </tr>
+          <tr>
+            <td>Catch-up smoothing</td>
+            <td class="num">0.1 s</td>
+            <td>MRTK's move/rotate lerp default. <strong>No vendor publishes a follow delay in seconds</strong>
+              — this one has to be tuned in-headset.</td>
+          </tr>
+          <tr>
+            <td>Panel size</td>
+            <td class="num">~40–50 cm</td>
+            <td>Set by content, not by rule: 5 lines × ~40 characters at the cap height users choose for
+              sustained reading (1.8°, Dingler et al.) needs roughly this at 1.2 m.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="wrap">
+    <div style="border-top:1px solid var(--hairline); padding-top:20px;">
+      Azureal XR Framework · panel placement study · <a href="index.html" style="color:var(--accent-link); text-decoration:none;">back to the redesign</a>
+    </div>
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════════
+   Top-down placement simulator.
+
+   One metre = PPM pixels. The trainee is dragged around a room; the
+   panel behaves differently per mode. The whole point of the thing is
+   the two readouts — reading distance and angle off forward — because
+   those are what decide legibility, not how it looks on a map.
+   ══════════════════════════════════════════════════════════════ */
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const fovC = document.getElementById('fov');
+const fctx = fovC.getContext('2d');
+
+const PPM = 84;                 // pixels per metre
+const ROOM = { x: 60, y: 60, w: cv.width - 120, h: cv.height - 120 };
+
+let mode = 'fixed';
+let pinned = false;
+
+const player = { x: 300, y: 560, a: -Math.PI / 2 };   // a = facing, radians
+const kiosk  = { x: 300, y: 200 };                    // the fixed board today
+
+// The panel's live pose. Starts on the kiosk.
+let panel = { x: kiosk.x, y: kiosk.y, a: Math.PI / 2 };
+let chasing = false;
+
+let followD = 1.2, leashA = 30 * Math.PI / 180, smooth = 0.10;
+let avoidGeometry = true;
+
+/* ── equipment, so "walking around" means something ── */
+const KIT = [
+  { x: 760,  y: 180, w: 150, h: 90,  label: 'VCB 9' },
+  { x: 980,  y: 330, w: 110, h: 180, label: 'Panel B' },
+  { x: 700,  y: 600, w: 190, h: 80,  label: 'Earth switch' },
+];
+
+/* ── helpers ── */
+const norm = a => Math.atan2(Math.sin(a), Math.cos(a));
+const angDiff = (a, b) => norm(a - b);
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/* How far forward we can go before hitting equipment.
+   This is the 2D stand-in for a forward sphere trace from the camera.
+   Returns metres, or null for a clear path. */
+function obstacleAhead() {
+  const dx = Math.cos(player.a), dy = Math.sin(player.a);
+  let nearest = null;
+
+  for (const k of KIT) {
+    // slab method: ray vs axis-aligned box
+    const inv = { x: 1 / (dx || 1e-9), y: 1 / (dy || 1e-9) };
+    let t1 = (k.x - player.x) * inv.x, t2 = (k.x + k.w - player.x) * inv.x;
+    let t3 = (k.y - player.y) * inv.y, t4 = (k.y + k.h - player.y) * inv.y;
+    const tmin = Math.max(Math.min(t1, t2), Math.min(t3, t4));
+    const tmax = Math.min(Math.max(t1, t2), Math.max(t3, t4));
+    if (tmax < 0 || tmin > tmax) continue;            // behind, or missed
+    const t = tmin > 0 ? tmin : tmax;
+    if (nearest === null || t < nearest) nearest = t;
+  }
+  return nearest === null ? null : nearest / PPM;
+}
+
+/* The distance the panel is actually allowed to sit at.
+   Clamped in front of whatever is ahead, with clearance, and never
+   closer than the near-comfort limit — below ~0.5 m the text goes
+   blurry and uncomfortable, so at that point it is better to let the
+   panel sit inside the geometry than to shove it into the user's face. */
+let clampedBy = null;
+function allowedDistance() {
+  clampedBy = null;
+  if (!avoidGeometry) return followD;
+
+  const hit = obstacleAhead();
+  if (hit === null || hit >= followD) return followD;
+
+  const CLEAR = 0.18, NEAR_LIMIT = 0.5;
+  const pulled = hit - CLEAR;
+  if (pulled < NEAR_LIMIT) return followD;           // give up rather than crowd the eye
+  clampedBy = hit;
+  return pulled;
+}
+
+function idealSpot() {
+  const d = allowedDistance();
+  return {
+    x: player.x + Math.cos(player.a) * d * PPM,
+    y: player.y + Math.sin(player.a) * d * PPM,
+  };
+}
+
+function step(dt) {
+  if (mode === 'fixed') {
+    panel.x = kiosk.x; panel.y = kiosk.y;
+    panel.a = Math.atan2(player.y - panel.y, player.x - panel.x);
+    chasing = false;
+    return;
+  }
+
+  if (mode === 'head') {
+    // Welded. Instant, 1:1 — no smoothing, no dead zone. This is the
+    // thing we are NOT doing; it is here to feel the difference.
+    const s = idealSpot();
+    panel.x = s.x; panel.y = s.y;
+    panel.a = player.a + Math.PI;
+    chasing = true;
+    return;
+  }
+
+  if (mode === 'wrist') {
+    // Off-hand, about 35 cm out and to the left of the body.
+    const off = 0.35 * PPM, side = 0.22 * PPM;
+    panel.x = player.x + Math.cos(player.a) * off + Math.cos(player.a - Math.PI / 2) * side;
+    panel.y = player.y + Math.sin(player.a) * off + Math.sin(player.a - Math.PI / 2) * side;
+    panel.a = player.a + Math.PI;
+    chasing = true;
+    return;
+  }
+
+  /* ── leash ── */
+  if (pinned) { chasing = false; panel.a = Math.atan2(player.y - panel.y, player.x - panel.x); return; }
+
+  const toPanel = Math.atan2(panel.y - player.y, panel.x - player.x);
+  const viewErr = Math.abs(angDiff(toPanel, player.a));
+  const d = dist(player, panel) / PPM;
+
+  // Start chasing once the trainee has turned past the leash angle or
+  // walked outside the distance band. Stop again once back in place —
+  // this hysteresis is what makes it hold still while being read.
+  if (!chasing && (viewErr > leashA || d > followD * 1.9 || d < followD * 0.45)) chasing = true;
+
+  if (chasing) {
+    const s = idealSpot();
+    const k = 1 - Math.exp(-dt / Math.max(smooth, 0.001));   // frame-rate independent
+    panel.x += (s.x - panel.x) * k;
+    panel.y += (s.y - panel.y) * k;
+    if (Math.hypot(s.x - panel.x, s.y - panel.y) < 4) chasing = false;
+  }
+  panel.a = Math.atan2(player.y - panel.y, player.x - panel.x);
+}
+
+/* ── drawing ── */
+function draw() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+
+  // floor
+  ctx.fillStyle = '#171a21';
+  ctx.fillRect(ROOM.x, ROOM.y, ROOM.w, ROOM.h);
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 1;
+  for (let gx = ROOM.x; gx <= ROOM.x + ROOM.w; gx += PPM) {
+    ctx.beginPath(); ctx.moveTo(gx, ROOM.y); ctx.lineTo(gx, ROOM.y + ROOM.h); ctx.stroke();
+  }
+  for (let gy = ROOM.y; gy <= ROOM.y + ROOM.h; gy += PPM) {
+    ctx.beginPath(); ctx.moveTo(ROOM.x, gy); ctx.lineTo(ROOM.x + ROOM.w, gy); ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 2;
+  ctx.strokeRect(ROOM.x, ROOM.y, ROOM.w, ROOM.h);
+
+  // 1 m scale bar
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '600 15px system-ui, sans-serif';
+  ctx.fillText('1 m', ROOM.x + 8, ROOM.y + ROOM.h + 32);
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.beginPath(); ctx.moveTo(ROOM.x + 46, ROOM.y + ROOM.h + 27); ctx.lineTo(ROOM.x + 46 + PPM, ROOM.y + ROOM.h + 27); ctx.stroke();
+
+  // equipment
+  KIT.forEach(k => {
+    ctx.fillStyle = '#22262f';
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(k.x, k.y, k.w, k.h, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.34)';
+    ctx.font = '500 15px system-ui, sans-serif';
+    ctx.fillText(k.label, k.x + 12, k.y + k.h / 2 + 5);
+  });
+
+  // kiosk marker — always shown, so mode 1 has context
+  ctx.save();
+  ctx.setLineDash([6, 6]);
+  ctx.strokeStyle = mode === 'fixed' ? 'rgba(10,132,255,0.9)' : 'rgba(255,255,255,0.16)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(kiosk.x, kiosk.y, 16, 0, 7); ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle = mode === 'fixed' ? 'rgba(10,132,255,0.85)' : 'rgba(255,255,255,0.22)';
+  ctx.font = '600 14px system-ui, sans-serif';
+  ctx.fillText('kiosk', kiosk.x - 18, kiosk.y - 26);
+
+  // FOV cone (±50°)
+  const fov = 50 * Math.PI / 180, R = 5.2 * PPM;
+  const g = ctx.createRadialGradient(player.x, player.y, 10, player.x, player.y, R);
+  g.addColorStop(0, 'rgba(120,180,255,0.16)');
+  g.addColorStop(1, 'rgba(120,180,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.moveTo(player.x, player.y);
+  ctx.arc(player.x, player.y, R, player.a - fov, player.a + fov); ctx.closePath(); ctx.fill();
+
+  // leash dead zone
+  if (mode === 'leash' && !pinned) {
+    ctx.save();
+    ctx.setLineDash([5, 7]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.20)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, followD * PPM, player.a - leashA, player.a + leashA);
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(player.x, player.y);
+    ctx.lineTo(player.x + Math.cos(player.a - leashA) * followD * PPM, player.y + Math.sin(player.a - leashA) * followD * PPM);
+    ctx.moveTo(player.x, player.y);
+    ctx.lineTo(player.x + Math.cos(player.a + leashA) * followD * PPM, player.y + Math.sin(player.a + leashA) * followD * PPM);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // line of sight to the panel
+  ctx.strokeStyle = chasing ? 'rgba(255,159,10,0.55)' : 'rgba(48,209,88,0.5)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 5]);
+  ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(panel.x, panel.y); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // where the forward trace hit equipment
+  if (mode === 'leash' && clampedBy !== null) {
+    const hx2 = player.x + Math.cos(player.a) * clampedBy * PPM;
+    const hy2 = player.y + Math.sin(player.a) * clampedBy * PPM;
+    ctx.strokeStyle = 'rgba(255,69,58,0.85)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(hx2, hy2, 9, 0, 7); ctx.stroke();
+  }
+
+  // the panel, drawn edge-on as a board facing the player
+  const pw = (mode === 'fixed' ? 1.9 : mode === 'wrist' ? 0.16 : 0.45) * PPM;
+  ctx.save();
+  ctx.translate(panel.x, panel.y);
+  ctx.rotate(panel.a + Math.PI / 2);
+  ctx.fillStyle = chasing ? '#ff9f0a' : '#0a84ff';
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(-pw / 2, -5, pw, 10, 5); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // trainee
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(player.x, player.y, 13, 0, 7); ctx.fill();
+  const hx = player.x + Math.cos(player.a) * 42, hy = player.y + Math.sin(player.a) * 42;
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(hx, hy); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath(); ctx.arc(hx, hy, 8, 0, 7); ctx.fill();
+}
+
+/* ── the FOV strip: where the panel sits across your view ── */
+function drawFov(off) {
+  const W = fovC.width, H = fovC.height, mid = W / 2, deg = W / 140;   // ±70°
+  fctx.clearRect(0, 0, W, H);
+  fctx.fillStyle = '#12141a';
+  fctx.beginPath(); fctx.roundRect(0, 0, W, H, 12); fctx.fill();
+
+  // comfortable ±30, max ±55
+  fctx.fillStyle = 'rgba(48,209,88,0.14)';
+  fctx.fillRect(mid - 30 * deg, 0, 60 * deg, H);
+  fctx.fillStyle = 'rgba(255,159,10,0.10)';
+  fctx.fillRect(mid - 55 * deg, 0, 25 * deg, H);
+  fctx.fillRect(mid + 30 * deg, 0, 25 * deg, H);
+
+  fctx.strokeStyle = 'rgba(255,255,255,0.30)'; fctx.lineWidth = 2;
+  fctx.beginPath(); fctx.moveTo(mid, 0); fctx.lineTo(mid, H); fctx.stroke();
+
+  fctx.fillStyle = 'rgba(255,255,255,0.42)';
+  fctx.font = '600 13px system-ui, sans-serif';
+  fctx.fillText('0° — dead centre', mid + 8, 20);
+  fctx.fillText('comfortable ±30°', mid - 30 * deg + 6, H - 12);
+
+  const x = mid + Math.max(-70, Math.min(70, off)) * deg;
+  const inView = Math.abs(off) < 55;
+  fctx.fillStyle = inView ? '#0a84ff' : '#ff453a';
+  fctx.beginPath(); fctx.roundRect(x - 22, H / 2 - 16, 44, 32, 7); fctx.fill();
+  fctx.fillStyle = '#fff'; fctx.font = '700 13px system-ui, sans-serif';
+  fctx.textAlign = 'center';
+  fctx.fillText(inView ? 'panel' : 'off', x, H / 2 + 5);
+  fctx.textAlign = 'left';
+}
+
+/* ── readouts ── */
+const VERDICTS = {
+  fixed: '<b>Today.</b> The board never moves, so the moment you walk to the switchgear it is behind you and metres away. Reading it means teleporting back. Nothing wrong with it as a kiosk — it is just not a reference you can work from.',
+  head:  '<b>The one you rejected, and you were right.</b> Always dead centre, always the same distance, permanently in front of whatever you are trying to look at. It is also the worst case for reading while walking: head-fixed text doubles retinal slip past the acuity limit.',
+  wrist: '<b>Close, but it cannot hold the content.</b> Distance sits around 35 cm — inside every published near limit (Microsoft fades below 40 cm, Meta wants 0.5 m minimum). At a readable cap height a forearm-sized panel fits about five lines of fifteen characters. Fine for “3 of 5”, not for the checklist.',
+  leash: '<b>The recommendation.</b> Sits in the comfortable band, off to one side rather than dead centre, and holds perfectly still while you read it. Turn away or walk off and it glides to a new spot, then stops again. Pin it and it behaves exactly like the kiosk — at the switchgear, where you actually want it.',
+};
+
+function updateReadout() {
+  const d = dist(player, panel) / PPM;
+  const off = angDiff(Math.atan2(panel.y - player.y, panel.x - player.x), player.a) * 180 / Math.PI;
+
+  const sd = document.getElementById('s-dist');
+  sd.querySelector('b').textContent = d.toFixed(2) + ' m';
+  sd.className = 'stat ' + (d < 0.5 || d > 3.5 ? 'stat--warn' : 'stat--ok');
+
+  const sa = document.getElementById('s-ang');
+  sa.querySelector('b').textContent = (off > 0 ? '+' : '') + off.toFixed(0) + '°';
+  sa.className = 'stat ' + (Math.abs(off) > 55 ? 'stat--warn' : 'stat--ok');
+
+  const ss = document.getElementById('s-state');
+  ss.querySelector('b').textContent =
+    clampedBy !== null && mode === 'leash' ? 'pulled in clear' :
+    mode === 'fixed' ? 'world-locked' :
+    pinned ? 'pinned' :
+    chasing ? 'catching up' : 'holding still';
+  ss.className = 'stat ' + (chasing && mode !== 'fixed' ? 'stat--warn' : 'stat--ok');
+
+  drawFov(off);
+  document.getElementById('verdict').innerHTML = VERDICTS[mode];
+}
+
+/* ── input ── */
+let drag = null;
+const board = document.getElementById('board');
+
+function toCanvas(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
+}
+
+board.addEventListener('pointerdown', e => {
+  const p = toCanvas(e);
+  const hx = player.x + Math.cos(player.a) * 42, hy = player.y + Math.sin(player.a) * 42;
+  if (Math.hypot(p.x - hx, p.y - hy) < 30) drag = 'aim';
+  else if (Math.hypot(p.x - player.x, p.y - player.y) < 46) drag = 'move';
+  else drag = 'aim';
+  board.classList.add('dragging');
+  board.setPointerCapture(e.pointerId);
+  onMove(e);
+});
+board.addEventListener('pointermove', e => { if (drag) onMove(e); });
+board.addEventListener('pointerup',  () => { drag = null; board.classList.remove('dragging'); });
+
+function onMove(e) {
+  const p = toCanvas(e);
+  if (drag === 'move') {
+    player.x = Math.max(ROOM.x + 20, Math.min(ROOM.x + ROOM.w - 20, p.x));
+    player.y = Math.max(ROOM.y + 20, Math.min(ROOM.y + ROOM.h - 20, p.y));
+  } else if (drag === 'aim') {
+    player.a = Math.atan2(p.y - player.y, p.x - player.x);
+  }
+}
+
+document.querySelectorAll('.modes button').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.modes button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    mode = b.dataset.mode;
+    document.getElementById('leash-ctl').hidden = mode !== 'leash';
+    if (mode === 'leash') { const s = idealSpot(); panel.x = s.x; panel.y = s.y; chasing = false; }
+    if (mode === 'fixed') { panel.x = kiosk.x; panel.y = kiosk.y; }
+  });
+});
+
+const bind = (id, vid, set, fmt) => {
+  const r = document.getElementById(id), v = document.getElementById(vid);
+  r.addEventListener('input', () => { set(parseFloat(r.value)); v.textContent = fmt(parseFloat(r.value)); });
+};
+bind('r-d', 'v-d', x => followD = x,               x => x.toFixed(2));
+bind('r-a', 'v-a', x => leashA = x * Math.PI / 180, x => x.toFixed(0));
+bind('r-k', 'v-k', x => smooth = x,                x => x.toFixed(2));
+document.getElementById('pin').addEventListener('change', e => pinned = e.target.checked);
+document.getElementById('avoid').addEventListener('change', e => avoidGeometry = e.target.checked);
+
+/* ── loop ── */
+let last = performance.now();
+(function frame(now) {
+  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  step(dt); draw(); updateReadout();
+  requestAnimationFrame(frame);
+})(last);
+</script>
+</body>
+</html>

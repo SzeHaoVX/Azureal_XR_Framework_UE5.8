@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The cable — keeping it, and fixing it</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  [hidden] { display: none !important; }
+  .lab {
+    position: relative; border-radius: var(--r-hero); overflow: hidden;
+    background: #0e1014; box-shadow: var(--sh-panel); touch-action: none; cursor: grab;
+  }
+  .lab.drag { cursor: grabbing; }
+  .lab canvas { display: block; width: 100%; height: auto; }
+  .lab-hint {
+    position: absolute; left: 15px; bottom: 12px; z-index: 4;
+    font-size: 12px; color: rgba(255,255,255,0.45); pointer-events: none;
+  }
+  .modes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .modes button {
+    border: none; cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 550;
+    padding: 10px 16px; border-radius: var(--r-pill); background: rgba(0,0,0,0.05); color: var(--text-2);
+    transition: all .2s var(--ease-out-quart);
+  }
+  .modes button.active { background: var(--text); color: #fff; }
+  .verdict { display: grid; grid-template-columns: 1fr 290px; gap: 16px; align-items: start; margin-top: 16px; }
+  @media (max-width: 900px) { .verdict { grid-template-columns: 1fr; } }
+  .v-text { padding: 17px 20px; font-size: 14.5px; line-height: 1.7; color: var(--text-body); }
+  .v-text b { color: var(--text); }
+  .stat {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    padding: 12px 16px; border-radius: var(--r-thumb); background: var(--surface);
+    box-shadow: var(--sh-card); font-size: 13.5px;
+  }
+  .stat + .stat { margin-top: 9px; }
+  .stat b { font-size: 15px; font-weight: 650; }
+  .stat .k { color: var(--text-2); }
+  .ok b { color: #1a8a3c; } .bad b { color: var(--heat); }
+  .edge { display: flex; align-items: center; gap: 10px; }
+  .edge input { accent-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="nav-brand" href="index.html">Azureal&nbsp;·&nbsp;The cable</a>
+    <nav class="nav-links">
+      <a href="csm.html">CSM board</a>
+      <a href="overhaul.html">World widgets</a>
+      <a href="token.html" class="hide-sm">Token</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="read">
+    <div class="eyebrow">Keeping the connector</div>
+    <h1 style="margin-top:15px;">Don&rsquo;t delete the cable.<br>Stop it behaving like rope.</h1>
+    <p class="lede">
+      Your two complaints — it blocks things, and it looks wrong from some angles — are not really about
+      having a connector. They are about it being a <b>physical rope rendered on top of the world</b>.
+      Fix those two properties and the cable stays.
+    </p>
+  </section>
+
+  <section class="wrap">
+    <div class="modes" id="modes">
+      <button data-m="cable" class="active">Today</button>
+      <button data-m="depth">A · let the world occlude it</button>
+      <button data-m="ribbon">B · camera-facing ribbon</button>
+      <button data-m="leader">C · fade it out before the panel</button>
+      <button data-m="rec">All three</button>
+    </div>
+
+    <div class="lab" id="lab">
+      <canvas id="cv" width="1280" height="700"></canvas>
+      <div class="lab-hint">Drag the panel &middot; drag the orange marker to re-target the part</div>
+    </div>
+
+    <div class="verdict">
+      <div class="panel v-text" id="v-text"></div>
+      <div>
+        <div class="stat" id="s-occ"><span class="k">Draws over geometry</span><b>&mdash;</b></div>
+        <div class="stat" id="s-end"><span class="k">Edge-on collapse</span><b>&mdash;</b></div>
+        <div class="stat" id="s-len"><span class="k">Line across the view</span><b>&mdash;</b></div>
+        <div class="panel" style="margin-top:10px; padding:13px 16px;">
+          <label class="edge"><input type="checkbox" id="edgeon"> Look at it nearly end-on</label>
+          <p style="margin-top:7px; font-size:12.5px; color:var(--text-3); line-height:1.55;">
+            The &ldquo;weird position&rdquo; case — when the rope runs almost straight away from you.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="sec-head read" style="padding:0;">
+      <h2>What each fix actually is</h2>
+      <p class="lede">All three are material and component settings on what you already have. None of them
+        needs new geometry, and none needs the cable removed.</p>
+    </div>
+    <div class="panel">
+      <table>
+        <thead><tr><th style="width:26%">Fix</th><th style="width:30%">How</th><th>What it solves</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>A · Let the world occlude it</b></td>
+            <td>Depth-test the cable material instead of drawing it unlit on top. Translucent materials
+              default to <em>Disable Depth Test = off</em>, but if the cable currently draws through the
+              pillar, that is the flag.</td>
+            <td><b>&ldquo;It blocks objects.&rdquo;</b> The cable passes behind the pillar the way a real
+              wire would. The visible stretches still read as one line — your eye completes it.</td>
+          </tr>
+          <tr>
+            <td><b>B · Camera-facing ribbon</b></td>
+            <td><code>UCableComponent</code> has <code>bUseCameraFacing</code> — a flag, not a rewrite.
+              Turns the rope from a tube into a ribbon that always presents its face to the eye.</td>
+            <td><b>&ldquo;It looks weird from some positions.&rdquo;</b> A tube viewed end-on collapses to a
+              dot. A camera-facing ribbon never does, at any angle.</td>
+          </tr>
+          <tr>
+            <td><b>C · Fade before the panel</b></td>
+            <td>An opacity gradient along the cable&rsquo;s length — a <code>TextureCoordinate</code> U ramp
+              into Opacity. Solid where it meets the part, gone by the time it nears the panel.</td>
+            <td>The precision is at the <em>object</em> end; the panel end is the part you already know.
+              Nothing needs to be drawn across the middle of your view at full strength.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="read" style="padding:0;">
+      <div class="note">
+        <h3>Why the fade is the one that changes how it feels</h3>
+        <p>A leader line in technical illustration does not touch both ends and does not need to. It starts
+          precisely at the thing it names and trails off. Your eye does the join — which is why a fading
+          leader reads as <em>annotation</em> while a full-length rope reads as <em>plumbing</em>.</p>
+        <p>It also means the visible part of the line is always short, near the object, and far from the
+          middle of the view — so the &ldquo;crosses something&rdquo; problem mostly stops arising rather
+          than needing to be solved.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="read" style="padding:0;">
+      <div class="note note--warn">
+        <h3>One thing to check before any of this</h3>
+        <p>The cable currently terminates at an anchor on the object — but the <em>highlight</em> outlines
+          the whole mesh. If the step is about one valve on a large cabinet, the outline says
+          &ldquo;cabinet&rdquo; while the cable says &ldquo;this valve&rdquo;, and they disagree.</p>
+        <p>Custom-depth stencil is per mesh component, so the outline can be narrowed to the specific part.
+          Then the cable and the highlight name the same thing, and the cable has less work to do.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="wrap">
+    <div style="border-top:1px solid var(--hairline); padding-top:20px;">
+      Azureal XR Framework · connector study ·
+      <a href="overhaul.html" style="color:var(--accent-link); text-decoration:none;">world widgets</a> ·
+      <a href="csm.html" style="color:var(--accent-link); text-decoration:none;">CSM board</a>
+    </div>
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+<script>
+/* The trainee's view. A cabinet (the object), a pillar (something to get
+   in the way), a draggable panel, and a draggable target marker so the
+   "which part" question stays visible. */
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const lab = document.getElementById('lab');
+
+const CAB    = { x: 150, y: 230, w: 250, h: 360 };
+const PILLAR = { x: 545, y: 120, w: 95,  h: 500 };
+const PANEL  = { x: 790, y: 210, w: 380, h: 250 };
+const TARGET = { x: 275, y: 330 };
+
+let mode = 'cable';
+let edgeOn = false;
+let t = 0;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const inRect = (p, r) => p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h;
+
+function anchor() {
+  const cx = PANEL.x + PANEL.w / 2, cy = PANEL.y + PANEL.h / 2;
+  const dx = TARGET.x - cx, dy = TARGET.y - cy;
+  if (Math.abs(dx) > Math.abs(dy))
+    return { x: dx < 0 ? PANEL.x : PANEL.x + PANEL.w, y: cy };
+  return { x: cx, y: dy < 0 ? PANEL.y : PANEL.y + PANEL.h };
+}
+
+function points() {
+  const a = anchor();
+  const mx = (a.x + TARGET.x) / 2, my = (a.y + TARGET.y) / 2;
+  const sag = Math.hypot(TARGET.x - a.x, TARGET.y - a.y) * 0.20;
+  const out = [];
+  for (let i = 0; i <= 70; i++) {
+    const u = i / 70, v = 1 - u;
+    out.push({
+      x: v * v * a.x + 2 * v * u * mx + u * u * TARGET.x,
+      y: v * v * a.y + 2 * v * u * (my + sag) + u * u * TARGET.y,
+      u,
+    });
+  }
+  return out;
+}
+
+/* Alpha along the cable. 'leader' and 'rec' fade it out before the panel
+   so only the end that carries precision is drawn at full strength. */
+function alphaAt(u) {
+  if (mode === 'leader' || mode === 'rec') {
+    // u = 0 at the panel, 1 at the part
+    return clamp((u - 0.35) / 0.35, 0, 1);
+  }
+  return 1;
+}
+
+/* How much of the line is drawn over the top of geometry. */
+function overdraw(pts) {
+  let n = 0;
+  pts.forEach(p => {
+    if (p.u > 0.93) return;                       // allowed to touch its own target
+    if (alphaAt(p.u) < 0.08) return;              // faded out — not visible
+    if (mode === 'depth' || mode === 'rec') return; // occluded by the world
+    if (inRect(p, PILLAR) || (inRect(p, CAB) && p.u < 0.8)) n++;
+  });
+  return n;
+}
+
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+
+function drawCable(pts) {
+  // Width: a tube collapses when seen end-on; a camera-facing ribbon does not.
+  const ribbon = (mode === 'ribbon' || mode === 'rec');
+  const base = ribbon ? 7 : 5;
+  const collapsed = edgeOn && !ribbon;
+
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i], q = pts[i - 1];
+    const a = alphaAt(p.u);
+    if (a < 0.02) continue;
+    ctx.strokeStyle = `rgba(242,225,74,${a})`;
+    ctx.lineWidth = collapsed ? 1.2 : base * (0.6 + 0.4 * p.u);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+  }
+}
+
+function draw() {
+  t += 0.016;
+  const pulse = 0.5 + 0.5 * Math.sin(t * 2.0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+
+  const g = ctx.createLinearGradient(0, 0, 0, cv.height);
+  g.addColorStop(0, '#2b2f37'); g.addColorStop(1, '#0e1014');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = 'rgba(140,100,64,0.20)'; ctx.fillRect(0, 600, cv.width, 100);
+
+  // cabinet
+  ctx.fillStyle = '#23272f'; rr(CAB.x, CAB.y, CAB.w, CAB.h, 8); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.09)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.30)'; ctx.font = '600 15px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('VCB 9', CAB.x + CAB.w / 2, CAB.y + CAB.h + 28); ctx.textAlign = 'left';
+
+  // the specific part, outlined — stencil, narrowed to the component
+  ctx.strokeStyle = `rgba(255,159,10,${0.55 + 0.45 * pulse})`; ctx.lineWidth = 4;
+  rr(TARGET.x - 46, TARGET.y - 34, 92, 68, 8); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,207,112,0.8)'; ctx.font = '600 12px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('the part the step is about', TARGET.x, TARGET.y + 56); ctx.textAlign = 'left';
+
+  const pts = points();
+
+  // pillar is drawn AFTER the cable when the world occludes it
+  const occlude = (mode === 'depth' || mode === 'rec');
+  if (!occlude) drawPillar();
+  drawCable(pts);
+  if (occlude) drawPillar();
+
+  drawPanel();
+
+  const over = overdraw(pts);
+  set('s-occ', over ? 'yes' : 'no', over ? 'bad' : 'ok');
+  const ribbon = (mode === 'ribbon' || mode === 'rec');
+  set('s-end', edgeOn ? (ribbon ? 'holds up' : 'collapses to a line') : 'not tested',
+      edgeOn ? (ribbon ? 'ok' : 'bad') : '');
+  const visible = pts.filter(p => alphaAt(p.u) > 0.08).length / pts.length;
+  set('s-len', Math.round(visible * 100) + '% drawn', visible > 0.8 ? 'bad' : 'ok');
+
+  document.getElementById('v-text').innerHTML = NOTES[mode](over);
+  requestAnimationFrame(draw);
+}
+
+function drawPillar() {
+  ctx.fillStyle = '#20242b'; rr(PILLAR.x, PILLAR.y, PILLAR.w, PILLAR.h, 4); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.save(); ctx.translate(PILLAR.x + 47, 320); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.font = '600 13px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('pillar', 0, 5); ctx.restore(); ctx.textAlign = 'left';
+}
+
+function drawPanel() {
+  ctx.fillStyle = 'rgba(28,28,30,0.93)'; rr(PANEL.x, PANEL.y, PANEL.w, PANEL.h, 20); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#ff9f0a'; ctx.beginPath(); ctx.arc(PANEL.x + 30, PANEL.y + 34, 7, 0, 7); ctx.fill();
+  ctx.fillStyle = '#ffcf70'; ctx.font = '700 14px system-ui';
+  ctx.fillText('EXPLANATION', PANEL.x + 48, PANEL.y + 39);
+  ctx.fillStyle = 'rgba(255,255,255,0.58)';
+  [0, 26, 52].forEach((o, i) => { rr(PANEL.x + 26, PANEL.y + 68 + o, [320, 292, 210][i], 10, 5); ctx.fill(); });
+  ctx.fillStyle = 'rgba(120,120,128,0.30)'; rr(PANEL.x + 26, PANEL.y + 186, 328, 42, 21); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.font = '600 14px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('Play audio', PANEL.x + 190, PANEL.y + 212); ctx.textAlign = 'left';
+}
+
+function set(id, txt, cls) {
+  const el = document.getElementById(id);
+  el.querySelector('b').textContent = txt;
+  el.className = 'stat ' + (cls || '');
+}
+
+const NOTES = {
+  cable: o => (o
+    ? '<b>There it is.</b> The rope is drawing straight over the pillar, because it renders on top of the world rather than in it. Tick &ldquo;end-on&rdquo; as well and watch it collapse to a hairline — that is the other complaint.'
+    : 'A rope between two anchor meshes, drawn over everything. Drag the panel left or down until it meets the pillar, and tick &ldquo;end-on&rdquo; to see the angle problem.'),
+  depth: () => '<b>The world occludes it.</b> The cable passes behind the pillar the way a real wire would, and the visible stretches still read as one line — your eye completes it. This is a depth-test flag on the material, not a redesign.',
+  ribbon: () => '<b>It always faces you.</b> <code>UCableComponent</code> has <code>bUseCameraFacing</code>. A tube seen nearly end-on collapses to a dot; a ribbon presents its face from any angle. Tick &ldquo;end-on&rdquo; and compare against Today.',
+  leader: () => '<b>Only the end that matters is drawn.</b> Opacity ramps along the cable&rsquo;s length, solid where it meets the part and gone before the panel. This is a leader line, not plumbing — and the visible part never reaches the middle of your view.',
+  rec: () => '<b>All three, and the cable stays.</b> Occluded by the world, always facing you, and faded to nothing before it reaches the panel. Every one is a material or component setting on what you already have — no new meshes, nothing removed.',
+};
+
+/* ── input ── */
+let drag = null;
+function toCv(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
+}
+lab.addEventListener('pointerdown', e => {
+  const p = toCv(e);
+  if (Math.hypot(p.x - TARGET.x, p.y - TARGET.y) < 54) drag = { what: 'target' };
+  else if (inRect(p, PANEL)) drag = { what: 'panel', dx: p.x - PANEL.x, dy: p.y - PANEL.y };
+  if (drag) { lab.classList.add('drag'); lab.setPointerCapture(e.pointerId); }
+});
+lab.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const p = toCv(e);
+  if (drag.what === 'target') {
+    TARGET.x = clamp(p.x, CAB.x + 50, CAB.x + CAB.w - 50);
+    TARGET.y = clamp(p.y, CAB.y + 40, CAB.y + CAB.h - 40);
+  } else {
+    PANEL.x = clamp(p.x - drag.dx, 10, cv.width - PANEL.w - 10);
+    PANEL.y = clamp(p.y - drag.dy, 10, cv.height - PANEL.h - 10);
+  }
+});
+lab.addEventListener('pointerup', () => { drag = null; lab.classList.remove('drag'); });
+
+document.getElementById('modes').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#modes button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  mode = b.dataset.m;
+});
+document.getElementById('edgeon').addEventListener('change', e => edgeOn = e.target.checked);
+
+draw();
+</script>
+</body>
+</html>

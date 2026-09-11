@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter Select — redesign</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="nav-brand" href="#top">Azureal&nbsp;·&nbsp;Chapter Select</a>
+    <nav class="nav-links">
+      <a href="#audit">Audit</a>
+      <a href="#redesign">Redesign</a>
+      <a href="#headset">Headset rules</a>
+      <a href="#build" class="hide-sm">Build notes</a>
+      <a href="placement.html">Placement</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ═══════════════════════ HERO ═══════════════════════ -->
+  <section class="read">
+    <div class="eyebrow"><span class="dot"></span> World-space UI · Azureal_CSM</div>
+    <h1 style="margin-top:15px;">The menu is legible.<br>It just isn&rsquo;t saying anything.</h1>
+    <p class="lede">
+      A pass over the chapter-select board in the Apple design language. The biggest problem turned out
+      not to be visual: five rows of a checklist all read <em>&ldquo;View Explanation&rdquo;</em>, and two
+      of the three facts on the start screen aren&rsquo;t backed by any data at all. No amount of restyling
+      fixes a screen with nothing on it.
+    </p>
+  </section>
+
+  <!-- ═══════════════════════ AUDIT ═══════════════════════ -->
+  <section class="wrap" id="audit">
+    <div class="sec-head read" style="padding:0;">
+      <h2>What&rsquo;s wrong today</h2>
+      <p class="lede">The current board, rebuilt here from your screenshots at its true 1900&nbsp;&times;&nbsp;2175
+        canvas, on a dim ground — so the before and after are judged at identical scale rather than against
+        white paper.</p>
+    </div>
+
+    <div class="grid-2" style="margin-top:26px;">
+      <div class="stage">
+        <span class="stage-label">Before · session start</span>
+        <div class="fit"><div class="old">
+          <div class="old-bar">TRAINING &nbsp;···&nbsp; START</div>
+          <div class="old-body">
+            <div class="old-h1">11kV Switching:<br>Introduction</div>
+            <div class="old-box">
+              <h4>SESSION DETAILS</h4>
+              <div class="old-hr"></div>
+              <div class="old-def"><span class="k">Mode</span><span>Training</span></div>
+              <div class="old-def"><span class="k">Total Chapters,<br>Procedures</span><span>2 Chapters<br>6 Master Steps</span></div>
+              <div class="old-def"><span class="k">Est. time</span><span>30-minutes</span></div>
+            </div>
+            <div class="spacer"></div>
+          </div>
+          <div class="old-foot">
+            <div class="old-btn">SELECT CHAPTER</div>
+            <div class="old-btn old-btn--p">START</div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="stage">
+        <span class="stage-label">Before · procedure</span>
+        <div class="fit"><div class="old">
+          <div class="old-bar">1 &nbsp;---&nbsp; PROCEDURE 1 [ OF 1 ]<span class="r">IN PROGRESS&hellip;</span></div>
+          <div class="old-body">
+            <div class="old-h1" style="font-size:100px;">Understand<br>The Scenario</div>
+            <div style="margin-top:50px; font-size:56px;">(0/5)</div>
+            <div class="old-cards">
+              <div class="old-card"><span>&rarr;</span> View Explanation</div>
+              <div class="old-card"><span>&rarr;</span> View Explanation</div>
+              <div class="old-card"><span>&rarr;</span> View Explanation</div>
+              <div class="old-card"><span>&rarr;</span> View Explanation</div>
+            </div>
+            <div class="spacer"></div>
+          </div>
+          <div class="old-foot">
+            <div class="old-btn" style="flex:none; width:180px;">&#9776;</div>
+            <div class="old-btn" style="flex:none; width:180px;">&lt;/&gt;</div>
+            <div class="spacer"></div>
+            <div class="old-btn" style="flex:none; width:400px;">BACK</div>
+            <div class="old-btn" style="flex:none; width:400px; color:#8b8b8b; border-color:#3a3a3a;">Next</div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+
+    <div class="read" style="padding:0; margin-top:34px;">
+      <div class="panel findings">
+        <div class="finding">
+          <div class="finding__n">1</div>
+          <div class="finding__b">
+            <h3>Five rows, one label</h3>
+            <p>Every sub-step reads &ldquo;View Explanation&rdquo;. The checklist has no information scent at
+              all — you cannot tell what step 3 is, whether you want it, or what you just finished. The
+              step text exists in the curriculum data; the widget simply isn&rsquo;t binding it. This is the
+              finding that matters; the rest is decoration by comparison.</p>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding__n">2</div>
+          <div class="finding__b">
+            <h3>Two of the three &ldquo;session details&rdquo; are invented</h3>
+            <p>There is no duration field anywhere in the curriculum plugin — not on the chapter, the
+              bundle, the step or the sub-step. <code>Est. time: 30-minutes</code> is a literal string typed
+              into the widget, and it will say 30 minutes for every module ever built on this framework.
+              <code>Mode: Training</code> is the same story: the session-type enum is private with no
+              Blueprint getter, so nothing on screen is reading it. Two of three rows in the panel&rsquo;s one
+              data block are decoration.</p>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding__n">3</div>
+          <div class="finding__b">
+            <h3>A grey card inside a black card</h3>
+            <p>&ldquo;SESSION DETAILS&rdquo; is a separately-filled, separately-rounded box floating on the
+              panel, and the procedure rows are more of the same stacked with gaps. Fragmentation is the
+              thing this design language pushes hardest against: sibling rows belong on one surface, split
+              by a divider, not scattered onto islands.</p>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding__n">4</div>
+          <div class="finding__b">
+            <h3>Empty space that reads as broken, not as calm</h3>
+            <p>The briefing screen is two lines of text in a board sized for twenty, and the start screen
+              has a dead gap between the details box and the buttons. Deliberate whitespace has a shape;
+              this is a panel that didn&rsquo;t shrink to its content.</p>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding__n">5</div>
+          <div class="finding__b">
+            <h3>The chrome talks like a debugger</h3>
+            <p><code>1 --- PROCEDURE 1 [ OF 1 ]</code>, <code>Chapter 1 :</code>, <code>(0/5)</code>,
+              <code>30-minutes</code>, <code>11kV</code>. Machine formatting leaking into a trainee-facing
+              screen: stray colons with a space before them, a fraction in brackets, a hyphen where a space
+              belongs, a missing space in a unit.</p>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding__n">6</div>
+          <div class="finding__b">
+            <h3>Two unlabelled buttons</h3>
+            <p>The hamburger and <code>&lt;/&gt;</code> in the footer name nothing. If a control needs a
+              label to be understood and hasn&rsquo;t got one, the mapping is broken — and mystery controls
+              in a safety-training UI are a liability, not an untidiness.</p>
+          </div>
+        </div>
+        <div class="finding">
+          <div class="finding__n">7</div>
+          <div class="finding__b">
+            <h3>The start screen never says what&rsquo;s inside</h3>
+            <p>It offers &ldquo;Select Chapter&rdquo; and &ldquo;Start&rdquo; without showing either chapter
+              or what they cover. The user is asked to choose before being told what the choices are.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ REDESIGN ═══════════════════════ -->
+  <section class="wrap" id="redesign">
+    <div class="sec-head read" style="padding:0;">
+      <h2>The redesign</h2>
+      <p class="lede">Same three states of the same board, same interaction model, nothing on screen that
+        isn&rsquo;t backed by real data. The white ring is the laser reticle at true size, so you can judge
+        whether a target is big enough to hit.</p>
+    </div>
+
+    <div style="margin-top:22px; display:flex; justify-content:center;">
+      <div class="seg" data-target="#screens">
+        <button class="active" data-show="a">Session start</button>
+        <button data-show="b">Chapter briefing</button>
+        <button data-show="c">Procedure</button>
+      </div>
+    </div>
+
+    <div id="screens" style="margin-top:22px;">
+
+      <!-- ── A. Session start ── -->
+      <div data-pane="a">
+        <div class="stage">
+          <span class="stage-label">After · session start</span>
+          <div class="fit"><div class="vr">
+            <div class="vr-bar">
+              <div class="vr-crumb"><span class="now">11&nbsp;kV Switching</span></div>
+              <div class="vr-status"><span class="pip pip--idle"></span> Not started</div>
+            </div>
+
+            <div class="vr-body">
+              <div class="vr-eyebrow">Introduction</div>
+              <h1 class="vr-h1" style="margin-top:28px;">11&nbsp;kV Switching</h1>
+              <p class="vr-lede" style="margin-top:40px; max-width:1300px;">
+                Shutting down and restoring VCB&nbsp;9, in two chapters.
+              </p>
+
+              <div class="vr-eyebrow" style="margin-top:88px;">Chapters</div>
+              <div class="vr-list" style="margin-top:32px;">
+                <div class="vr-item">
+                  <span class="vr-item__n vr-item__n--now">1</span>
+                  <span>
+                    <span class="vr-item__t">VCB 9 Shutdown</span>
+                    <span class="vr-item__s">0 / 3 procedures</span>
+                  </span>
+                  <svg class="vr-item__go" viewBox="0 0 24 24" width="64" height="64" fill="none"
+                       stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 6l6 6-6 6"/></svg>
+                </div>
+                <div class="vr-item">
+                  <span class="vr-item__n">2</span>
+                  <span>
+                    <span class="vr-item__t">VCB 9 Restoration</span>
+                    <span class="vr-item__s">0 / 3 procedures</span>
+                  </span>
+                  <svg class="vr-item__go" viewBox="0 0 24 24" width="64" height="64" fill="none"
+                       stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 6l6 6-6 6"/></svg>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="vr-bar vr-bar--foot">
+              <button class="vr-btn vr-btn--p vr-btn--grow">Begin training</button>
+            </div>
+
+            <svg class="reticle" style="right:300px; top:1075px;" width="80" height="80" viewBox="0 0 80 80" fill="none">
+              <circle cx="40" cy="40" r="20" stroke="rgba(255,255,255,0.92)" stroke-width="5"/>
+              <circle cx="40" cy="40" r="6" fill="rgba(255,255,255,0.92)"/>
+            </svg>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- ── B. Chapter briefing ── -->
+      <div data-pane="b" hidden>
+        <div class="stage">
+          <span class="stage-label">After · chapter briefing</span>
+          <div class="fit"><div class="vr">
+            <div class="vr-bar">
+              <div class="vr-crumb">
+                <span>11&nbsp;kV Switching</span><span class="sep">/</span><span class="now">Chapter 1</span>
+              </div>
+              <div class="vr-status"><span class="pip pip--idle"></span> 3 procedures</div>
+            </div>
+
+            <div class="vr-body">
+              <div class="vr-eyebrow">Briefing</div>
+              <h2 class="vr-h2" style="margin-top:28px;">VCB 9 Shutdown</h2>
+              <p class="vr-lede" style="margin-top:44px; max-width:1480px;">
+                Take VCB&nbsp;9 out of service and prove it dead before work begins. You will confirm the
+                scenario, isolate the breaker, then apply earths — in that order.
+              </p>
+
+              <div class="vr-eyebrow" style="margin-top:96px;">What you&rsquo;ll do</div>
+              <div class="vr-list" style="margin-top:32px;">
+                <div class="vr-item">
+                  <span class="vr-item__n">1</span>
+                  <span class="vr-item__t">Understand the scenario</span>
+                </div>
+                <div class="vr-item">
+                  <span class="vr-item__n">2</span>
+                  <span class="vr-item__t">Isolate and rack out the breaker</span>
+                </div>
+                <div class="vr-item">
+                  <span class="vr-item__n">3</span>
+                  <span class="vr-item__t">Prove dead and apply earths</span>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="vr-bar vr-bar--foot">
+              <button class="vr-btn">
+                <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor"
+                     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                Back
+              </button>
+              <button class="vr-btn vr-btn--p vr-btn--grow">Start chapter</button>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- ── C. Procedure ── -->
+      <div data-pane="c" hidden>
+        <div class="stage">
+          <span class="stage-label">After · procedure</span>
+          <div class="fit"><div class="vr">
+            <div class="vr-bar">
+              <div class="vr-crumb">
+                <span>Chapter 1</span><span class="sep">/</span><span class="now">Procedure 1 of 3</span>
+              </div>
+              <div class="vr-status"><span class="pip"></span> In progress</div>
+            </div>
+
+            <div class="vr-body">
+              <h2 class="vr-h2">Understand the scenario</h2>
+
+              <div style="margin-top:56px; display:flex; align-items:center; gap:44px;">
+                <div class="vr-meter" style="flex:1;">
+                  <i class="on"></i><i class="on"></i><i class="now"></i><i></i><i></i>
+                </div>
+                <span style="font-size:44px; font-weight:600; color:var(--v-text-2); font-variant-numeric:tabular-nums;">
+                  2 of 5
+                </span>
+              </div>
+
+              <div class="vr-list" style="margin-top:60px;">
+                <div class="vr-item vr-item--done">
+                  <span class="vr-item__n vr-item__n--done">
+                    <svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="currentColor"
+                         stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>
+                  </span>
+                  <span class="vr-item__t">Read the switching instruction</span>
+                </div>
+                <div class="vr-item vr-item--done">
+                  <span class="vr-item__n vr-item__n--done">
+                    <svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="currentColor"
+                         stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>
+                  </span>
+                  <span class="vr-item__t">Identify VCB 9 on the panel</span>
+                </div>
+                <div class="vr-item">
+                  <span class="vr-item__n vr-item__n--now">3</span>
+                  <span class="vr-item__t">Confirm the isolation points</span>
+                  <svg class="vr-item__go" viewBox="0 0 24 24" width="64" height="64" fill="none"
+                       stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 6l6 6-6 6"/></svg>
+                </div>
+                <div class="vr-item">
+                  <span class="vr-item__n">4</span>
+                  <span class="vr-item__t">Check the permit to work</span>
+                </div>
+                <div class="vr-item">
+                  <span class="vr-item__n">5</span>
+                  <span class="vr-item__t">Confirm the safety boundary</span>
+                </div>
+              </div>
+
+            </div>
+
+            <div class="vr-bar vr-bar--foot">
+              <button class="vr-btn">
+                <svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor"
+                     stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                Back
+              </button>
+              <button class="vr-btn vr-btn--p" style="min-width:620px;" disabled>Next procedure</button>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="read" style="padding:0; margin-top:20px;">
+      <p style="font-size:13.5px; color:var(--text-3); line-height:1.75;">
+        Step and briefing wording is stand-in copy, written to be plausible for an 11&nbsp;kV switching
+        module — the real strings live in the curriculum data asset. It is spelled out in full on purpose:
+        a checklist mocked up with real sentences exposes the wrapping and row height that
+        <em>&ldquo;View Explanation&rdquo;</em>&nbsp;&times;&nbsp;5 hides completely. Note the chapter rows
+        read <code>0 / 3 procedures</code> and not a time estimate, because master-step counts are the only
+        progress the subsystem actually tracks.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ HEADSET RULES ═══════════════════════ -->
+  <section class="wrap" id="headset">
+    <div class="sec-head read" style="padding:0;">
+      <h2>Where the headset overrules the system</h2>
+      <p class="lede">Three rules in the design language cannot be followed literally here. Each is broken
+        for a measured reason, not a taste one.</p>
+    </div>
+
+    <div class="read" style="padding:0; display:flex; flex-direction:column; gap:14px;">
+
+      <div class="note note--warn">
+        <h3>1 &nbsp;· &nbsp;No hairlines. 4px bands instead.</h3>
+        <p>The hairline divider is the system&rsquo;s signature move, and it is unusable here.
+          <code>r.AntiAliasingMethod=3</code> with <code>r.MSAACount=4</code> means MSAA antialiases
+          <em>geometry edges</em> — and a world-space widget is one two-triangle quad sampling a render
+          target, so nothing drawn <em>inside</em> it gets any MSAA benefit at all. There is no temporal AA
+          either. Anything at or under about two render-target pixels crawls and shimmers with every head
+          micro-movement. So dividers are <strong>4px at low contrast</strong> rather than 1px at higher
+          contrast — same quietness, but it holds still.</p>
+      </div>
+
+      <div class="note note--warn">
+        <h3>2 &nbsp;· &nbsp;Dark ground, not <code>#f5f5f7</code></h3>
+        <p>The system specifies a cool light ground with white surfaces, and on a web page that is right.
+          Here there are two independent reasons not to. Comfort: a 1.9&nbsp;&times;&nbsp;2.18&nbsp;m white
+          sheet a metre from someone&rsquo;s eyes in a dim substation is a lamp, and it wrecks the dark
+          adaptation the rest of the scene depends on. And rendering:
+          <code>r.DefaultFeature.AutoExposure=False</code> with <code>r.DefaultFeature.Bloom=True</code>
+          means a bright panel never gets adapted down, and bloom smears a near-white fill straight into the
+          text sitting on it.</p>
+        <p>So the neutral ramp is inverted — using Apple&rsquo;s own dark-mode system values rather than
+          invented greys (<code>label</code>, <code>secondaryLabel</code>, <code>systemBlue&nbsp;#0a84ff</code>,
+          <code>systemGreen&nbsp;#30d158</code>), with the secondary label lifted from 0.60 to 0.68 because a
+          headset loses contrast at the low end. Every other rule is kept intact.</p>
+      </div>
+
+      <div class="note note--warn">
+        <h3>3 &nbsp;· &nbsp;Read-critical content stays off the edges</h3>
+        <p><code>xr.VRS.FoveationLevel=2</code> with <code>DynamicFoveation=False</code> — so the full-rate
+          region is fixed at the centre of each display, not where the eye is looking. On a board this large
+          the outer columns are always shaded coarsely, which softens strokes and small glyphs further. Body
+          text and small controls stay toward the horizontal centre; the chrome bars and big headings are
+          what live at the edges.</p>
+      </div>
+
+      <div class="note">
+        <h3>And one thing the design does <em>not</em> need to do</h3>
+        <p>Hover feedback already exists in hardware. Entering and leaving a widget fires a haptic pulse on
+          the hand that did it, and the laser puts a lit reticle on the panel surface at the hit point. A
+          strong visual hover state would only fight the reticle already sitting there, so rows lift by
+          contrast alone.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ DECISIONS ═══════════════════════ -->
+  <section class="wrap" id="decisions">
+    <div class="sec-head read" style="padding:0;">
+      <h2>What changed, and why</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="panel">
+        <div class="row">
+          <div class="row-t">Rows say what the step is</div>
+          <p class="row-d">The single highest-value change in the whole pass, and it costs one binding.
+            Status moves into the numbered marker — outline pending, blue current, green tick done — so the
+            list reads at a glance with no legend.</p>
+        </div>
+        <div class="row">
+          <div class="row-t">One surface, 4px bands between</div>
+          <p class="row-d">The grey inner box and the stack of separate step cards both collapse into a
+            single inset group. Nothing floats on anything else.</p>
+        </div>
+        <div class="row">
+          <div class="row-t">Progress you can read across a room</div>
+          <p class="row-d">A segment per step beside <code>2 of 5</code> in tabular figures. A bare
+            <code>(0/5)</code> makes you do arithmetic; segments are pre-attentive.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="row">
+          <div class="row-t">Invented facts deleted</div>
+          <p class="row-d">Est. time and Mode are gone rather than restyled. What replaces them is the
+            thing the start screen was missing anyway: the chapters themselves, with the master-step
+            progress the subsystem genuinely tracks.</p>
+        </div>
+        <div class="row">
+          <div class="row-t">Human chrome</div>
+          <p class="row-d"><code>1 --- PROCEDURE 1 [ OF 1 ]</code> becomes a breadcrumb that answers
+            <em>where am I</em>. <code>11kV</code> becomes <code>11&nbsp;kV</code>; the stray colons and
+            bracketed fractions go.</p>
+        </div>
+        <div class="row">
+          <div class="row-t">Glass only where layers overlap</div>
+          <p class="row-d">The board is the thick material against the room; the top and bottom bars are a
+            thinner glass on top of it, because the list scrolls beneath them. Nothing else is glass — the
+            body is plain fill.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ BUILD ═══════════════════════ -->
+  <section class="wrap" id="build">
+    <div class="sec-head read" style="padding:0;">
+      <h2>Building it</h2>
+      <p class="lede">What this costs in the actual project, including the two parts that are genuinely
+        expensive and the names that must not change.</p>
+    </div>
+
+    <div class="panel">
+      <table>
+        <thead>
+          <tr><th style="width:34%">Change</th><th style="width:23%">Cost</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Bind the sub-step text</td>
+            <td><span class="tag tag--good">One binding</span></td>
+            <td>The description already exists per sub-step, and <code>UTrainingSubStepRow</code> declares
+              <strong>no</strong> BindWidget members at all — its whole visual tree is free.</td>
+          </tr>
+          <tr>
+            <td>Unified list, 4px bands, type scale</td>
+            <td><span class="tag tag--good">Layout only</span></td>
+            <td>No C++ involved. Four of MainMenuPage&rsquo;s eight binds are typed <code>UWidget*</code>,
+              so they match any widget class — C++ only ever calls <code>SetVisibility</code> on them.</td>
+          </tr>
+          <tr>
+            <td>Status in the row marker</td>
+            <td><span class="tag tag--good">Layout only</span></td>
+            <td>Driven by the two events the row already gets: <code>UpdateCompletionImage</code> and
+              <code>OnStateChanged</code>. You change what they draw, not the events.</td>
+          </tr>
+          <tr>
+            <td>Chapters on the start screen</td>
+            <td><span class="tag">Touches C++</span></td>
+            <td>Start and chapter list are two visibility states of one widget, arbitrated in C++ by
+              <code>IsStartScreenActive</code> / <code>UpdateVisibilityByChapter</code>. Showing both at once
+              means changing that rule — not free, but small.</td>
+          </tr>
+          <tr>
+            <td>A real &ldquo;estimated time&rdquo;</td>
+            <td><span class="tag">New field</span></td>
+            <td>Needs an authored value — e.g. <code>EstimatedMinutes</code> on <code>FChapterDef</code>.
+              Until then the line should stay deleted rather than hardcoded.</td>
+          </tr>
+          <tr>
+            <td>Panel blur</td>
+            <td><span class="tag tag--bad">Post-process + stencil</span></td>
+            <td>See below. Optional, and last.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="read" style="padding:0; margin-top:22px; display:flex; flex-direction:column; gap:14px;">
+
+      <div class="note note--warn">
+        <h3>The glass will not work the obvious way</h3>
+        <p>A UMG <code>BackgroundBlur</code> does nothing useful on a world-space
+          <code>WidgetComponent</code>. Slate&rsquo;s blur pass reads
+          <code>Inputs.SceneViewportTexture</code> when a widget is composited over the viewport and falls
+          back to <code>Inputs.ElementsTexture</code> when it is not — and <code>Slate3DRenderer</code>, the
+          path a widget component takes, only ever sets <code>ElementsTexture</code>. So the blur samples the
+          widget&rsquo;s own render target, which contains only the widget. Any
+          <code>BlurStrength&nbsp;&gt;&nbsp;0</code> turns the panel into a near-opaque white sheet even with
+          the tint alpha at zero.</p>
+        <p><strong>What does work</strong>, already proven in this framework: a post-process material masked
+          by CustomStencil, blending at <em>Scene Color Before DOF</em> so the widget still draws sharp on
+          top, with the mask from an invisible box at the panel
+          (<code>bRenderInMainPass=false</code>, <code>bRenderInDepthPass=false</code>,
+          <code>bRenderCustomDepth=true</code>). Use stencil <strong>250</strong> — 252 is the outline
+          system. Widget component, stencil box and an unbound <code>UPostProcessComponent</code> all fit on
+          one droppable Blueprint.</p>
+        <p><strong>Or skip it.</strong> Every layout decision here survives a flat translucent panel with no
+          blur at all. Judge any blur with the tint at zero against high-contrast geometry, or you will ship
+          a white tint and call it glass.</p>
+      </div>
+
+      <div class="note">
+        <h3>Names that must survive the restyle</h3>
+        <p><code>UMainMenuPage</code> requires all eight: <code>StartPanel</code>,
+          <code>StepPageContainer</code>, <code>SelectChapterPanel</code>, <code>ChapterListContainer</code>,
+          <code>RestartChapterCompletedPanel</code>, <code>RestartMessageText</code>,
+          <code>Btn_ConfirmRestart</code>, <code>Btn_CancelRestart</code>. <code>UChapterSelectRow</code>
+          requires six: <code>ChapterNumberText</code>, <code>ChapterTitleText</code>,
+          <code>ProgressText</code>, <code>StatusIconImage</code>, <code>ChapterButton</code>,
+          <code>CompletionStatusImage</code>. Rename or delete any one and the Blueprint fails to compile.</p>
+        <p>Two are structural rather than cosmetic: <code>ChapterListContainer</code> must stay a panel
+          widget, and only a ScrollBox or VerticalBox gets the per-row padding C++ applies — any other panel
+          type still works but silently loses the spacing. <code>ChapterButton</code> must be a real
+          <code>UButton</code>, because C++ calls <code>SetIsEnabled</code> on it.</p>
+      </div>
+
+      <div class="note">
+        <h3>Four things that bite later</h3>
+        <p><strong>The board must stay hit-test visible.</strong> Everything the laser does is gated on
+          <code>IsOverHitTestVisibleWidget()</code>. Set the decorative layers to Self Hit Test Invisible —
+          the usual instinct — and the beam never appears over the panel and the haptic never fires. Keep at
+          least the background border hit-test visible.</p>
+        <p><strong>But not bigger than it needs to be.</strong> Hovering any widget makes the thumbstick
+          scroll it and consumes locomotion input entirely. A 2&nbsp;m board under the pointer most of the
+          time will lock the player in place — worth asking whether it needs to be this large at all.</p>
+        <p><strong>Counts move with explanation mode.</strong> Every total on screen goes through the
+          process-wide explanation-flow flag, so the same module honestly reports different numbers in the
+          two modes. Don&rsquo;t cache them, and don&rsquo;t present them as a fixed property of the course.</p>
+        <p><strong>Progress does not survive a restart.</strong> Completion lives in a GameInstance
+          subsystem with no SaveGame anywhere in the plugin, so the menu must not imply history — no
+          &ldquo;last attempted&rdquo;, no &ldquo;best time&rdquo;, no &ldquo;resume where you left
+          off&rdquo;. None of it would be true.</p>
+      </div>
+
+      <div class="note">
+        <h3>Two open questions</h3>
+        <p><strong>Type.</strong> These mockups render in the system UI face. The framework&rsquo;s panels
+          use Montserrat-Medium, and SF is not licensable for redistribution in a packaged build, so the real
+          choice is either to keep Montserrat and apply the typographic discipline to it — negative tracking
+          on the large sizes, tabular figures, weight-led hierarchy — or to license something closer.
+          Worth deciding before anyone rebuilds the widget.</p>
+        <p><strong>Length.</strong> Every string resolves through the multi-language struct, so each row has
+          to survive its English, Malay and Tamil forms. Malay runs longer than English, and Tamil has taller
+          glyphs. The row heights here have headroom for two lines on purpose; that should be tested with
+          real Tamil strings before the layout is locked.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="wrap">
+    <div style="border-top:1px solid var(--hairline); padding-top:20px;">
+      Azureal XR Framework · chapter-select redesign · designed in the Apple Liquid Glass language,
+      adapted where a headset makes it necessary.
+    </div>
+  </footer>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

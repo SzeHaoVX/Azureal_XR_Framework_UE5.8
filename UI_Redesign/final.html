@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Final — Explain, Action, CSM</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  [hidden] { display: none !important; }
+
+  /* ─────────────────────────────────────────────────────────────────
+     THE ONLY TWO SIZES THAT EXIST
+
+       Explain / Action   900 × 870 px   → 90 × 87 cm at scale 0.1
+       CSM board         1220 × 870 px   → 122 × 87 cm
+
+     Same height, 1.4 : 1 — which is also the aspect the overhaul board
+     already rendered at (1900 × 1347 = 1.4105). So the CSM design is the
+     same design, scaled by 1220/1900 = 0.6421. Nothing was re-invented.
+     ───────────────────────────────────────────────────────────────── */
+
+  .stage {
+    position: relative; border-radius: var(--r-hero); overflow: hidden;
+    background:
+      radial-gradient(120% 90% at 72% 6%,  rgba(126,158,198,0.30) 0%, rgba(0,0,0,0) 58%),
+      radial-gradient(90%  70% at 10% 96%, rgba(196,146,94,0.20)  0%, rgba(0,0,0,0) 62%),
+      linear-gradient(168deg, #2b2f37 0%, #191c21 48%, #0e1014 100%);
+    box-shadow: var(--sh-panel);
+    padding: clamp(20px, 3vw, 40px);
+  }
+  .stage-label {
+    font-size: 11px; font-weight: 650; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(255,255,255,0.40); margin-bottom: 14px; display: block;
+  }
+  .fit { transform-origin: top left; }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  /* the stages get their own wider column so a 1220 px board can draw 1:1 */
+  .wrap { max-width: 1500px; }
+  .read { max-width: var(--max-read); }
+  @media (max-width: 1180px) { .pair { grid-template-columns: 1fr; } }
+
+  /* ═══════════════ shared material — .w ═══════════════ */
+  .w {
+    position: relative; color: #fff; font-family: var(--font);
+    --t:#fff; --t2:rgba(235,235,245,0.68); --t3:rgba(235,235,245,0.46); --t4:rgba(235,235,245,0.26);
+    --div:rgba(255,255,255,0.09);
+    --fill:rgba(120,120,128,0.20); --fill2:rgba(120,120,128,0.13); --track:rgba(120,120,128,0.26);
+    --blue:#0a84ff; --green:#30d158; --amber:#ff9f0a; --red:#ff453a;
+    background: rgba(28,28,30,0.78);
+    backdrop-filter: blur(30px) saturate(160%); -webkit-backdrop-filter: blur(30px) saturate(160%);
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow:
+      inset 0 0 0 2px rgba(255,255,255,0.13),
+      inset 0 3px 0 0 rgba(255,255,255,0.10),
+      0 4px 16px rgba(0,0,0,0.34),
+      0 44px 100px rgba(0,0,0,0.52);
+  }
+  @keyframes hive { 0%,100% { opacity:.35 } 50% { opacity:1 } }
+  .hive { animation: hive 2.5s ease-in-out infinite; }
+  .spacer { flex: 1; }
+
+  /* ═══════════════ EXPLAIN / ACTION — 900 × 870 ═══════════════ */
+  .gp { width: 900px; height: 870px; border-radius: 42px; }
+  .gp-body { flex: 1; padding: 56px 52px; display: flex; flex-direction: column; min-height: 0; }
+  .gp-foot { flex: none; padding: 0 52px 52px; }
+
+  .gp-kind { display: inline-flex; align-items: center; gap: 14px; align-self: flex-start;
+             font-size: 24px; font-weight: 650; letter-spacing: 0.14em; text-transform: uppercase; }
+  .gp-kind .pip { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+  .gp-kind--explain { color: #ffcf70; }
+  .gp-kind--explain .pip { background: var(--amber); box-shadow: 0 0 14px rgba(255,159,10,0.75); }
+  .gp-kind--action { color: #ff9b93; }
+  .gp-kind--action .pip { background: var(--red); box-shadow: 0 0 14px rgba(255,69,58,0.75); }
+
+  .gp-text { margin-top: 34px; font-size: 40px; font-weight: 450; line-height: 1.52; color: var(--t); }
+  .gp-text p + p { margin-top: 26px; }
+  .gp-text .unread { color: var(--t4); }   /* letter-by-letter: colour only, no reflow */
+  .gp-text .caveat { color: var(--t4); }   /* permanently secondary — a different meaning */
+
+  .gp-btn {
+    position: relative; width: 100%; height: 122px; border-radius: 999px; border: none;
+    font-family: var(--font); font-size: 34px; font-weight: 650; letter-spacing: -0.01em;
+    color: #fff; background: var(--fill); box-shadow: inset 0 0 0 3px var(--div);
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    cursor: pointer; overflow: hidden;
+  }
+  .gp-btn--go { background: var(--blue); box-shadow: none; }
+
+  .gp-trans { display: flex; align-items: center; gap: 22px; }
+  .gp-round {
+    flex: none; width: 122px; height: 122px; border-radius: 50%; border: none;
+    background: var(--fill); box-shadow: inset 0 0 0 3px var(--div); color: #fff;
+    display: grid; place-items: center; cursor: pointer;
+  }
+  .gp-wave { flex: 1; height: 10px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .gp-wave i { display: block; height: 100%; border-radius: 999px; background: var(--t2); width: 42%; }
+  .gp-time { flex: none; font-size: 26px; color: var(--t3); font-variant-numeric: tabular-nums; }
+
+  /* ═══════════════ CSM — 1220 × 870 (the 1900 board × 0.6421) ═══════════════ */
+  .bd { width: 1220px; height: 870px; border-radius: 54px; }
+  .bd-bar {
+    flex: none; height: 113px; display: flex; align-items: center; gap: 14px; padding: 0 56px;
+    border-bottom: 3px solid var(--div);
+  }
+  .bd-bar--foot { border-bottom: none; border-top: 3px solid var(--div); height: 152px; gap: 16px; }
+  .bd-crumb { display: flex; align-items: center; gap: 13px; font-size: 26px; font-weight: 600; color: var(--t2); }
+  .bd-crumb .now { color: #fff; } .bd-crumb .sep { color: var(--t4); }
+  .bd-status { margin-left: auto; display: flex; align-items: center; gap: 12px;
+               font-size: 23px; font-weight: 550; color: var(--t2); font-variant-numeric: tabular-nums; }
+
+  .bd-body { flex: 1; padding: 62px 56px; display: flex; flex-direction: column; min-height: 0; }
+  .bd-eyebrow { font-size: 23px; font-weight: 650; letter-spacing: 0.13em; text-transform: uppercase; color: var(--t3); }
+  .bd-h { font-size: 67px; font-weight: 700; letter-spacing: -0.026em; line-height: 1.06; margin-top: 17px; }
+  .bd-lede { margin-top: 22px; font-size: 34px; line-height: 1.45; color: var(--t2); }
+
+  .bd-list { margin-top: 33px; background: var(--fill2); border-radius: 34px; overflow: hidden;
+             box-shadow: inset 0 0 0 3px var(--div); }
+  .bd-item { display: flex; align-items: center; gap: 28px; padding: 35px 38px; }
+  .bd-item + .bd-item { border-top: 3px solid var(--div); }
+  .bd-item--sel { background: rgba(10,132,255,0.16); box-shadow: inset 0 0 0 3px var(--blue); }
+  .bd-n {
+    flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 28px; font-weight: 650; color: var(--t3); font-variant-numeric: tabular-nums;
+    box-shadow: inset 0 0 0 3px var(--div);
+  }
+  .bd-n--now  { background: var(--blue);  color: #04223d; box-shadow: none; }
+  .bd-n--done { background: var(--green); color: #05261a; box-shadow: none; }
+  .bd-t { display: block; font-size: 35px; font-weight: 600; letter-spacing: -0.008em; line-height: 1.22; }
+  .bd-s { display: block; margin-top: 8px; font-size: 24px; color: var(--t3); font-variant-numeric: tabular-nums; }
+  .bd-meter { flex: none; width: 167px; display: flex; gap: 5px; }
+  .bd-meter i { flex: 1; height: 9px; border-radius: 999px; background: var(--track); }
+  .bd-meter i.on { background: var(--green); } .bd-meter i.now { background: var(--blue); }
+  .bd-here { flex: none; margin-left: auto; display: flex; align-items: center; gap: 8px;
+             font-size: 19px; font-weight: 600; color: var(--blue); }
+
+  /* the procedure list: only the ACTIVE row opens to full text */
+  .bd-list--proc .bd-item { padding: 24px 34px; }
+  .bd-list--proc .bd-t { font-size: 30px; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+                         display: -webkit-box; overflow: hidden; }
+  .bd-list--proc .bd-item--now { background: rgba(10,132,255,0.10); }
+  .bd-list--proc .bd-item--now .bd-t { font-size: 35px; -webkit-line-clamp: 3; }
+
+  .bd-btn {
+    flex: none; height: 114px; padding: 0 44px; border-radius: 999px; border: none;
+    font-family: var(--font); font-size: 36px; font-weight: 600; color: #fff;
+    background: var(--fill); box-shadow: inset 0 0 0 3px var(--div);
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .bd-btn--go { flex: 1; background: var(--blue); box-shadow: none; font-weight: 650; }
+  .bd-btn--grow { flex: 1; }
+  .bd-btn[disabled] { color: var(--t4); background: var(--fill2); }
+  .bd-btn--danger { color: #ff8a80; }
+  .bd-btn--icon { width: 114px; padding: 0; }
+
+  /* Menu = four tiles, not a list. Each is its own target, so each clears the
+     8 cm laser floor with room to spare (the tile is 24.4 cm square). */
+  .bd-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .bd-tile {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 18px;
+    padding: 34px 34px 30px; border-radius: 34px; border: none; cursor: pointer;
+    background: var(--fill2); box-shadow: inset 0 0 0 3px var(--div);
+    font-family: var(--font); color: #fff; text-align: left; min-height: 244px;
+  }
+  .bd-tile .ic {
+    flex: none; width: 76px; height: 76px; border-radius: 24px; display: grid; place-items: center;
+    background: var(--fill); box-shadow: inset 0 0 0 3px var(--div); color: var(--t2);
+  }
+  .bd-tile .tl { font-size: 35px; font-weight: 600; letter-spacing: -0.008em; line-height: 1.15; }
+  .bd-tile .ds { margin-top: 6px; font-size: 22px; font-weight: 400; color: var(--t3); line-height: 1.3; }
+  /* destructive tiles: the red lives on the icon, not on a red slab */
+  .bd-tile--danger .ic { color: #ff8a80; box-shadow: inset 0 0 0 3px rgba(255,69,58,0.34); }
+  .bd-tile--danger .tl { color: #ff8a80; }
+
+  /* the scroll region + its fade */
+  .bd-scroll { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+  .bd-scroll::after { content:''; position: absolute; inset: auto 0 0 0; height: 56px; pointer-events: none;
+                      background: linear-gradient(180deg, rgba(28,28,30,0) 0%, rgba(28,28,30,0.88) 100%); }
+  .bd-rail { position: absolute; right: 3px; top: 8px; bottom: 8px; width: 5px;
+             border-radius: 999px; background: var(--track); }
+  .bd-rail i { position: absolute; left: 0; width: 5px; border-radius: 999px; background: var(--t3); }
+
+  /* ═══════════════ page chrome ═══════════════ */
+  .rows { margin-top: 10px; }
+  .rw { display: flex; gap: 18px; align-items: flex-start; padding: 16px clamp(17px,3vw,24px); }
+  .rw + .rw { border-top: 1px solid var(--hairline); }
+  .rw-main { flex: 1; min-width: 0; }
+  .rw-t { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.45; }
+  .rw-d { margin-top: 6px; font-size: 14px; color: var(--text-2); line-height: 1.68; }
+  code { font-family: var(--mono); font-size: 0.88em; background: rgba(0,0,0,0.05);
+         padding: 1px 5px; border-radius: 5px; color: var(--text-body); }
+  .vv { flex: none; width: 96px; text-align: right; padding-top: 2px; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: var(--r-pill); }
+  .chip--free { color: #1d7a3d; background: rgba(48,209,88,0.14); }
+  .chip--work { color: #a35a00; background: var(--heat-bg); }
+  .chip--no   { color: #b3261e; background: rgba(215,0,21,0.09); }
+  h2.sec { font-size: clamp(21px,3.2vw,27px); font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+  .sizebar { display: flex; gap: 30px; flex-wrap: wrap; margin-top: 24px; }
+  .sz { font-size: 13px; color: var(--text-2); }
+  .sz b { display: block; font-size: 22px; font-weight: 650; color: var(--text);
+          letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-in">
+    <a class="nav-brand" href="final.html">Azureal&nbsp;·&nbsp;Final</a>
+    <nav class="nav-links">
+      <a href="token.html">Token &amp; snap</a>
+      <a href="engine.html">Engine check</a>
+      <a href="placement.html" class="hide-sm">Placement</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="read">
+    <div class="eyebrow"><span class="dot"></span> Final · two sizes, one system</div>
+    <h1 style="margin-top:15px;">90 × 87 and 122 × 87.<br>Same height, on purpose.</h1>
+    <p class="lede">
+      Explain and Action stay exactly as your blueprint authors them — <b>900 × 870</b>. The CSM board is
+      <b>1220 × 870</b>: the same height, 1.4× wider. That ratio is not invented — the overhaul board already
+      rendered at 1900 × 1347, which is 1.4105 : 1. So the CSM design below is that design scaled by 0.642,
+      not a redraw.
+    </p>
+    <div class="sizebar">
+      <div class="sz">Explain / Action<b>900 × 870 px</b></div>
+      <div class="sz">at scale 0.1<b>90 × 87 cm</b></div>
+      <div class="sz">CSM board<b>1220 × 870 px</b></div>
+      <div class="sz">at scale 0.1<b>122 × 87 cm</b></div>
+    </div>
+  </section>
+
+  <div class="wrap">
+
+    <!-- ══════════════════ EXPLAIN / ACTION ══════════════════ -->
+    <section class="step" style="margin-top:50px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">Explain &amp; Action — 900 × 870</h2>
+        <p class="lede" style="margin-top:12px;">
+          Four states of one card. The shell, the padding, the type and the 12.2&nbsp;cm footer button are
+          identical in every one; only the pip colour, the dimmed text and the footer contents change.
+          The yellow highlighter block is gone — a 1.6&nbsp;cm dot carries the kind instead, and it is the
+          element bound to <code>MPC_Highlight</code>'s Alpha, so the panel breathes in sync with the object's outline.
+        </p>
+      </div>
+
+      <div class="pair" style="margin-top:24px;">
+        <div class="stage">
+          <span class="stage-label">Explanation · idle · 90 × 87 cm</span>
+          <div class="fit" data-w="900"><div class="w gp">
+            <div class="gp-body">
+              <div class="gp-kind gp-kind--explain"><span class="pip hive"></span>&nbsp;Explanation</div>
+              <div class="gp-text">
+                <p>You have been assigned to perform switching in an 11&nbsp;kV substation.</p>
+                <p>You are in the briefing room to review the task and its safety requirements.</p>
+              </div>
+              <div class="spacer"></div>
+            </div>
+            <div class="gp-foot">
+              <button class="gp-btn">
+                <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor"
+                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5v14l11-7z"/></svg>
+                <span>Play audio</span>
+              </button>
+            </div>
+          </div></div>
+        </div>
+
+        <div class="stage">
+          <span class="stage-label">Action · idle · 90 × 87 cm</span>
+          <div class="fit" data-w="900"><div class="w gp">
+            <div class="gp-body">
+              <div class="gp-kind gp-kind--action"><span class="pip hive"></span>&nbsp;Action</div>
+              <div class="gp-text">
+                <p>Rack out the breaker truck and confirm it is fully withdrawn.</p>
+                <p class="caveat">Both latches must be released before the truck will move.</p>
+              </div>
+              <div class="spacer"></div>
+            </div>
+            <div class="gp-foot"><button class="gp-btn gp-btn--go">Execute</button></div>
+          </div></div>
+        </div>
+
+        <div class="stage">
+          <span class="stage-label">Explanation · playing · the reveal</span>
+          <div class="fit" data-w="900"><div class="w gp">
+            <div class="gp-body">
+              <div class="gp-kind gp-kind--explain"><span class="pip hive"></span>&nbsp;Explanation</div>
+              <div class="gp-text">
+                <p>You have been assigned to perform switching in an 11&nbsp;kV substation.</p>
+                <p class="unread">You are in the briefing room to review the task and its safety requirements.</p>
+              </div>
+              <div class="spacer"></div>
+            </div>
+            <div class="gp-foot">
+              <div class="gp-trans">
+                <button class="gp-round">
+                  <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor"
+                       stroke-width="2.2" stroke-linecap="round"><path d="M9 5v14M15 5v14"/></svg>
+                </button>
+                <div class="gp-wave"><i></i></div>
+                <span class="gp-time">0:12</span>
+              </div>
+            </div>
+          </div></div>
+        </div>
+
+        <div class="stage">
+          <span class="stage-label">Explanation · read · pulse stops</span>
+          <div class="fit" data-w="900"><div class="w gp">
+            <div class="gp-body">
+              <div class="gp-kind gp-kind--explain"><span class="pip"></span>&nbsp;Explanation</div>
+              <div class="gp-text">
+                <p>You have been assigned to perform switching in an 11&nbsp;kV substation.</p>
+                <p>You are in the briefing room to review the task and its safety requirements.</p>
+              </div>
+              <div class="spacer"></div>
+            </div>
+            <div class="gp-foot">
+              <button class="gp-btn gp-btn--go">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor"
+                     stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg>
+                <span>Got it</span>
+              </button>
+            </div>
+          </div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ CSM ══════════════════ -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">CSM board — 1220 × 870</h2>
+        <p class="lede" style="margin-top:12px;">
+          Same material, same tokens, same type system — 1.4× wider than Explain so a chapter row can hold a
+          title, a sub-label, a progress meter and a marker without any of them fighting. Both of your fixes
+          are in: <b>no step list on the briefing</b>, and <b>no colour bar on the procedure</b>.
+        </p>
+      </div>
+
+      <div class="stage" style="margin-top:24px;">
+        <span class="stage-label">Chapter select</span>
+        <div class="fit" data-w="1220"><div class="w bd">
+          <div class="bd-bar">
+            <div class="bd-crumb"><span>Rescue</span><span class="sep">/</span><span class="now">Chapters</span></div>
+            <div class="bd-status">Training</div>
+          </div>
+          <div class="bd-body">
+            <div class="bd-eyebrow">Choose where to start</div>
+            <h2 class="bd-h">2 chapters</h2>
+            <div class="bd-list">
+              <div class="bd-item">
+                <span class="bd-n bd-n--now">1</span>
+                <span style="flex:1; min-width:0;">
+                  <span class="bd-t">Briefing — VCB 9 shutdown</span>
+                  <span class="bd-s">0 of 1 procedures</span>
+                </span>
+                <span class="bd-meter"><i></i></span>
+                <span class="bd-here">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4">
+                    <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg>
+                  You are here
+                </span>
+              </div>
+              <div class="bd-item bd-item--sel">
+                <span class="bd-n">2</span>
+                <span style="flex:1; min-width:0;">
+                  <span class="bd-t">Preparation &amp; inspection</span>
+                  <span class="bd-s">0 of 5 procedures</span>
+                </span>
+                <span class="bd-meter"><i></i><i></i><i></i><i></i><i></i></span>
+                <span style="flex:none; margin-left:auto; color:var(--blue); display:flex;">
+                  <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.2"
+                       stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+                </span>
+              </div>
+            </div>
+            <div class="spacer"></div>
+          </div>
+          <div class="bd-bar bd-bar--foot">
+            <button class="bd-btn">Back</button>
+            <button class="bd-btn bd-btn--go">Start chapter 2</button>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="stage" style="margin-top:16px;">
+        <span class="stage-label">Chapter briefing &mdash; no step list</span>
+        <div class="fit" data-w="1220"><div class="w bd">
+          <div class="bd-bar">
+            <div class="bd-crumb"><span>Ch 1</span><span class="sep">/</span><span class="now">Briefing</span></div>
+            <div class="bd-status"><span style="width:14px;height:14px;border-radius:50%;background:var(--t4);display:block"></span> Not started</div>
+          </div>
+          <div class="bd-body">
+            <div class="bd-eyebrow">Briefing</div>
+            <h2 class="bd-h">VCB 9 shutdown</h2>
+            <p class="bd-lede">
+              Take VCB&nbsp;9 out of service and prove it dead before any work begins. One procedure,
+              five sub-steps, about eight minutes.
+            </p>
+            <div class="spacer"></div>
+          </div>
+          <div class="bd-bar bd-bar--foot">
+            <button class="bd-btn">Back</button>
+            <button class="bd-btn bd-btn--go">Start</button>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="stage" style="margin-top:16px;">
+        <span class="stage-label">Procedure &mdash; no colour bar</span>
+        <div class="fit" data-w="1220"><div class="w bd">
+          <div class="bd-bar">
+            <div class="bd-crumb"><span>Ch 1</span><span class="sep">/</span><span class="now">Proc 1 of 1</span></div>
+            <div class="bd-status"><span style="width:14px;height:14px;border-radius:50%;background:var(--green);display:block"></span> 2/5</div>
+          </div>
+          <div class="bd-body" style="padding-bottom:0;">
+            <h2 class="bd-h" style="margin-top:0; font-size:52px;">Understand the scenario</h2>
+            <div class="bd-scroll" style="margin-top:26px;">
+              <div class="bd-list bd-list--proc" style="margin-top:0;">
+                <div class="bd-item">
+                  <span class="bd-n bd-n--done">
+                    <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="3"
+                         stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg></span>
+                  <span class="bd-t" style="color:var(--t2);">Read the switching instruction</span>
+                </div>
+                <div class="bd-item">
+                  <span class="bd-n bd-n--done">
+                    <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="3"
+                         stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 6"/></svg></span>
+                  <span class="bd-t" style="color:var(--t2);">Identify VCB 9 on the panel</span>
+                </div>
+                <div class="bd-item bd-item--now">
+                  <span class="bd-n bd-n--now">3</span>
+                  <span class="bd-t" style="flex:1;">Confirm the isolation points are locked and tagged before approaching the panel</span>
+                </div>
+                <div class="bd-item"><span class="bd-n">4</span>
+                  <span class="bd-t" style="flex:1;">Check the permit to work matches the switching instruction reference number</span></div>
+                <div class="bd-item"><span class="bd-n">5</span>
+                  <span class="bd-t" style="flex:1;">Confirm the boundary</span></div>
+              </div>
+              <div class="bd-rail"><i style="top:14%; height:58%;"></i></div>
+            </div>
+          </div>
+          <div class="bd-bar bd-bar--foot">
+            <button class="bd-btn bd-btn--icon">
+              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="2"
+                   stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+            <button class="bd-btn">Back</button>
+            <button class="bd-btn bd-btn--go" disabled style="background:var(--fill2); color:var(--t4);">Next</button>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="stage" style="margin-top:16px;">
+        <span class="stage-label">Menu &mdash; four tiles</span>
+        <div class="fit" data-w="1220"><div class="w bd">
+          <div class="bd-bar">
+            <div class="bd-crumb"><span class="now">Menu</span></div>
+            <div class="bd-status">Ch 1 &middot; Proc 1 of 1</div>
+          </div>
+          <div class="bd-body">
+            <div class="bd-tiles">
+              <button class="bd-tile">
+                <span class="ic"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor"
+                  stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 5h10M4 12h10M4 19h10"/><path d="M18 5h2M18 12h2M18 19h2"/></svg></span>
+                <span><span class="tl">Chapters</span><span class="ds">Jump to another chapter</span></span>
+              </button>
+              <button class="bd-tile">
+                <span class="ic"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor"
+                  stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2.5" y="7" width="19" height="10.5" rx="5.25"/><path d="M7 10.5v3M5.5 12h3"/>
+                  <circle cx="16.4" cy="11" r="1"/><circle cx="18.4" cy="13.4" r="1"/></svg></span>
+                <span><span class="tl">Controls</span><span class="ds">How to grab, aim and move</span></span>
+              </button>
+              <button class="bd-tile bd-tile--danger">
+                <span class="ic"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor"
+                  stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 12a8 8 0 1 1-2.7-6"/><path d="M20 4v5h-5"/></svg></span>
+                <span><span class="tl">Restart chapter</span><span class="ds">Back to procedure 1</span></span>
+              </button>
+              <button class="bd-tile bd-tile--danger">
+                <span class="ic"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor"
+                  stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 12a8 8 0 1 0 2.7-6"/><path d="M4 4v5h5"/><path d="M12 8.5v4"/><circle cx="12" cy="15.6" r=".9" fill="currentColor" stroke="none"/></svg></span>
+                <span><span class="tl">Restart module</span><span class="ds">Clears all chapter progress</span></span>
+              </button>
+            </div>
+            <div class="spacer"></div>
+          </div>
+          <div class="bd-bar bd-bar--foot">
+            <button class="bd-btn bd-btn--go bd-btn--grow">Close</button>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ THE FLOW ══════════════════ -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">When does the token expand?</h2>
+        <p class="lede" style="margin-top:12px;">
+          You asked what happens after an Explain step finishes. I read <code>AdvanceProgress</code> rather than
+          guessing, and the answer is cleaner than I expected: <b>the code already distinguishes the two cases
+          for you.</b>
+        </p>
+      </div>
+
+      <div class="panel rows" style="margin-top:22px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Explain finishes mid-procedure &rarr; a row ticks. Nothing else. <b>No Next.</b></div>
+            <div class="rw-d">
+              <code>OnExplainCompleted</code> fires, the Game Manager calls <code>AdvanceProgress()</code>, and that does
+              <code>PageProgressMemory[CurrentViewingIndex]++</code> (<code>TrainingStepPage.cpp:466</code>) &mdash; it ticks one
+              sub-step row, refreshes the list, plays a sound and scrolls. <b><code>AdvanceProgress</code> never turns the
+              page.</b> There is nothing for the trainee to press, so expanding the board would interrupt them for
+              no reason. The token just updates its count &mdash; 2/5 becomes 3/5 &mdash; and widens to the alert
+              state for about two seconds so the change is noticed in the periphery.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Token stays</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Explain finishes the <i>last</i> sub-step &rarr; the procedure completes. <b>Now expand.</b></div>
+            <div class="rw-d">
+              Same call, but <code>CurrentProgress >= TotalSubSteps</code> (<code>TrainingStepPage.cpp:476</code>) so it also
+              does <code>MaxUnlockedIndex++</code>, fires <code>OnMasterStepCompleted</code>, writes progress to
+              <code>UChapterSubsystem</code>, and calls <code>UpdateNextButtonState()</code> &mdash; <b>which is the moment Next
+              stops being dead.</b> That is the only point in a procedure where the trainee has something to press,
+              so that is the only point the token should open to the full board.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Token expands</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">So the rule is one line, and it needs no new state</div>
+            <div class="rw-d">
+              <b>Expand on <code>OnMasterStepCompleted</code>. Pulse on everything else.</b> Both are already broadcast; the
+              token does not have to count anything itself or know what kind of interaction just finished &mdash;
+              Explain, Action, Grab, Latch and Touch all funnel through the same <code>AdvanceProgress</code>.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Free</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Quizzes are the exception, and the code already guards it</div>
+            <div class="rw-d">
+              <code>AdvanceProgress</code> returns immediately if the current step is a Quiz
+              (<code>TrainingStepPage.cpp:445-448</code>) &mdash; &ldquo;Quizzes are strictly advanced by the user clicking
+              Confirm.&rdquo; A quiz page therefore has to <b>open by itself</b>, because nothing will ever tick it
+              forward. That is the one place the board should expand unasked.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Auto-open</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">One behaviour to know about before it surprises a trainee</div>
+            <div class="rw-d">
+              If the trainee has paged <i>back</i> to read an earlier procedure and a sub-step then completes,
+              <code>AdvanceProgress</code> silently jumps the view forward to <code>MaxUnlockedIndex</code> first
+              (<code>TrainingStepPage.cpp:450-461</code>). With a big fixed board that is merely jarring; with a token that
+              expands, the board opens on a <i>different page</i> than the one they were last reading. Worth a short
+              cross-fade, or simply not expanding when <code>CurrentViewingIndex != MaxUnlockedIndex</code>.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Design in</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">And the scroll destination is wrong for a shorter board</div>
+            <div class="rw-d">
+              <code>ScrollToActiveSubStep</code> uses <code>EDescendantScrollDestination::IntoView</code>
+              (<code>TrainingStepPage.cpp:505</code>), which does the minimum scroll &mdash; parking the active row flush
+              against the bottom edge. At 1.9&nbsp;m everything fit so it never showed. Change it to <code>Center</code>.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">One enum</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ BUILD NOTES ══════════════════ -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">Before anyone builds this</h2>
+        <p class="lede" style="margin-top:12px;">
+          Seven things the source says that the design does not. Each one is cheap now and expensive later.
+        </p>
+      </div>
+
+      <div class="panel rows" style="margin-top:22px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Your 900 × 870 design is currently rendering into a ~500 × 500 target</div>
+            <div class="rw-d">
+              The designer's Width/Height is <code>DesignTimeSize</code>, inside <code>#if WITH_EDITORONLY_DATA</code>
+              (<code>UserWidget.h:1528-1532</code>) — preview only. Your root is a Canvas Panel, and
+              <code>SConstraintCanvas::ComputeDesiredSize</code> (<code>SConstraintCanvas.cpp:356</code>) returns the max of the
+              children's slot offsets, not the canvas size. With <code>bDrawAtDesiredSize</code> on,
+              <code>CurrentDrawSize = SlateWindow->GetDesiredSize()</code> (<code>WidgetComponent.cpp:1432-1437</code>).
+              <b>Set <code>bDrawAtDesiredSize = false</code> and <code>DrawSize = (900, 870)</code>.</b> Fix this first —
+              every other quality decision is downstream of it.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Fix first</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The dimmed-pending reveal needs a RichTextBlock, not the TextBlock you have</div>
+            <div class="rw-d">
+              <code>UTextBlock</code> has exactly one <code>ColorAndOpacity</code> for the whole widget
+              (<code>TextBlock.h:37-40</code>) — no per-range colour at all, and UMG exposes no
+              <code>HighlightText</code>. Showing read text white and pending text at 26% in one paragraph means
+              <code>URichTextBlock</code> plus a <code>UDataTable</code> of two <code>FRichTextStyleRow</code>s differing only in colour
+              (<code>RichTextBlock.h:22-29,50-51</code>). Today <code>ExplainTextBlock</code> is a plain <code>UTextBlock</code>, so the
+              current reveal must be appending characters rather than dimming them. <b>This is a real change,
+              not a re-skin</b> — and re-emitting the markup on every reveal tick re-runs the parser, so measure it.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Asset + C++</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">The audio scrubber needs <code>BarFillStyle = Scale</code>, or the rounded fill breaks</div>
+            <div class="rw-d">
+              <code>FProgressBarStyle</code> carries independent <code>BackgroundImage</code> and <code>FillImage</code> brushes
+              (<code>SlateTypes.h:1180-1187</code>), each with its own <code>CornerRadii</code> — so rounded track and rounded fill
+              both work. But the default <code>EProgressBarFillStyle::Mask</code> draws the fill at full width and clips it
+              (<code>SProgressBar.cpp:462-467</code>), which squares off the leading edge. Set
+              <code>UProgressBar::BarFillStyle = Scale</code> (<code>ProgressBar.h:44</code>).
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">One field</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">I was wrong about the cable auto-select — the horizontal axis is not stable</div>
+            <div class="rw-d">
+              All six components billboard with <code>FindLookAtRotation</code> (<code>Azr_Explain.cpp:265</code> and five
+              siblings). That returns zero roll, so <b>UpVector stays near world-up and Top/Bottom is stable</b> —
+              but <b>RightVector spins with the player</b>, so a Left/Right auto-choice inverts every time the
+              trainee crosses the widget–mesh line, and the cable head pops across the panel. So the v1 rule is
+              <b>Top/Bottom only</b>: with the token docked at the bottom, anchor at <code>Top</code> and it can never
+              cross. Left/Right auto-selection needs hysteresis and is not worth it yet.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Corrected</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">And the default is the exact edge the token sits on</div>
+            <div class="rw-d">
+              <code>FAzr_TetherConfig::WidgetAnchorPos = EAzr_TetherPos::Bottom</code> (<code>Azr_Types.h:150</code>). Every
+              authored asset that already set it keeps its value, so a new default only affects new content —
+              existing steps need the field changed, or an <code>Auto</code> enumerator appended at the end of
+              <code>EAzr_TetherPos</code> so serialized content does not renumber.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Per step</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">There are <b>six</b> copies of <code>CalculateSurfaceAnchor</code>, not four</div>
+            <div class="rw-d">
+              <code>Azr_Explain.cpp:1061</code>, <code>Azr_Action.cpp:610</code>, <code>Azr_Grab.cpp:1187</code>,
+              <code>Azr_Latch.cpp:1266</code>, <code>Azr_Touch.cpp:508</code>, <code>Azr_AttachTarget.cpp:461</code> — the repo conventions doc says the
+              tether block is copy-pasted across four files, and that is stale. All six are private and
+              non-virtual across two different base classes, so there is no seam: any change is six edits unless
+              a free helper is introduced first. Two of them differ — AttachTarget's takes no
+              <code>FAzr_TetherConfig</code>, and <b>Touch silently drops the Front/Back cases</b>
+              (<code>Azr_Touch.cpp:525-531</code>), so those anchor at the widget centre instead.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Six edits</span></div>
+        </div>
+
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Two small ones that bite silently</div>
+            <div class="rw-d">
+              <b>Tracking kills ligatures.</b> Standard ligatures are enabled only when letter-spacing is exactly 0
+              (<code>SlateTextShaper.cpp:735</code>), and the offset quantises to an int16 pixel advance — so fine
+              tracking at small sizes steps rather than scales. <b>Rounded-box radii are not clamped.</b>
+              <code>SlateShaderCommon.ush:69-120</code> applies the radius verbatim with no <code>min(radius, size/2)</code>, so a
+              pill segment narrower than twice its radius inverts and artifacts — clamp the minimum segment
+              width in layout.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Know it</span></div>
+        </div>
+      </div>
+    </section>
+
+    <footer style="margin:72px auto 60px; max-width:var(--max-read); padding:26px var(--pad-x) 0;
+                   border-top:1px solid var(--hairline); font-size:13px; color:var(--text-3); line-height:1.8;">
+      Verified against UE 5.8 source and the AzurealXR plugin. ·
+      <a href="token.html" style="color:var(--accent-link); text-decoration:none;">token &amp; snap</a> ·
+      <a href="engine.html" style="color:var(--accent-link); text-decoration:none;">engine check</a>
+    </footer>
+
+  </div>
+</main>
+
+<script src="app.js"></script>
+<script>
+/* The boards are authored at their true px size and scaled to fit the column,
+   origin top-left, so every measurement on this page stays literal. */
+function fit() {
+  document.querySelectorAll('.fit').forEach(el => {
+    const w = +el.dataset.w;
+    const avail = el.parentElement.clientWidth - parseFloat(getComputedStyle(el.parentElement).paddingLeft) * 2;
+    const s = Math.min(1, avail / w);
+    el.style.transform = 'scale(' + s + ')';
+    const card = el.firstElementChild;
+    el.style.height = (card.offsetHeight * s) + 'px';
+    el.style.width  = (w * s) + 'px';
+  });
+}
+window.addEventListener('resize', fit);
+window.addEventListener('load', fit);
+fit();
+</script>
+</body>
+</html>
