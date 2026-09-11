@@ -172,6 +172,58 @@
   .bd-tile--danger .ic { color: #ff8a80; box-shadow: inset 0 0 0 3px rgba(255,69,58,0.34); }
   .bd-tile--danger .tl { color: #ff8a80; }
 
+  /* ═══ TAG / LABEL — Grab, Latch, Touch, AttachTarget ═══
+     UAzr_LabelWidget binds exactly ONE widget: LabelTextBlock. No button, no
+     progress bar, no second line. So the tag is one line of text and nothing
+     else — the design has to fit the contract, not the other way round.
+     Authored at 500 px and placed at component scale 0.05 = 25 cm. The double
+     density is deliberate: small text needs the pixels, and the panel scale
+     (0.1) would only give 250. */
+  .tag {
+    width: 500px; border-radius: 36px; padding: 34px 40px;
+    display: flex; align-items: center; gap: 22px;
+  }
+  .tag .pip { flex: none; width: 22px; height: 22px; border-radius: 50%;
+              background: var(--amber); box-shadow: 0 0 18px rgba(255,159,10,0.8); }
+  .tag .nm { font-size: 46px; font-weight: 600; letter-spacing: -0.012em; line-height: 1.18;
+             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tag--wrap .nm { white-space: normal; }
+  .tag--latch .pip { background: var(--blue); box-shadow: 0 0 18px rgba(10,132,255,0.8); }
+
+  /* the reach ring lives on the object, not in the widget — one ring, not two */
+  .ring-stage { position: relative; display: grid; place-items: center; height: 260px; }
+  .ring { position: absolute; border-radius: 50%; }
+  .ring--idle  { width: 92px;  height: 92px;  box-shadow: inset 0 0 0 4px rgba(255,159,10,0.55); }
+  .ring--reach { width: 184px; height: 184px; box-shadow: inset 0 0 0 5px rgba(255,159,10,0.95);
+                 animation: breathe 2.5s ease-in-out infinite; }
+  @keyframes breathe { 0%,100% { transform: scale(0.94); opacity:.55 } 50% { transform: scale(1); opacity:1 } }
+  .knob { width: 56px; height: 56px; border-radius: 50%; background: #1b1e22;
+          box-shadow: inset 0 0 0 4px #6f7782; }
+
+  /* ═══ quiz ═══ */
+  .bd-opt {
+    display: flex; align-items: center; gap: 26px; padding: 26px 32px; border-radius: 28px;
+    background: var(--fill2); box-shadow: inset 0 0 0 3px var(--div);
+    font-size: 32px; font-weight: 500; line-height: 1.25;
+  }
+  .bd-opt + .bd-opt { margin-top: 16px; }
+  .bd-opt .k {
+    flex: none; width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 26px; font-weight: 650; color: var(--t3); box-shadow: inset 0 0 0 3px var(--div);
+  }
+  .bd-opt--sel { background: rgba(10,132,255,0.16); box-shadow: inset 0 0 0 3px var(--blue); }
+  .bd-opt--sel .k { background: var(--blue); color: #04223d; box-shadow: none; }
+
+  /* ═══ chapter complete ═══ */
+  .bd-stats { display: flex; gap: 0; margin-top: 34px; }
+  .bd-stat { flex: 1; padding: 0 34px; }
+  .bd-stat + .bd-stat { box-shadow: inset 3px 0 0 0 var(--div); }
+  .bd-stat:first-child { padding-left: 0; }
+  .bd-stat dt { font-size: 23px; color: var(--t3); }
+  .bd-stat dd { margin: 10px 0 0; font-size: 58px; font-weight: 700; letter-spacing: -0.026em;
+                font-variant-numeric: tabular-nums; }
+  .bd-stat--good dd { color: var(--green); }
+
   /* the scroll region + its fade */
   .bd-scroll { flex: 1; min-height: 0; position: relative; overflow: hidden; }
   .bd-scroll::after { content:''; position: absolute; inset: auto 0 0 0; height: 56px; pointer-events: none;
@@ -327,6 +379,76 @@
               </button>
             </div>
           </div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════ TAG / LABEL ══════════════════ -->
+    <section class="step" style="margin-top:58px;">
+      <div class="read" style="padding:0;">
+        <h2 class="sec">Tag &mdash; Grab, Latch, Touch, AttachTarget</h2>
+        <p class="lede" style="margin-top:12px;">
+          <code>UAzr_LabelWidget</code> binds exactly one widget: <code>LabelTextBlock</code>. No button, no progress bar,
+          no second line. So the tag is <b>one line of text and nothing else</b> &mdash; which matches how you
+          actually write them (&ldquo;Grab Chainsaw&rdquo;). The design fits the contract rather than the other way round.
+        </p>
+      </div>
+
+      <div class="pair" style="margin-top:24px;">
+        <div class="stage">
+          <span class="stage-label">Tag &middot; 25 cm wide</span>
+          <div class="fit" data-w="500"><div class="w tag">
+            <span class="pip"></span><span class="nm">Grab Chainsaw</span>
+          </div></div>
+        </div>
+        <div class="stage">
+          <span class="stage-label">Tag &middot; latch, and a long one</span>
+          <div class="fit" data-w="500">
+            <div class="w tag tag--latch" style="margin-bottom:24px;">
+              <span class="pip"></span><span class="nm">Open the panel</span>
+            </div>
+            <div class="w tag tag--wrap">
+              <span class="pip"></span><span class="nm">Release both latches before racking out</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel rows" style="margin-top:24px;">
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Authored at 500 px, placed at scale <b>0.05</b> &mdash; not 0.1 like the panels</div>
+            <div class="rw-d">
+              That still lands at 25&nbsp;cm, but with twice the pixels per centimetre. The panel scale would give
+              a 250&nbsp;px render target for text that is only 2.3&nbsp;cm tall in the world, and it would not hold
+              up. This is the one place a second px&rarr;cm mapping earns its keep &mdash; write it in the Blueprint
+              comment, because it will otherwise look like a mistake.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--work">Note it</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">One ring, not two</div>
+            <div class="rw-d">
+              The grab indicator currently draws an outer and an inner ring. Two concentric rings read as a
+              target reticle &mdash; &ldquo;aim here&rdquo; &mdash; which is the wrong verb for a thing you reach out and take.
+              One ring that expands and breathes when the hand enters range says &ldquo;within reach&rdquo; without
+              borrowing anything from aiming. It also halves the overdraw on a translucent element.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--no">Drop one</span></div>
+        </div>
+        <div class="rw">
+          <div class="rw-main">
+            <div class="rw-t">Truncate, don't wrap &mdash; except where you mean to</div>
+            <div class="rw-d">
+              A tag sits next to the object and competes with it for attention, so the default is one line with
+              <code>ETextOverflowPolicy::Ellipsis</code>. The wrapping variant on the right is for the rare instruction
+              that genuinely needs two lines. If a tag needs three, it is an Action, not a label.
+            </div>
+          </div>
+          <div class="vv"><span class="chip chip--free">Native</span></div>
         </div>
       </div>
     </section>
@@ -495,6 +617,54 @@
           </div>
           <div class="bd-bar bd-bar--foot">
             <button class="bd-btn bd-btn--go bd-btn--grow">Close</button>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="stage" style="margin-top:16px;">
+        <span class="stage-label">Quiz</span>
+        <div class="fit" data-w="1220"><div class="w bd">
+          <div class="bd-bar">
+            <div class="bd-crumb"><span>Ch 1</span><span class="sep">/</span><span class="now">Quiz</span></div>
+            <div class="bd-status">Question 2 of 3</div>
+          </div>
+          <div class="bd-body">
+            <div class="bd-eyebrow">Select one</div>
+            <h2 class="bd-h" style="font-size:46px;">Before racking out, what must be proved first?</h2>
+            <div style="margin-top:30px;">
+              <div class="bd-opt"><span class="k">A</span><span>The breaker is open and the circuit is dead</span></div>
+              <div class="bd-opt bd-opt--sel"><span class="k">B</span><span>The permit to work has been issued and signed</span></div>
+              <div class="bd-opt"><span class="k">C</span><span>The earth switch is closed</span></div>
+            </div>
+            <div class="spacer"></div>
+          </div>
+          <div class="bd-bar bd-bar--foot">
+            <button class="bd-btn">Back</button>
+            <button class="bd-btn bd-btn--go">Confirm</button>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="stage" style="margin-top:16px;">
+        <span class="stage-label">Chapter complete</span>
+        <div class="fit" data-w="1220"><div class="w bd">
+          <div class="bd-bar">
+            <div class="bd-crumb"><span>Rescue</span><span class="sep">/</span><span class="now">Ch 1</span></div>
+            <div class="bd-status"><span style="width:14px;height:14px;border-radius:50%;background:var(--green);display:block"></span> Complete</div>
+          </div>
+          <div class="bd-body">
+            <div class="bd-eyebrow">Chapter complete</div>
+            <h2 class="bd-h">VCB 9 shutdown</h2>
+            <dl class="bd-stats">
+              <div class="bd-stat"><dt>Procedures</dt><dd>1 / 1</dd></div>
+              <div class="bd-stat bd-stat--good"><dt>Quiz</dt><dd>3 / 3</dd></div>
+              <div class="bd-stat"><dt>Time</dt><dd>08:42</dd></div>
+            </dl>
+            <div class="spacer"></div>
+          </div>
+          <div class="bd-bar bd-bar--foot">
+            <button class="bd-btn">Menu</button>
+            <button class="bd-btn bd-btn--go">Next chapter</button>
           </div>
         </div></div>
       </div>
