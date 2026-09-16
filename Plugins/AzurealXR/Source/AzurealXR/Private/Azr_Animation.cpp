@@ -61,11 +61,16 @@ void UAzr_Animation::BeginPlay()
 	// Whatever pose the level was saved in, runtime starts at rest. Someone will eventually save a
 	// level with a cover left halfway open, and this is what stops that reaching a trainee.
 	//
-	// Only when a start was actually recorded, though. RestTransform defaults to identity, so without
-	// this guard a component that was merely dropped on an actor -- target set or not, animation
-	// authored or not -- slammed its mesh to the origin at scale 1 the instant PIE started, with no
-	// Play call anywhere near it. An unrecorded start means there is no opinion to enforce.
-	if (bStartRecorded)
+	// Only when there is an animation to enforce, though. RestTransform defaults to identity, so
+	// without a guard a component merely dropped on an actor -- no target, nothing authored --
+	// slammed its mesh to the origin at scale 1 the instant PIE started, with no Play call anywhere
+	// near it.
+	//
+	// Steps counts as well as the flag. Guarding on bStartRecorded alone was too strict: it was added
+	// after the component shipped, so anything authored before it deserialises with the flag false
+	// and a full set of steps, and those animations stopped returning to their start entirely --
+	// leaving the mesh wherever the asset happened to store it, usually the last recorded pose.
+	if (bStartRecorded || Steps.Num() > 0)
 	{
 		if (USceneComponent* Target = ResolveTarget())
 		{
