@@ -35,10 +35,11 @@ private:
 	FReply OnResetToRestClicked();
 
 	/**
-	 * Finds the component named by TargetComponent, working for templates as well as instances.
+	 * The component the animation drives -- asked of the component rather than worked out here.
 	 *
-	 * Returns null and explains itself on screen when the target is unset, missing, or the actor root
-	 * -- a root's relative transform is its world transform, which is not a thing worth recording.
+	 * This used to walk the construction script itself. Two copies of the same lookup meant the
+	 * buttons and the preview slider could disagree about what the target even was, and only one of
+	 * the two was ever exercised by a test.
 	 */
 	static USceneComponent* ResolveTarget(UAzr_Animation* Anim);
 

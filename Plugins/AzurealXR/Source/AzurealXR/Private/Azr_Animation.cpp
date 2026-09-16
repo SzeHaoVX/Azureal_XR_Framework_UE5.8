@@ -364,6 +364,11 @@ float UAzr_Animation::ApplyEase(float T, const FAzr_AnimStep& Step)
 	}
 }
 
+USceneComponent* UAzr_Animation::GetAnimatedComponent() const
+{
+	return ResolveTarget();
+}
+
 USceneComponent* UAzr_Animation::ResolveTarget() const
 {
 	AActor* Owner = GetOwner();

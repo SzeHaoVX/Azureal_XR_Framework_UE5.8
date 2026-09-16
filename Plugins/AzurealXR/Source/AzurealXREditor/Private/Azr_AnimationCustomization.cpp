@@ -97,62 +97,11 @@ USceneComponent* FAzr_AnimationCustomization::ResolveTarget(UAzr_Animation* Anim
 {
 	if (!Anim) return nullptr;
 
-	const FName Wanted = Anim->TargetComponent.ComponentProperty;
-	if (Wanted.IsNone())
+	USceneComponent* Found = Anim->GetAnimatedComponent();
+	if (!Found)
 	{
 		Toast(LOCTEXT("NoTarget", "Set Target Component first -- that is the component being animated."), false);
-		return nullptr;
 	}
-
-	USceneComponent* Found = nullptr;
-
-	// A native component template is still a subobject of the CDO actor, so ordinary resolution works.
-	if (AActor* Owner = Anim->GetOwner())
-	{
-		Found = Cast<USceneComponent>(Anim->TargetComponent.GetComponent(Owner));
-	}
-
-	// One added in the Blueprint editor is not. It lives on an SCS node outered to the generated
-	// class, with no actor anywhere above it, so there is nothing for GetComponent to search -- the
-	// construction script has to be walked by name instead. Up the super chain too, or a component
-	// inherited from a parent Blueprint is invisible here.
-	if (!Found)
-	{
-		for (UClass* Cls = Anim->GetTypedOuter<UBlueprintGeneratedClass>(); Cls && !Found; Cls = Cls->GetSuperClass())
-		{
-			UBlueprintGeneratedClass* Gen = Cast<UBlueprintGeneratedClass>(Cls);
-			if (!Gen || !Gen->SimpleConstructionScript) continue;
-
-			for (USCS_Node* Node : Gen->SimpleConstructionScript->GetAllNodes())
-			{
-				if (Node && Node->GetVariableName() == Wanted)
-				{
-					Found = Cast<USceneComponent>(Node->ComponentTemplate);
-					break;
-				}
-			}
-		}
-	}
-
-	if (!Found)
-	{
-		Toast(FText::Format(LOCTEXT("TargetMissing", "Could not find a scene component named '{0}' on this Blueprint."),
-			FText::FromName(Wanted)), false);
-		return nullptr;
-	}
-
-	// The root is rejected for the same reason it is at runtime: with no attach parent its relative
-	// transform is its world transform, so a recorded step would carry the actor's position around
-	// with it and break the moment the actor was moved.
-	if (const AActor* Owner = Anim->GetOwner())
-	{
-		if (Found == Owner->GetRootComponent())
-		{
-			Toast(LOCTEXT("TargetIsRoot", "Target Component cannot be the actor's root. Put the mesh under a scene root and target the mesh."), false);
-			return nullptr;
-		}
-	}
-
 	return Found;
 }
 
@@ -207,7 +156,7 @@ FReply FAzr_AnimationCustomization::OnSetRestPoseClicked()
 		GET_MEMBER_NAME_CHECKED(UAzr_Animation, RestTransform),
 		[](UAzr_Animation* Anim, USceneComponent* Target)
 		{
-			Anim->SetRestPoseFromTransform(Target->GetRelativeTransform());
+			Anim->SetRestPoseFromCurrent();
 		});
 
 	Toast(LOCTEXT("StartRecorded", "Start position recorded. Now drag the component and press Save Step."), true);
@@ -224,7 +173,7 @@ FReply FAzr_AnimationCustomization::OnAddStepClicked()
 		[&Before, &After](UAzr_Animation* Anim, USceneComponent* Target)
 		{
 			Before += Anim->Steps.Num();
-			Anim->AddStepFromTransform(Target->GetRelativeTransform());
+			Anim->AddStepFromCurrentPose();
 			After += Anim->Steps.Num();
 		});
 
@@ -248,7 +197,7 @@ FReply FAzr_AnimationCustomization::OnUpdateStepClicked()
 		GET_MEMBER_NAME_CHECKED(UAzr_Animation, Steps),
 		[](UAzr_Animation* Anim, USceneComponent* Target)
 		{
-			Anim->UpdateStepFromTransform(Target->GetRelativeTransform());
+			Anim->UpdateStepFromCurrentPose();
 		});
 
 	Toast(LOCTEXT("StepUpdated", "Step re-recorded."), true);

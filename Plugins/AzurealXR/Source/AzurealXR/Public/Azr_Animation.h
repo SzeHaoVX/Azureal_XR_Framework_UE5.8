@@ -269,6 +269,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
 	void SetAlpha(float Alpha);
 
+	/**
+	 * The component this actually drives, resolved the same way every internal caller resolves it.
+	 *
+	 * Exposed so the Blueprint-editor panel can ask rather than repeat the lookup. It had its own
+	 * copy, which meant the buttons and the preview could disagree about what the target even was --
+	 * and only one of the two paths was ever tested.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	USceneComponent* GetAnimatedComponent() const;
+
 	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
 	float GetAlpha() const { return CurrentAlpha; }
 
@@ -337,15 +347,14 @@ public:
 	float PreviewAlpha = 0.f;
 
 	/**
-	 * Explains the missing buttons rather than leaving them looking broken.
+	 * The running order, kept next to the buttons because getting it wrong is silent.
 	 *
-	 * UE strips CallInEditor buttons from archetypes (ObjectDetails.cpp: RemoveAllSwap on
-	 * RF_ArchetypeObject, "no valid execution contexts"), and a component inside a Blueprint is an
-	 * archetype -- so in the Blueprint editor the buttons above simply do not render. A plain string
-	 * does, which is the only reason this exists.
+	 * Recording the start AFTER dragging is the trap: start and step then hold the same pose, the
+	 * animation has no distance to cover, and nothing says so. Originally this explained why the
+	 * buttons were missing in the Blueprint editor; the details customization puts them there now.
 	 */
 	UPROPERTY(VisibleAnywhere, Category = "Azureal|Authoring")
-	FString AuthoringHint = TEXT("Not a button. The recording buttons do not exist in the Blueprint editor -- select the actor in the LEVEL, click this component, and they appear above. Set Target Component first, then drag that component and press Add Step From Current Pose. Finish with Apply Instance Changes to Blueprint to push the steps onto the asset.");
+	FString AuthoringHint = TEXT("Not a button, just the order: set Target Component, press Record Start Position, drag the target, press Save Step. Repeat the drag and Save Step for each further step. Press Go To Start Position before compiling or saving.");
 #endif
 
 protected:
@@ -353,6 +362,7 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+public:
 private:
 	/** The component named by TargetComponent, or null. Never guesses -- see the note in the .cpp. */
 	USceneComponent* ResolveTarget() const;
