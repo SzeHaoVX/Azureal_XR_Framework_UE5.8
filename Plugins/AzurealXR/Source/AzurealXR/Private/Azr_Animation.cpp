@@ -599,6 +599,13 @@ void UAzr_Animation::AddStepFromTransform(const FTransform& Pose)
 	EditStepIndex = Steps.Num() - 1;
 	RebuildTimeline();
 
+#if WITH_EDITORONLY_DATA
+	// Park the preview at the end, which is the pose that was just saved. Leaving it at zero is what
+	// made recording look broken: the next thing to evaluate would put the mesh back at the start,
+	// the drag appeared to be thrown away, and the step it had actually just recorded was invisible.
+	PreviewAlpha = 1.f;
+#endif
+
 	UE_LOG(LogTemp, Log, TEXT("Azr Animation on %s: saved step %d. Start is %s, this step is %s."),
 		*GetNameSafe(GetOwner()), Steps.Num(),
 		*RestTransform.GetLocation().ToCompactString(), *Pose.GetLocation().ToCompactString());
@@ -625,6 +632,11 @@ void UAzr_Animation::SetRestPoseFromTransform(const FTransform& Pose)
 
 	RestTransform = Pose;
 	bStartRecorded = true;
+
+#if WITH_EDITORONLY_DATA
+	// The start is alpha zero, so show it.
+	PreviewAlpha = 0.f;
+#endif
 
 	UE_LOG(LogTemp, Log, TEXT("Azr Animation on %s: start position recorded at %s."),
 		*GetNameSafe(GetOwner()), *Pose.GetLocation().ToCompactString());

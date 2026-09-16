@@ -70,7 +70,7 @@ public:
 
 			PropertyModule.NotifyCustomizationModuleChanged();
 
-			UE_LOG(LogTemp, Log, TEXT("[Azr Narration] Registered details customizations for Azr_Explain and Azr_ExplainStep."));
+			UE_LOG(LogTemp, Log, TEXT("[Azr Narration] Registered details customizations for Azr_Explain, Azr_ExplainStep and Azr_Animation."));
 		}
 
 		// Registered by hand rather than left to the engine's automatic sweep of UDeveloperSettings.
