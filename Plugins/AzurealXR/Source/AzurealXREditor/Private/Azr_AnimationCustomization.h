@@ -46,6 +46,9 @@ private:
 	/** Mutates through PreEditChange/PostEditChangeProperty so placed instances pick the change up. */
 	void ForEachSelected(const FText& TransactionLabel, FName PropertyName, TFunctionRef<void(UAzr_Animation*, USceneComponent*)> Work);
 
+	/** Copies the recorded animation onto actors already placed in levels. */
+	static void PropagateToInstances(UAzr_Animation* Archetype);
+
 	static void Toast(const FText& Message, bool bSuccess);
 
 	TArray<TWeakObjectPtr<UAzr_Animation>> Selected;

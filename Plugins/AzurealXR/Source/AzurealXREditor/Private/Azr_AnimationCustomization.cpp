@@ -105,6 +105,33 @@ USceneComponent* FAzr_AnimationCustomization::ResolveTarget(UAzr_Animation* Anim
 	return Found;
 }
 
+void FAzr_AnimationCustomization::PropagateToInstances(UAzr_Animation* Archetype)
+{
+	if (!Archetype) return;
+
+	TArray<UObject*> Instances;
+	Archetype->GetArchetypeInstances(Instances);
+
+	int32 Updated = 0;
+	for (UObject* Obj : Instances)
+	{
+		UAzr_Animation* Inst = Cast<UAzr_Animation>(Obj);
+		if (!Inst || Inst == Archetype) continue;
+
+		Inst->Modify();
+		Inst->Steps          = Archetype->Steps;
+		Inst->RestTransform  = Archetype->RestTransform;
+		Inst->bStartRecorded = Archetype->bStartRecorded;
+		++Updated;
+	}
+
+	if (Updated > 0)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Azr Animation: pushed %d step(s) out to %d placed instance(s)."),
+			Archetype->Steps.Num(), Updated);
+	}
+}
+
 void FAzr_AnimationCustomization::ForEachSelected(const FText& TransactionLabel, FName PropertyName, TFunctionRef<void(UAzr_Animation*, USceneComponent*)> Work)
 {
 	FScopedTransaction Transaction(TransactionLabel);
@@ -133,6 +160,14 @@ void FAzr_AnimationCustomization::ForEachSelected(const FText& TransactionLabel,
 		FPropertyChangedEvent Event(Property, EPropertyChangeType::ValueSet);
 		Anim->PostEditChangeProperty(Event);
 		Anim->MarkPackageDirty();
+
+		// PostEditChangeProperty on an archetype does not push anything to instances -- the details
+		// panel normally does that itself, having tracked the old value, and there is no panel here.
+		// So an actor already standing in a level kept an empty Steps array and a false
+		// bStartRecorded while the Blueprint held a finished animation, and nothing on either side
+		// said they disagreed. Recording produces authoring data, not something worth overriding per
+		// placement, so every instance simply takes what was just recorded.
+		PropagateToInstances(Anim);
 
 		// Put the drag back. Re-resolved rather than reusing Target, because a construction rerun
 		// destroys the old component and builds a new one, leaving that pointer stale. A no-op when
