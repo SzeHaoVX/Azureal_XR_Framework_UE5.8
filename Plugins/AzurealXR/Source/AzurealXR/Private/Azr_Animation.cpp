@@ -54,9 +54,17 @@ void UAzr_Animation::BeginPlay()
 
 	// Whatever pose the level was saved in, runtime starts at rest. Someone will eventually save a
 	// level with a cover left halfway open, and this is what stops that reaching a trainee.
-	if (USceneComponent* Target = ResolveTarget())
+	//
+	// Only when a start was actually recorded, though. RestTransform defaults to identity, so without
+	// this guard a component that was merely dropped on an actor -- target set or not, animation
+	// authored or not -- slammed its mesh to the origin at scale 1 the instant PIE started, with no
+	// Play call anywhere near it. An unrecorded start means there is no opinion to enforce.
+	if (bStartRecorded)
 	{
-		Target->SetRelativeTransform(RestTransform);
+		if (USceneComponent* Target = ResolveTarget())
+		{
+			Target->SetRelativeTransform(RestTransform);
+		}
 	}
 
 	CurrentAlpha = 0.f;
@@ -171,6 +179,12 @@ void UAzr_Animation::ResetToRest()
 
 	ArmTriggers();
 	LastReportedStep = INDEX_NONE;
+
+#if WITH_EDITORONLY_DATA
+	// The slider has to agree with the viewport. Left reading 0.7 over a mesh sitting at rest, it is
+	// one more thing showing a different position from the thing next to it.
+	PreviewAlpha = 0.f;
+#endif
 
 	EvaluateAtAlpha(0.f);
 }
