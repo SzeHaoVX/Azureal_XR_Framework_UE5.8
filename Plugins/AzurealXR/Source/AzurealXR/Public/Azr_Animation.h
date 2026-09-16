@@ -357,6 +357,9 @@ private:
 	/** The component named by TargetComponent, or null. Never guesses -- see the note in the .cpp. */
 	USceneComponent* ResolveTarget() const;
 
+	/** The SCS-template fallback for ResolveTarget, used when the component lives in a Blueprint. */
+	USceneComponent* ResolveTargetTemplate() const;
+
 	/** Logs why an authoring button did nothing, rather than letting it fail in silence. */
 	bool ValidateTargetForAuthoring(const TCHAR* Action) const;
 

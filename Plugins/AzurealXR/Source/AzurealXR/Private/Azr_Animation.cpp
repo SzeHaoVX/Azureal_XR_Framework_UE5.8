@@ -13,6 +13,12 @@
 #include "Materials/MaterialInterface.h"
 #include "Sound/SoundBase.h"
 
+#if WITH_EDITOR
+#include "Engine/BlueprintGeneratedClass.h"
+#include "Engine/SCS_Node.h"
+#include "Engine/SimpleConstructionScript.h"
+#endif
+
 namespace
 {
 	/**
@@ -361,7 +367,9 @@ float UAzr_Animation::ApplyEase(float T, const FAzr_AnimStep& Step)
 USceneComponent* UAzr_Animation::ResolveTarget() const
 {
 	AActor* Owner = GetOwner();
-	if (!Owner) return nullptr;
+
+	// No owner means a Blueprint template rather than a placed actor.
+	if (!Owner) return ResolveTargetTemplate();
 
 	// No fallback to the root, deliberately. A root component has no attach parent, so its "relative"
 	// transform IS its world transform -- recording one would bake the actor's position into the step
@@ -373,6 +381,37 @@ USceneComponent* UAzr_Animation::ResolveTarget() const
 		return Cast<USceneComponent>(Found);
 	}
 
+	return nullptr;
+}
+
+USceneComponent* UAzr_Animation::ResolveTargetTemplate() const
+{
+#if WITH_EDITOR
+	// Reached only when there is no owning actor, which means this is a component sitting in a
+	// Blueprint rather than in a level. Its target is an SCS node template outered to the generated
+	// class, so FComponentReference has nothing to search and the construction script has to be
+	// walked by name -- up the super chain too, or a component inherited from a parent Blueprint is
+	// invisible from here.
+	//
+	// Without this the Blueprint editor could not evaluate at all: the preview slider moved nothing,
+	// which looked exactly like the animation being stuck at whatever pose was last recorded.
+	const FName Wanted = TargetComponent.ComponentProperty;
+	if (Wanted.IsNone()) return nullptr;
+
+	for (UClass* Cls = GetTypedOuter<UBlueprintGeneratedClass>(); Cls; Cls = Cls->GetSuperClass())
+	{
+		UBlueprintGeneratedClass* Gen = Cast<UBlueprintGeneratedClass>(Cls);
+		if (!Gen || !Gen->SimpleConstructionScript) continue;
+
+		for (USCS_Node* Node : Gen->SimpleConstructionScript->GetAllNodes())
+		{
+			if (Node && Node->GetVariableName() == Wanted)
+			{
+				return Cast<USceneComponent>(Node->ComponentTemplate);
+			}
+		}
+	}
+#endif
 	return nullptr;
 }
 
