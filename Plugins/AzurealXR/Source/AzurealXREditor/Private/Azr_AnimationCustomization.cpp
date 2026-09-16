@@ -170,6 +170,11 @@ void FAzr_AnimationCustomization::ForEachSelected(const FText& TransactionLabel,
 		USceneComponent* Target = ResolveTarget(Anim);
 		if (!Target) continue;
 
+		// Read before anything is written. Notifying a property change on a component can rerun the
+		// owning actor's construction script, which rebuilds sibling components from their templates
+		// and throws away exactly the drag being recorded here.
+		const FTransform Dragged = Target->GetRelativeTransform();
+
 		// Routed through the property-change pipeline rather than just mutating the archetype: that is
 		// what pushes the new value out to instances already placed in levels, and what makes the
 		// transaction above undoable.
@@ -179,6 +184,20 @@ void FAzr_AnimationCustomization::ForEachSelected(const FText& TransactionLabel,
 		FPropertyChangedEvent Event(Property, EPropertyChangeType::ValueSet);
 		Anim->PostEditChangeProperty(Event);
 		Anim->MarkPackageDirty();
+
+		// Put the drag back. Re-resolved rather than reusing Target, because a construction rerun
+		// destroys the old component and builds a new one, leaving that pointer stale. A no-op when
+		// nothing reset it.
+		if (USceneComponent* Fresh = ResolveTarget(Anim))
+		{
+			if (!Fresh->GetRelativeTransform().Equals(Dragged))
+			{
+				Fresh->SetRelativeTransform(Dragged);
+
+				UE_LOG(LogTemp, Log, TEXT("Azr Animation: the component was reset by a construction rerun after recording; put it back at %s."),
+					*Dragged.GetLocation().ToCompactString());
+			}
+		}
 	}
 }
 

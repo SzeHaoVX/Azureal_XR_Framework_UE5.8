@@ -599,6 +599,10 @@ void UAzr_Animation::AddStepFromTransform(const FTransform& Pose)
 	EditStepIndex = Steps.Num() - 1;
 	RebuildTimeline();
 
+	UE_LOG(LogTemp, Log, TEXT("Azr Animation on %s: saved step %d. Start is %s, this step is %s."),
+		*GetNameSafe(GetOwner()), Steps.Num(),
+		*RestTransform.GetLocation().ToCompactString(), *Pose.GetLocation().ToCompactString());
+
 	// The component is left where it was dragged on purpose, so the next step is authored by carrying
 	// on from this pose rather than starting over from rest every time.
 }
@@ -621,6 +625,9 @@ void UAzr_Animation::SetRestPoseFromTransform(const FTransform& Pose)
 
 	RestTransform = Pose;
 	bStartRecorded = true;
+
+	UE_LOG(LogTemp, Log, TEXT("Azr Animation on %s: start position recorded at %s."),
+		*GetNameSafe(GetOwner()), *Pose.GetLocation().ToCompactString());
 }
 
 void UAzr_Animation::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
