@@ -6,6 +6,7 @@
 #include "Azr_DebuggerWindow.h"
 #include "Azr_PrefixWindow.h"
 #include "Azr_ExplainCustomization.h"
+#include "Azr_AnimationCustomization.h"
 #include "Azr_HandScanner.h"
 #include "Azr_NarrationSettings.h"
 #include "ISettingsModule.h"
@@ -60,6 +61,12 @@ public:
 			PropertyModule.RegisterCustomClassLayout(
 				TEXT("Azr_Explain"),
 				FOnGetDetailCustomizationInstance::CreateStatic(&FAzr_ExplainCustomization::MakeInstance));
+
+			// Same reason, different component: the recording buttons on Azr_Animation are CallInEditor,
+			// so they are absent inside the Blueprint editor. This draws them there.
+			PropertyModule.RegisterCustomClassLayout(
+				TEXT("Azr_Animation"),
+				FOnGetDetailCustomizationInstance::CreateStatic(&FAzr_AnimationCustomization::MakeInstance));
 
 			PropertyModule.NotifyCustomizationModuleChanged();
 
@@ -151,6 +158,7 @@ public:
 			FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>(TEXT("PropertyEditor"));
 			PropertyModule.UnregisterCustomPropertyTypeLayout(TEXT("Azr_ExplainStep"));
 			PropertyModule.UnregisterCustomClassLayout(TEXT("Azr_Explain"));
+			PropertyModule.UnregisterCustomClassLayout(TEXT("Azr_Animation"));
 			PropertyModule.NotifyCustomizationModuleChanged();
 		}
 

@@ -1,0 +1,265 @@
+
+
+#include "Azr_AnimationCustomization.h"
+
+#include "Azr_Animation.h"
+#include "Components/SceneComponent.h"
+#include "DetailCategoryBuilder.h"
+#include "DetailLayoutBuilder.h"
+#include "DetailWidgetRow.h"
+#include "Engine/BlueprintGeneratedClass.h"
+#include "Engine/SCS_Node.h"
+#include "Engine/SimpleConstructionScript.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "GameFramework/Actor.h"
+#include "ScopedTransaction.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Notifications/SNotificationList.h"
+#include "Widgets/SBoxPanel.h"
+
+#define LOCTEXT_NAMESPACE "AzurealXREditor"
+
+TSharedRef<IDetailCustomization> FAzr_AnimationCustomization::MakeInstance()
+{
+	return MakeShareable(new FAzr_AnimationCustomization);
+}
+
+void FAzr_AnimationCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+{
+	TArray<TWeakObjectPtr<UObject>> Objects;
+	DetailBuilder.GetObjectsBeingCustomized(Objects);
+
+	Selected.Reset();
+	bool bAnyArchetype = false;
+
+	for (const TWeakObjectPtr<UObject>& Obj : Objects)
+	{
+		if (UAzr_Animation* Anim = Cast<UAzr_Animation>(Obj.Get()))
+		{
+			Selected.Add(Anim);
+
+			// The same test the engine uses to decide a CallInEditor button has nowhere to run
+			// (FObjectDetails::AddCallInEditorMethods). When it is true the component's own buttons
+			// are absent and these have to stand in; when it is false they are already there and a
+			// second set would only be confusing.
+			bAnyArchetype |= Anim->HasAnyFlags(RF_ArchetypeObject | RF_ClassDefaultObject);
+		}
+	}
+
+	if (Selected.Num() == 0 || !bAnyArchetype)
+	{
+		return;
+	}
+
+	IDetailCategoryBuilder& Category = DetailBuilder.EditCategory(
+		TEXT("Azureal"), LOCTEXT("AuthoringCategory", "Azureal|Authoring"), ECategoryPriority::Important);
+
+	Category.AddCustomRow(LOCTEXT("AuthoringFilter", "Record Animation"))
+		.WholeRowContent()
+		[
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 2.f, 4.f, 2.f)
+			[
+				SNew(SButton)
+				.Text(LOCTEXT("RecordStart", "1. Record Start Position"))
+				.ToolTipText(LOCTEXT("RecordStartTip",
+					"Save where the target component sits right now as the animation's start.\n\nPress this before dragging anything. Everything else is measured from here."))
+				.OnClicked(this, &FAzr_AnimationCustomization::OnSetRestPoseClicked)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 2.f, 4.f, 2.f)
+			[
+				SNew(SButton)
+				.Text(LOCTEXT("SaveStep", "2. Save Step"))
+				.ToolTipText(LOCTEXT("SaveStepTip",
+					"Drag the target component to where it should end up, then press this.\n\nPress it again after dragging further to add another step, so a sequence is built by carrying on from the pose you just saved."))
+				.OnClicked(this, &FAzr_AnimationCustomization::OnAddStepClicked)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 2.f, 4.f, 2.f)
+			[
+				SNew(SButton)
+				.Text(LOCTEXT("ReRecord", "Re-record Step"))
+				.ToolTipText(LOCTEXT("ReRecordTip",
+					"Overwrite the step at Edit Step Index with the component's current pose."))
+				.OnClicked(this, &FAzr_AnimationCustomization::OnUpdateStepClicked)
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 2.f, 0.f, 2.f)
+			[
+				SNew(SButton)
+				.Text(LOCTEXT("GoToStart", "Go To Start Position"))
+				.ToolTipText(LOCTEXT("GoToStartTip",
+					"Put the component back where the start was recorded. Do this before saving the asset, so it is stored at rest."))
+				.OnClicked(this, &FAzr_AnimationCustomization::OnResetToRestClicked)
+			]
+		];
+}
+
+USceneComponent* FAzr_AnimationCustomization::ResolveTarget(UAzr_Animation* Anim)
+{
+	if (!Anim) return nullptr;
+
+	const FName Wanted = Anim->TargetComponent.ComponentProperty;
+	if (Wanted.IsNone())
+	{
+		Toast(LOCTEXT("NoTarget", "Set Target Component first -- that is the component being animated."), false);
+		return nullptr;
+	}
+
+	USceneComponent* Found = nullptr;
+
+	// A native component template is still a subobject of the CDO actor, so ordinary resolution works.
+	if (AActor* Owner = Anim->GetOwner())
+	{
+		Found = Cast<USceneComponent>(Anim->TargetComponent.GetComponent(Owner));
+	}
+
+	// One added in the Blueprint editor is not. It lives on an SCS node outered to the generated
+	// class, with no actor anywhere above it, so there is nothing for GetComponent to search -- the
+	// construction script has to be walked by name instead. Up the super chain too, or a component
+	// inherited from a parent Blueprint is invisible here.
+	if (!Found)
+	{
+		for (UClass* Cls = Anim->GetTypedOuter<UBlueprintGeneratedClass>(); Cls && !Found; Cls = Cls->GetSuperClass())
+		{
+			UBlueprintGeneratedClass* Gen = Cast<UBlueprintGeneratedClass>(Cls);
+			if (!Gen || !Gen->SimpleConstructionScript) continue;
+
+			for (USCS_Node* Node : Gen->SimpleConstructionScript->GetAllNodes())
+			{
+				if (Node && Node->GetVariableName() == Wanted)
+				{
+					Found = Cast<USceneComponent>(Node->ComponentTemplate);
+					break;
+				}
+			}
+		}
+	}
+
+	if (!Found)
+	{
+		Toast(FText::Format(LOCTEXT("TargetMissing", "Could not find a scene component named '{0}' on this Blueprint."),
+			FText::FromName(Wanted)), false);
+		return nullptr;
+	}
+
+	// The root is rejected for the same reason it is at runtime: with no attach parent its relative
+	// transform is its world transform, so a recorded step would carry the actor's position around
+	// with it and break the moment the actor was moved.
+	if (const AActor* Owner = Anim->GetOwner())
+	{
+		if (Found == Owner->GetRootComponent())
+		{
+			Toast(LOCTEXT("TargetIsRoot", "Target Component cannot be the actor's root. Put the mesh under a scene root and target the mesh."), false);
+			return nullptr;
+		}
+	}
+
+	return Found;
+}
+
+void FAzr_AnimationCustomization::ForEachSelected(const FText& TransactionLabel, FName PropertyName, TFunctionRef<void(UAzr_Animation*, USceneComponent*)> Work)
+{
+	FScopedTransaction Transaction(TransactionLabel);
+
+	FProperty* Property = FindFProperty<FProperty>(UAzr_Animation::StaticClass(), PropertyName);
+
+	for (const TWeakObjectPtr<UAzr_Animation>& Weak : Selected)
+	{
+		UAzr_Animation* Anim = Weak.Get();
+		if (!Anim) continue;
+
+		USceneComponent* Target = ResolveTarget(Anim);
+		if (!Target) continue;
+
+		// Routed through the property-change pipeline rather than just mutating the archetype: that is
+		// what pushes the new value out to instances already placed in levels, and what makes the
+		// transaction above undoable.
+		Anim->PreEditChange(Property);
+		Work(Anim, Target);
+
+		FPropertyChangedEvent Event(Property, EPropertyChangeType::ValueSet);
+		Anim->PostEditChangeProperty(Event);
+		Anim->MarkPackageDirty();
+	}
+}
+
+FReply FAzr_AnimationCustomization::OnSetRestPoseClicked()
+{
+	ForEachSelected(LOCTEXT("TxRecordStart", "Record Start Position"),
+		GET_MEMBER_NAME_CHECKED(UAzr_Animation, RestTransform),
+		[](UAzr_Animation* Anim, USceneComponent* Target)
+		{
+			Anim->SetRestPoseFromTransform(Target->GetRelativeTransform());
+		});
+
+	Toast(LOCTEXT("StartRecorded", "Start position recorded. Now drag the component and press Save Step."), true);
+	return FReply::Handled();
+}
+
+FReply FAzr_AnimationCustomization::OnAddStepClicked()
+{
+	int32 Before = 0;
+	int32 After = 0;
+
+	ForEachSelected(LOCTEXT("TxSaveStep", "Save Step"),
+		GET_MEMBER_NAME_CHECKED(UAzr_Animation, Steps),
+		[&Before, &After](UAzr_Animation* Anim, USceneComponent* Target)
+		{
+			Before += Anim->Steps.Num();
+			Anim->AddStepFromTransform(Target->GetRelativeTransform());
+			After += Anim->Steps.Num();
+		});
+
+	// AddStepFromTransform refuses when no start has been recorded, and says so in the log. Nothing
+	// having been added is the only evidence available out here, so it is what the toast reads.
+	if (After > Before)
+	{
+		Toast(LOCTEXT("StepSaved", "Step saved. Drag further and press again for the next one."), true);
+	}
+	else
+	{
+		Toast(LOCTEXT("StepRefused", "Press Record Start Position first -- a step needs somewhere to move from."), false);
+	}
+
+	return FReply::Handled();
+}
+
+FReply FAzr_AnimationCustomization::OnUpdateStepClicked()
+{
+	ForEachSelected(LOCTEXT("TxReRecord", "Re-record Step"),
+		GET_MEMBER_NAME_CHECKED(UAzr_Animation, Steps),
+		[](UAzr_Animation* Anim, USceneComponent* Target)
+		{
+			Anim->UpdateStepFromTransform(Target->GetRelativeTransform());
+		});
+
+	Toast(LOCTEXT("StepUpdated", "Step re-recorded."), true);
+	return FReply::Handled();
+}
+
+FReply FAzr_AnimationCustomization::OnResetToRestClicked()
+{
+	ForEachSelected(LOCTEXT("TxGoToStart", "Go To Start Position"),
+		GET_MEMBER_NAME_CHECKED(UAzr_Animation, RestTransform),
+		[](UAzr_Animation* Anim, USceneComponent* Target)
+		{
+			Target->Modify();
+			Target->SetRelativeTransform(Anim->RestTransform);
+		});
+
+	return FReply::Handled();
+}
+
+void FAzr_AnimationCustomization::Toast(const FText& Message, bool bSuccess)
+{
+	FNotificationInfo Info(Message);
+	Info.ExpireDuration = bSuccess ? 3.0f : 6.0f;
+	Info.bUseSuccessFailIcons = true;
+
+	TSharedPtr<SNotificationItem> Item = FSlateNotificationManager::Get().AddNotification(Info);
+	if (Item.IsValid())
+	{
+		Item->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
+	}
+}
+
+#undef LOCTEXT_NAMESPACE

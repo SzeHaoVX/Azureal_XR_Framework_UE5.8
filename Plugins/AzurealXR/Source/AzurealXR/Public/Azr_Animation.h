@@ -218,6 +218,16 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Azureal|Setup")
 	FTransform RestTransform;
 
+	/**
+	 * Whether Record Start Position has been pressed.
+	 *
+	 * Save Step refuses until it has. The first Save Step used to quietly adopt the current pose as
+	 * the start as well as the step, which meant dragging first and pressing once recorded A and B as
+	 * the same place and the animation did nothing -- with nothing on screen to say why.
+	 */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Azureal|Setup")
+	bool bStartRecorded = false;
+
 	// --- EVENTS ---
 
 	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
@@ -246,7 +256,7 @@ public:
 	void Stop();
 
 	/** Snap back to the rest pose and forget which sounds have fired. */
-	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Azureal|Logic")
+	UFUNCTION(BlueprintCallable, CallInEditor, Category = "Azureal|Logic", meta = (DisplayName = "Go To Start Position"))
 	void ResetToRest();
 
 	/**
@@ -287,16 +297,27 @@ public:
 	 * Leaving it put is deliberate: the next step is authored by dragging on from here, which is how
 	 * a 1-2-3 sequence is actually built. Press Reset To Rest when finished.
 	 */
-	UFUNCTION(CallInEditor, Category = "Azureal|Authoring")
+	UFUNCTION(CallInEditor, Category = "Azureal|Authoring", meta = (DisplayName = "2. Save Step (drag first, then press)"))
 	void AddStepFromCurrentPose();
 
 	/** Overwrite the step at Edit Step Index with the current pose. */
-	UFUNCTION(CallInEditor, Category = "Azureal|Authoring")
+	UFUNCTION(CallInEditor, Category = "Azureal|Authoring", meta = (DisplayName = "Re-record Step at Edit Step Index"))
 	void UpdateStepFromCurrentPose();
 
 	/** Make the current pose the new rest pose. Existing steps are left alone. */
-	UFUNCTION(CallInEditor, Category = "Azureal|Authoring")
+	UFUNCTION(CallInEditor, Category = "Azureal|Authoring", meta = (DisplayName = "1. Record Start Position"))
 	void SetRestPoseFromCurrent();
+
+	/**
+	 * The same three, taking a pose the caller already worked out.
+	 *
+	 * The Blueprint-editor panel needs these. A component added in the Blueprint editor is an SCS
+	 * template with no actor anywhere in its outer chain, so TargetComponent cannot be resolved the
+	 * normal way -- the panel matches the name against the construction script and passes the result.
+	 */
+	void AddStepFromTransform(const FTransform& Pose);
+	void UpdateStepFromTransform(const FTransform& Pose);
+	void SetRestPoseFromTransform(const FTransform& Pose);
 
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif

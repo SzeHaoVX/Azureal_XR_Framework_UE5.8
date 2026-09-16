@@ -556,52 +556,71 @@ void UAzr_Animation::ApplyMaterialTargets(int32 Index, float EasedAlpha)
 void UAzr_Animation::AddStepFromCurrentPose()
 {
 	if (!ValidateTargetForAuthoring(TEXT("Add Step From Current Pose"))) return;
-	USceneComponent* Target = ResolveTarget();
+	AddStepFromTransform(ResolveTarget()->GetRelativeTransform());
+}
+
+void UAzr_Animation::UpdateStepFromCurrentPose()
+{
+	if (!ValidateTargetForAuthoring(TEXT("Update Step From Current Pose"))) return;
+	UpdateStepFromTransform(ResolveTarget()->GetRelativeTransform());
+}
+
+void UAzr_Animation::SetRestPoseFromCurrent()
+{
+	if (!ValidateTargetForAuthoring(TEXT("Set Rest Pose From Current"))) return;
+	SetRestPoseFromTransform(ResolveTarget()->GetRelativeTransform());
+}
+
+// The pose arrives as an argument rather than being read here, because the Blueprint-editor panel
+// cannot use ResolveTarget at all: a component added in the Blueprint editor is an SCS template whose
+// outer chain holds no actor, so there is nothing to look the target up on. That panel walks the
+// construction script instead and hands the result in.
+
+void UAzr_Animation::AddStepFromTransform(const FTransform& Pose)
+{
+	// Adopting the current pose as the start when none was recorded is what made the first press
+	// useless: drag the cube somewhere, press once, and A and B were both the dragged pose, so the
+	// animation had no distance to cover and nothing said so. Two presses, in order, or nothing.
+	if (!bStartRecorded)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Azr Animation on %s: press Record Start Position before saving a step, or there is nothing to move away from."),
+			*GetNameSafe(GetOwner()));
+		return;
+	}
 
 	Modify();
 	if (AActor* Owner = GetOwner()) Owner->Modify();
 
-	// The first recorded step defines where zero is. Without this the rest pose would be identity and
-	// every animation would start by teleporting the mesh to the actor's origin.
-	if (Steps.Num() == 0)
-	{
-		RestTransform = Target->GetRelativeTransform();
-	}
-
 	FAzr_AnimStep NewStep;
-	NewStep.Target = Target->GetRelativeTransform();
+	NewStep.Target = Pose;
 	NewStep.Label = FString::Printf(TEXT("Step %d"), Steps.Num() + 1);
 	Steps.Add(NewStep);
 
 	EditStepIndex = Steps.Num() - 1;
 	RebuildTimeline();
 
-	// Left where it is on purpose, so the next step is authored by dragging on from this pose rather
-	// than starting over from rest every time.
+	// The component is left where it was dragged on purpose, so the next step is authored by carrying
+	// on from this pose rather than starting over from rest every time.
 }
 
-void UAzr_Animation::UpdateStepFromCurrentPose()
+void UAzr_Animation::UpdateStepFromTransform(const FTransform& Pose)
 {
-	if (!ValidateTargetForAuthoring(TEXT("Update Step From Current Pose"))) return;
-	USceneComponent* Target = ResolveTarget();
 	if (!Steps.IsValidIndex(EditStepIndex)) return;
 
 	Modify();
 	if (AActor* Owner = GetOwner()) Owner->Modify();
 
-	Steps[EditStepIndex].Target = Target->GetRelativeTransform();
+	Steps[EditStepIndex].Target = Pose;
 	RebuildTimeline();
 }
 
-void UAzr_Animation::SetRestPoseFromCurrent()
+void UAzr_Animation::SetRestPoseFromTransform(const FTransform& Pose)
 {
-	if (!ValidateTargetForAuthoring(TEXT("Set Rest Pose From Current"))) return;
-	USceneComponent* Target = ResolveTarget();
-
 	Modify();
 	if (AActor* Owner = GetOwner()) Owner->Modify();
 
-	RestTransform = Target->GetRelativeTransform();
+	RestTransform = Pose;
+	bStartRecorded = true;
 }
 
 void UAzr_Animation::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
