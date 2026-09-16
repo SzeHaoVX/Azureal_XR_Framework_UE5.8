@@ -190,9 +190,13 @@ public:
 	// --- SETUP ---
 
 	/**
-	 * The component this animates. Anything deriving from USceneComponent is valid.
+	 * The component this animates. Anything deriving from USceneComponent is valid, so static meshes,
+	 * skeletal meshes, world-space widgets and Niagara systems all work.
 	 *
-	 * Left empty it falls back to the owner's root, which is usually wrong but never crashes.
+	 * Required, and it must not be the actor's root. A root has no attach parent, so its relative
+	 * transform is its world transform: recording one bakes in where the actor was standing, and the
+	 * level gizmo cannot move it independently of the actor anyway. Put the mesh under a scene root
+	 * and point this at the mesh.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Setup")
 	FComponentReference TargetComponent;
@@ -320,7 +324,7 @@ public:
 	 * does, which is the only reason this exists.
 	 */
 	UPROPERTY(VisibleAnywhere, Category = "Azureal|Authoring")
-	FString AuthoringHint = TEXT("Recording buttons only appear on an actor placed in a level. Author there, then use Apply Instance Changes to Blueprint to push the steps onto the asset.");
+	FString AuthoringHint = TEXT("Not a button. The recording buttons do not exist in the Blueprint editor -- select the actor in the LEVEL, click this component, and they appear above. Set Target Component first, then drag that component and press Add Step From Current Pose. Finish with Apply Instance Changes to Blueprint to push the steps onto the asset.");
 #endif
 
 protected:
@@ -329,8 +333,11 @@ protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 private:
-	/** Resolves TargetComponent, falling back to the owner's root. Null only if there is no owner. */
+	/** The component named by TargetComponent, or null. Never guesses -- see the note in the .cpp. */
 	USceneComponent* ResolveTarget() const;
+
+	/** Logs why an authoring button did nothing, rather than letting it fail in silence. */
+	bool ValidateTargetForAuthoring(const TCHAR* Action) const;
 
 	/** Recomputes step windows and TotalDuration. Cheap; call it whenever Steps may have changed. */
 	void RebuildTimeline();

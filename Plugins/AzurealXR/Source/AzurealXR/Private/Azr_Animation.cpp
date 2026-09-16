@@ -349,16 +349,39 @@ USceneComponent* UAzr_Animation::ResolveTarget() const
 	AActor* Owner = GetOwner();
 	if (!Owner) return nullptr;
 
+	// No fallback to the root, deliberately. A root component has no attach parent, so its "relative"
+	// transform IS its world transform -- recording one would bake the actor's position into the step
+	// and break the moment anyone moved the actor. It also cannot be dragged on its own, since the
+	// gizmo moves the whole actor. Silently animating the root looks like it works right up until it
+	// does not, so an unset target is an error rather than a guess.
 	if (UActorComponent* Found = TargetComponent.GetComponent(Owner))
 	{
-		if (USceneComponent* Scene = Cast<USceneComponent>(Found))
-		{
-			return Scene;
-		}
+		return Cast<USceneComponent>(Found);
 	}
 
-	// Wrong far more often than not, but a null target would mean every call site needs its own guard.
-	return Owner->GetRootComponent();
+	return nullptr;
+}
+
+bool UAzr_Animation::ValidateTargetForAuthoring(const TCHAR* Action) const
+{
+	const AActor* Owner = GetOwner();
+	const USceneComponent* Target = ResolveTarget();
+
+	if (!Target)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Azr Animation on %s: %s needs Target Component set to the component you want to move."),
+			*GetNameSafe(Owner), Action);
+		return false;
+	}
+
+	if (Owner && Target == Owner->GetRootComponent())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Azr Animation on %s: %s cannot use the actor's root -- its relative transform is its world transform, so the step would break when the actor is moved. Put the mesh under a scene root and target the mesh."),
+			*GetNameSafe(Owner), Action);
+		return false;
+	}
+
+	return true;
 }
 
 // --- SOUND ---
@@ -532,8 +555,8 @@ void UAzr_Animation::ApplyMaterialTargets(int32 Index, float EasedAlpha)
 
 void UAzr_Animation::AddStepFromCurrentPose()
 {
+	if (!ValidateTargetForAuthoring(TEXT("Add Step From Current Pose"))) return;
 	USceneComponent* Target = ResolveTarget();
-	if (!Target) return;
 
 	Modify();
 	if (AActor* Owner = GetOwner()) Owner->Modify();
@@ -559,8 +582,9 @@ void UAzr_Animation::AddStepFromCurrentPose()
 
 void UAzr_Animation::UpdateStepFromCurrentPose()
 {
+	if (!ValidateTargetForAuthoring(TEXT("Update Step From Current Pose"))) return;
 	USceneComponent* Target = ResolveTarget();
-	if (!Target || !Steps.IsValidIndex(EditStepIndex)) return;
+	if (!Steps.IsValidIndex(EditStepIndex)) return;
 
 	Modify();
 	if (AActor* Owner = GetOwner()) Owner->Modify();
@@ -571,8 +595,8 @@ void UAzr_Animation::UpdateStepFromCurrentPose()
 
 void UAzr_Animation::SetRestPoseFromCurrent()
 {
+	if (!ValidateTargetForAuthoring(TEXT("Set Rest Pose From Current"))) return;
 	USceneComponent* Target = ResolveTarget();
-	if (!Target) return;
 
 	Modify();
 	if (AActor* Owner = GetOwner()) Owner->Modify();
