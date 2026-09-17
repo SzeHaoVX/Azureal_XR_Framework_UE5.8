@@ -114,6 +114,7 @@ void UAzr_Animation::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 			bPlaying = false;
 			StopAllLoops();
 			SetComponentTickEnabled(false);
+			AZR_TRACE_EVENT("OnAnimationFinished");
 			OnAnimationFinished.Broadcast();
 		}
 		return;
@@ -134,6 +135,8 @@ void UAzr_Animation::TickComponent(float DeltaTime, ELevelTick TickType, FActorC
 
 void UAzr_Animation::Play()
 {
+	AZR_TRACE();
+
 	RebuildTimeline();
 	if (TotalDuration <= 0.f) return;
 
@@ -150,11 +153,14 @@ void UAzr_Animation::Play()
 	}
 
 	SetComponentTickEnabled(true);
+	AZR_TRACE_EVENT("OnAnimationStarted");
 	OnAnimationStarted.Broadcast();
 }
 
 void UAzr_Animation::PlayReverse()
 {
+	AZR_TRACE();
+
 	RebuildTimeline();
 	if (TotalDuration <= 0.f) return;
 
@@ -169,21 +175,27 @@ void UAzr_Animation::PlayReverse()
 	}
 
 	SetComponentTickEnabled(true);
+	AZR_TRACE_EVENT("OnAnimationStarted");
 	OnAnimationStarted.Broadcast();
 }
 
 void UAzr_Animation::Stop()
 {
+	AZR_TRACE();
+
 	if (!bPlaying) return;
 
 	bPlaying = false;
 	StopAllLoops();
 	SetComponentTickEnabled(false);
+	AZR_TRACE_EVENT("OnAnimationFinished");
 	OnAnimationFinished.Broadcast();
 }
 
 void UAzr_Animation::ResetToRest()
 {
+	AZR_TRACE();
+
 	bPlaying = false;
 	StopAllLoops();
 	SetComponentTickEnabled(false);
@@ -202,6 +214,8 @@ void UAzr_Animation::ResetToRest()
 
 void UAzr_Animation::SetAlpha(float Alpha)
 {
+	AZR_TRACE();
+
 	// Whoever spoke last wins. Letting a timer and a hand both write the same transform produces
 	// motion that answers to neither.
 	bPlaying = false;
@@ -302,6 +316,7 @@ void UAzr_Animation::EvaluateAtAlpha(float Alpha)
 	{
 		for (int32 i = LastReportedStep + 1; i <= HighestComplete; ++i)
 		{
+			AZR_TRACE_EVENT("OnStepReached");
 			OnStepReached.Broadcast(i);
 		}
 		LastReportedStep = HighestComplete;
