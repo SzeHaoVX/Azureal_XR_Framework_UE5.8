@@ -127,7 +127,7 @@ struct FAzr_AnimStep
 	bool bMoveRotation = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Step")
-	bool bMoveScale = false;
+	bool bMoveScale = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Step", meta = (ClampMin = "0.01"))
 	float Duration = 1.f;
