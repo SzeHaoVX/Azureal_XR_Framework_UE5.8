@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Azr_Debug.h"
 #include "Engine/EngineTypes.h" // Needed for FComponentReference
 #include "Azr_Animation.generated.h"
 
@@ -180,12 +181,16 @@ struct FAzr_AnimStep
  *     already normalised 0..1, so a hand-turned valve moves a gate in lockstep
  */
 UCLASS(ClassGroup = (AzurealXR), meta = (BlueprintSpawnableComponent, DisplayName = "Azr Animation"))
-class AZUREALXR_API UAzr_Animation : public UActorComponent
+class AZUREALXR_API UAzr_Animation : public UActorComponent, public IAzr_Debuggable
 {
 	GENERATED_BODY()
 
 public:
 	UAzr_Animation();
+
+	// Reports its own state and its own setup rules to the Azureal Debugger; see IAzr_Debuggable.
+	virtual void GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const override;
+	virtual void ValidateAzrSetup(TArray<FString>& OutProblems) const override;
 
 	// --- SETUP ---
 

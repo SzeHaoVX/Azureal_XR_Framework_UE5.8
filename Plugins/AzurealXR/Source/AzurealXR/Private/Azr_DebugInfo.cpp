@@ -9,6 +9,7 @@
 #include "Azr_Debug.h"
 
 #include "Azr_Action.h"
+#include "Azr_Animation.h"
 #include "Azr_Explain.h"
 #include "Azr_Gaze.h"
 #include "Azr_Grab.h"
@@ -221,4 +222,81 @@ void UAzr_Gaze::GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const
 
 void UAzr_Gaze::ValidateAzrSetup(TArray<FString>& OutProblems) const
 {
+}
+
+// --- Azr Animation ---
+
+void UAzr_Animation::GetAzrDebugInfo(FAzr_DebugComponentInfo& Out) const
+{
+	const bool bHasAnimation = Steps.Num() > 0;
+
+	// "Enabled" means there is something to play. This component has no Enable/Disable pair -- it is
+	// driven by Play, by the preview slider or by whatever is pushing SetAlpha -- so an empty Steps
+	// array is the only state in which it can do nothing at all.
+	Out.bEnabled = bHasAnimation;
+	Out.State = bHasAnimation
+		? FString::Printf(TEXT("%s  %.0f%%"), IsPlaying() ? TEXT("Playing") : TEXT("Idle"), GetAlpha() * 100.f)
+		: TEXT("Nothing recorded");
+
+	const USceneComponent* Target = GetAnimatedComponent();
+	Out.Detail = FString::Printf(TEXT("%s  %d step%s  %.2fs"),
+		Target ? *Target->GetName() : TEXT("<no target>"),
+		Steps.Num(),
+		Steps.Num() == 1 ? TEXT("") : TEXT("s"),
+		GetTotalDuration());
+}
+
+void UAzr_Animation::ValidateAzrSetup(TArray<FString>& OutProblems) const
+{
+	const USceneComponent* Target = GetAnimatedComponent();
+
+	if (TargetComponent.ComponentProperty.IsNone())
+	{
+		OutProblems.Add(TEXT("Target Component is not set, so this animation has nothing to move."));
+	}
+	else if (!Target)
+	{
+		OutProblems.Add(FString::Printf(
+			TEXT("Target Component names '%s', but no scene component by that name exists on this actor."),
+			*TargetComponent.ComponentProperty.ToString()));
+	}
+	else if (const AActor* Owner = GetOwner(); Owner && Target == Owner->GetRootComponent())
+	{
+		// A root has no attach parent, so its relative transform is its world transform: every step
+		// would carry the actor's position inside it and break as soon as the actor was moved.
+		OutProblems.Add(TEXT("Target Component is the actor root. Put the mesh under a scene root and target the mesh instead."));
+	}
+
+	if (Steps.Num() == 0)
+	{
+		OutProblems.Add(TEXT("No steps recorded. Press Record Start Position, drag the target, then Save Step."));
+		return;
+	}
+
+	if (!bStartRecorded)
+	{
+		// Authored before bStartRecorded existed. Harmless now -- BeginPlay falls back to counting
+		// steps -- but re-recording the start is what makes the panel tell the truth again.
+		OutProblems.Add(TEXT("Start position was never explicitly recorded. Press Record Start Position to confirm where this animation begins."));
+	}
+
+	// The failure that leaves no trace anywhere: a leg whose start and end are the same pose. The
+	// animation runs, the timeline advances, and nothing on screen moves. It happens whenever Record
+	// Start Position is pressed after the target has already been dragged.
+	FTransform Previous = RestTransform;
+	for (int32 i = 0; i < Steps.Num(); ++i)
+	{
+		const FAzr_AnimStep& Step = Steps[i];
+		const bool bSameLocation = !Step.bMoveLocation || Step.Target.GetLocation().Equals(Previous.GetLocation());
+		const bool bSameRotation = !Step.bMoveRotation || Step.Target.GetRotation().Equals(Previous.GetRotation());
+		const bool bSameScale    = !Step.bMoveScale    || Step.Target.GetScale3D().Equals(Previous.GetScale3D());
+
+		if (bSameLocation && bSameRotation && bSameScale)
+		{
+			OutProblems.Add(FString::Printf(
+				TEXT("Step %d ends where it starts, so nothing moves during it. Re-record it, or tick a channel it actually changes."),
+				i + 1));
+		}
+		Previous = Step.Target;
+	}
 }
