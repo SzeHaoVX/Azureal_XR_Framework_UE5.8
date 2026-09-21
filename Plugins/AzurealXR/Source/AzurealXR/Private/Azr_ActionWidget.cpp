@@ -247,7 +247,7 @@ FText UAzr_ActionWidget::GetLocalizedText(const FAzr_MultiLangText& MultiLangTex
 		}
 	}
 
-	if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ms"), ESearchCase::IgnoreCase))
+	if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("bm"), ESearchCase::IgnoreCase))
 	{
 		return FText::FromString(MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay);
 	}

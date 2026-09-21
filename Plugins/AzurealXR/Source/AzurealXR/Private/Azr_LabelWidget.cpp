@@ -25,7 +25,7 @@ FText UAzr_LabelWidget::GetLocalizedText(const FAzr_MultiLangText& MultiLangText
 		}
 	}
 
-	if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ms"), ESearchCase::IgnoreCase))
+	if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("bm"), ESearchCase::IgnoreCase))
 	{
 		return FText::FromString(MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay);
 	}

@@ -74,7 +74,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Azureal|Session")
 	FString GetSessionLanguage() const { return LanguageCode; }
 
-	/** DEBUG: force the active language in PIE without the launcher env var. Pass "en", "ms", or "ta". */
+	/** DEBUG: force the active language in PIE without the launcher env var. Pass "en", "bm", or "ta" -- the codes the platform sends. */
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Debug")
 	void SetSessionLanguageForTesting(FString NewLanguageCode) { LanguageCode = NewLanguageCode; }
 

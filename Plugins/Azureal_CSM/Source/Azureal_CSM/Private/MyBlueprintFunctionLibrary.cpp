@@ -25,7 +25,7 @@ FText UMyBlueprintFunctionLibrary::GetActiveLanguageText(UObject* WorldContextOb
 	}
 
 	// Check the language code and return the matching text box (fallback to English if empty)
-	if (TargetLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || TargetLanguage.Equals(TEXT("ms"), ESearchCase::IgnoreCase))
+	if (TargetLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || TargetLanguage.Equals(TEXT("bm"), ESearchCase::IgnoreCase))
 	{
 		OutputString = MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay;
 	}

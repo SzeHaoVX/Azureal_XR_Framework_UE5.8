@@ -523,7 +523,7 @@ FString UAzr_Explain::ResolveLanguageString(const FAzr_MultiLangText& MultiLangT
         }
     }
 
-    if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ms"), ESearchCase::IgnoreCase)) {
+    if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("bm"), ESearchCase::IgnoreCase)) {
         return MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay;
     }
     if (ActiveLanguage.Equals(TEXT("Tamil"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ta"), ESearchCase::IgnoreCase)) {
