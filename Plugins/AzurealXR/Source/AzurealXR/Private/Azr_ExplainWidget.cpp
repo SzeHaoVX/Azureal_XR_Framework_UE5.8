@@ -450,12 +450,5 @@ FText UAzr_ExplainWidget::GetLocalizedText(const FAzr_MultiLangText& MultiLangTe
         }
     }
 
-    if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("bm"), ESearchCase::IgnoreCase)) {
-        return FText::FromString(MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay);
-    }
-    else if (ActiveLanguage.Equals(TEXT("Tamil"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ta"), ESearchCase::IgnoreCase)) {
-        return FText::FromString(MultiLangText.Tamil.IsEmpty() ? MultiLangText.English : MultiLangText.Tamil);
-    }
-
-    return FText::FromString(MultiLangText.English);
+	return FText::FromString(MultiLangText.Resolve(ActiveLanguage));
 }

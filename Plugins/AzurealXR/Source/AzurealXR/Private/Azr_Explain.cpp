@@ -523,14 +523,7 @@ FString UAzr_Explain::ResolveLanguageString(const FAzr_MultiLangText& MultiLangT
         }
     }
 
-    if (ActiveLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("bm"), ESearchCase::IgnoreCase)) {
-        return MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay;
-    }
-    if (ActiveLanguage.Equals(TEXT("Tamil"), ESearchCase::IgnoreCase) || ActiveLanguage.Equals(TEXT("ta"), ESearchCase::IgnoreCase)) {
-        return MultiLangText.Tamil.IsEmpty() ? MultiLangText.English : MultiLangText.Tamil;
-    }
-
-    return MultiLangText.English;
+	return MultiLangText.Resolve(ActiveLanguage);
 }
 
 void UAzr_Explain::ParseExactWordTimes(int32 ExpectedWordCount) {

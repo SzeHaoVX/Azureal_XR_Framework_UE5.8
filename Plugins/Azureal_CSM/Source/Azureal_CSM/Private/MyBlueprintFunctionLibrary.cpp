@@ -24,15 +24,9 @@ FText UMyBlueprintFunctionLibrary::GetActiveLanguageText(UObject* WorldContextOb
 		}
 	}
 
-	// Check the language code and return the matching text box (fallback to English if empty)
-	if (TargetLanguage.Equals(TEXT("Malay"), ESearchCase::IgnoreCase) || TargetLanguage.Equals(TEXT("bm"), ESearchCase::IgnoreCase))
-	{
-		OutputString = MultiLangText.Malay.IsEmpty() ? MultiLangText.English : MultiLangText.Malay;
-	}
-	else if (TargetLanguage.Equals(TEXT("Tamil"), ESearchCase::IgnoreCase) || TargetLanguage.Equals(TEXT("ta"), ESearchCase::IgnoreCase))
-	{
-		OutputString = MultiLangText.Tamil.IsEmpty() ? MultiLangText.English : MultiLangText.Tamil;
-	}
+	// The code-to-box rule lives on the struct, so this resolver and the four in AzurealXR cannot
+	// drift apart the way they did when Malay's code changed.
+	OutputString = MultiLangText.Resolve(TargetLanguage);
 
 	return FText::FromString(OutputString);
 }

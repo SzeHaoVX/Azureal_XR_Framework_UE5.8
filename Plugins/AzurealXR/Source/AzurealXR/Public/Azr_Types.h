@@ -126,6 +126,32 @@ struct FAzr_MultiLangText
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal Localization", meta = (MultiLine = true))
 	FString Tamil;
+
+	/**
+	 * The box for this language code, falling back to English when that box is blank or the code is
+	 * not one we know.
+	 *
+	 * One place on purpose. Five call sites each carried their own copy of this comparison -- four
+	 * widgets and the CSM library -- so changing a code meant changing it five times, and missing one
+	 * produced the symptom hardest to read: some text translating and the rest not. The platform's
+	 * Malay code moved from "ms" to "bm" without anyone noticing precisely because a code nobody
+	 * recognises fails as English rather than as an error.
+	 *
+	 * Codes are the ones the platform actually sends. The long forms are accepted too, since authored
+	 * content and test harnesses have used them.
+	 */
+	FString Resolve(const FString& LanguageCode) const
+	{
+		if (LanguageCode.Equals(TEXT("bm"), ESearchCase::IgnoreCase) || LanguageCode.Equals(TEXT("Malay"), ESearchCase::IgnoreCase))
+		{
+			return Malay.IsEmpty() ? English : Malay;
+		}
+		if (LanguageCode.Equals(TEXT("ta"), ESearchCase::IgnoreCase) || LanguageCode.Equals(TEXT("Tamil"), ESearchCase::IgnoreCase))
+		{
+			return Tamil.IsEmpty() ? English : Tamil;
+		}
+		return English;
+	}
 };
 
 // --- SHARED TETHER CONFIGURATION ---
