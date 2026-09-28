@@ -89,10 +89,12 @@ exists only as a convenience base for grabbable props.
 | `UAzr_Touch` | Hand-proximity detection. |
 | `UAzr_AttachTarget` | Socket/receptacle that a Grab-Attach object snaps into. |
 | `UAzr_GazeManager` | Look-at sequences driven from the camera. |
+| `UAzr_Animation` | Recorded transform animation on any scene component — record a start, drag the mesh, save steps. Plays on a timer, or follows a Latch through `SetAlpha`. |
 
-Every component is **dormant until enabled**. Each exposes paired `EnableX()` / `DisableX()`
-Blueprint methods, and does not tick until active — so a training sequence enables exactly the
-interaction it currently wants and nothing else is live.
+Every component is **dormant until enabled**. The interaction components expose paired `EnableX()` /
+`DisableX()` Blueprint methods, and none tick until active — so a training sequence enables exactly
+the interaction it currently wants and nothing else is live. `UAzr_Animation` is the exception in
+shape only: it has no Enable/Disable pair, and moves only when played or handed an alpha.
 
 Two ownership rules worth knowing: a held object **cannot be stolen** by the other hand (the player
 must release first), while **latches are deliberately multi-hand**.
@@ -124,6 +126,11 @@ Blueprint, the **Azureal** toolbar menu (or the Content Browser context menu, or
 graph) adds the chosen component and generates its boilerplate: enable and disable events wired to
 the matching calls, the component's event nodes, a labelled comment block, and the tag widget where
 one applies. Repeat use adds further numbered instances rather than duplicating nodes.
+
+Right-clicking empty space in a Content Browser folder also offers **Material Instance from…**: pick
+a parent material and an `MI_` instance of it is created in *that* folder, parent already set and
+ready to rename. Stock Unreal files a new instance beside its parent instead, which scatters
+instances of shared master materials into the master-materials folder.
 
 ### Localization
 
