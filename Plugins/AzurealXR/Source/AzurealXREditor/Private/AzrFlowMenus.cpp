@@ -26,6 +26,21 @@
 #include "Textures/SlateIcon.h"
 #include "Framework/Commands/UIAction.h"            // FExecuteAction
 
+// Material Instance from... on the Content Browser add-new menu
+#include "ContentBrowserDataMenuContexts.h"          // UContentBrowserDataMenuContext_AddNewMenu
+#include "ContentBrowserItemPath.h"
+#include "ContentBrowserModule.h"
+#include "IContentBrowserSingleton.h"
+#include "IAssetTools.h"
+#include "PropertyCustomizationHelpers.h"
+#include "Factories/MaterialInstanceConstantFactoryNew.h"
+#include "Materials/MaterialInstanceConstant.h"
+#include "Materials/MaterialInterface.h"
+#include "Styling/SlateIconFinder.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Editor.h"
+#include "TimerManager.h"
+
 #define LOCTEXT_NAMESPACE "AzrFlow"
 
 namespace
@@ -299,12 +314,115 @@ namespace
 		}
 	}
 
+	/**
+	 * Creates an instance of Parent in PackagePath, named MI_<parent>, and leaves it in inline rename.
+	 *
+	 * Deferred a tick. The picker lives inside a context menu that is still being torn down when the
+	 * choice is made, and inline rename needs keyboard focus in the Content Browser -- starting it
+	 * while the menu still holds focus commits the rename at once and the artist never gets to type.
+	 */
+	void CreateMaterialInstanceIn(const FString& PackagePath, const FAssetData& Picked)
+	{
+		FSlateApplication::Get().DismissAllMenus();
+
+		TWeakObjectPtr<UMaterialInterface> WeakParent = Cast<UMaterialInterface>(Picked.GetAsset());
+		if (!WeakParent.IsValid() || !GEditor) return;
+
+		GEditor->GetTimerManager()->SetTimerForNextTick([PackagePath, WeakParent]()
+		{
+			UMaterialInterface* Parent = WeakParent.Get();
+			if (!Parent) return;
+
+			// MI_ plus the parent's name without its own prefix, so M_Wood gives MI_Wood and parenting
+			// to another instance does not stack into MI_MI_Wood. Only ever a starting point -- it goes
+			// straight into rename.
+			FString Base = Parent->GetName();
+			if (!Base.RemoveFromStart(TEXT("MI_")))
+			{
+				Base.RemoveFromStart(TEXT("M_"));
+			}
+
+			FString PackageName;
+			FString AssetName;
+			IAssetTools::Get().CreateUniqueAssetName(PackagePath / (TEXT("MI_") + Base), FString(), PackageName, AssetName);
+
+			UMaterialInstanceConstantFactoryNew* Factory = NewObject<UMaterialInstanceConstantFactoryNew>();
+			Factory->InitialParent = Parent;
+
+			// CreateNewAsset rather than writing the package directly: it is what puts the new item into
+			// inline rename in the browser, exactly like every stock Add New entry.
+			FContentBrowserModule& ContentBrowser = FModuleManager::LoadModuleChecked<FContentBrowserModule>(TEXT("ContentBrowser"));
+			ContentBrowser.Get().CreateNewAsset(AssetName, PackagePath, UMaterialInstanceConstant::StaticClass(), Factory);
+		});
+	}
+
+	// "Material Instance from..." on the Content Browser's add-new menu -- right-click empty space, or the
+	// + Add button -- creating the instance in the folder being looked at.
+	//
+	// Stock only offers Create Material Instance on a material's own right-click, and files the result
+	// beside its parent: AssetTools' CreateAssetsFrom takes the SOURCE's package path. Instancing a
+	// shared master material therefore puts the new instance in the master-materials folder, and an
+	// artist has to move it every single time. Stock's other route, Material > Material Instance, lands
+	// in the right folder but with no parent, so it is two more steps and a manual rename.
+	void RegisterMaterialInstanceEntry()
+	{
+		UToolMenu* Menu = UToolMenus::Get()->ExtendMenu(TEXT("ContentBrowser.AddNewContextMenu"));
+		if (!Menu) return;
+
+		FToolMenuSection& Section = Menu->FindOrAddSection(TEXT("AzurealTools"), LOCTEXT("AzurealSection", "Azureal"));
+		Section.AddDynamicEntry(TEXT("AzurealMaterialInstanceFrom"), FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
+		{
+			const UContentBrowserDataMenuContext_AddNewMenu* Ctx = InSection.FindContext<UContentBrowserDataMenuContext_AddNewMenu>();
+
+			// One writable content folder, or nothing to offer. Engine and plugin-internal read-only
+			// folders fail bCanBeModified; the Content Browser's virtual roots have no package path.
+			if (!Ctx || !Ctx->bCanBeModified || !Ctx->bContainsValidPackagePath || Ctx->SelectedPaths.Num() != 1)
+			{
+				return;
+			}
+
+			// The context holds a VIRTUAL path ("/All/Game/Props/Table"); assets are created against the
+			// internal package path ("/Game/Props/Table").
+			const FContentBrowserItemPath ItemPath(Ctx->SelectedPaths[0], EContentBrowserPathType::Virtual);
+			if (!ItemPath.HasInternalPath()) return;
+			const FString PackagePath = ItemPath.GetInternalPathString();
+
+			InSection.AddSubMenu(
+				TEXT("AzurealMaterialInstanceFrom"),
+				LOCTEXT("MaterialInstanceFrom", "Material Instance from..."),
+				LOCTEXT("MaterialInstanceFromTip", "Pick a parent material and create an instance of it here, in this folder, ready to rename."),
+				FNewToolMenuDelegate::CreateLambda([PackagePath](UToolMenu* SubMenu)
+				{
+					// The same dropdown every asset field in the details panel uses, so it searches and
+					// filters the way the artists already expect.
+					const TArray<const UClass*> Allowed = { UMaterialInterface::StaticClass() };
+					TSharedRef<SWidget> Picker = PropertyCustomizationHelpers::MakeAssetPickerWithMenu(
+						FAssetData(),
+						/*AllowClear*/ false,
+						Allowed,
+						TArray<UFactory*>(),
+						FOnShouldFilterAsset(),
+						FOnAssetSelected::CreateLambda([PackagePath](const FAssetData& Picked)
+						{
+							CreateMaterialInstanceIn(PackagePath, Picked);
+						}),
+						FSimpleDelegate::CreateLambda([]() { FSlateApplication::Get().DismissAllMenus(); }));
+
+					SubMenu->AddSection(TEXT("Picker")).AddEntry(
+						FToolMenuEntry::InitWidget(TEXT("ParentMaterialPicker"), Picker, FText::GetEmpty(), /*bNoIndent*/ true, /*bSearchable*/ false));
+				}),
+				/*bInOpenSubMenuOnClick*/ false,
+				FSlateIconFinder::FindIconForClass(UMaterialInstanceConstant::StaticClass()));
+		}));
+	}
+
 	void RegisterMenus()
 	{
 		FToolMenuOwnerScoped OwnerScope(GAzrMenuOwner);
 		RegisterBlueprintToolbarButton();
 		RegisterContentBrowserEntry();
 		RegisterPrefixEntries();
+		RegisterMaterialInstanceEntry();
 	}
 }
 
