@@ -361,7 +361,9 @@ if (-not ($msvcRoots | Where-Object { Test-Path (Join-Path $_ $CompilerVersion) 
 Write-Ok "MSVC $CompilerVersion present"
 
 $shippedPaths = @($TemplateRoots) + ($Plugins | ForEach-Object { "Plugins/$_" })
-$dirty = Invoke-Git $DevRepo (@("status", "--porcelain", "--") + $shippedPaths)
+# Files the template leaves out cannot make the release unreproducible, so their edits do not count.
+$dirty = Invoke-Git $DevRepo (@("status", "--porcelain", "--") + $shippedPaths) |
+    Where-Object { $TemplateExclude -notcontains ($_.ToString().Substring(3).Trim('"')) }
 if ($dirty -and -not $AllowDirty) {
     Fail "uncommitted changes in shipped paths - a release must be reproducible from a commit:`n$($dirty | Out-String)"
 }
