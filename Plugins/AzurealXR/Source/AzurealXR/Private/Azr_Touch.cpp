@@ -17,6 +17,12 @@
 #include "Azr_ActionWidget.h"
 #include "Azr_LabelWidget.h"
 #include "Engine/GameInstance.h"
+#include "TimerManager.h"
+#include "GameFramework/Pawn.h"
+#include "Materials/MaterialInterface.h"
+#include "Engine/StaticMesh.h"
+#include "Sound/SoundBase.h"
+#include "Materials/MaterialParameterCollection.h"
 
 UAzr_Touch::UAzr_Touch()
 {

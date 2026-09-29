@@ -4,6 +4,7 @@
 #include "Azr_Debug.h"
 #include "GameFramework/Actor.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Components/StaticMeshComponent.h"
 
 UAzr_Pointer::UAzr_Pointer()
 {

@@ -15,6 +15,11 @@
 #include "Azr_ExplainWidget.h"
 #include "Azr_ActionWidget.h"
 #include "Azr_LabelWidget.h"
+#include "TimerManager.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Materials/MaterialInterface.h"
 
 UAzr_AttachTarget::UAzr_AttachTarget()
 {

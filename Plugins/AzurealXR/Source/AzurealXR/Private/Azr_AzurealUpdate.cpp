@@ -3,6 +3,7 @@
 #include "Azr_AzurealUpdate.h"
 #include "Azr_SessionSubsystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/GameInstance.h"
 
 // ==============================================================================
 // PHYSICAL ACTION NODE IMPLEMENTATION

@@ -6,6 +6,7 @@
 #include "CanvasItem.h"
 #include "RenderUtils.h"
 #include "StereoRendering.h"
+#include "GlobalRenderResources.h"
 
 bool AAzr_DesktopHUD::IsStereoActive()
 {

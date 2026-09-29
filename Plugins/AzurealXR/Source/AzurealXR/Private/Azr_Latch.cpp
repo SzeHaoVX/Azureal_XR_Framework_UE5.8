@@ -19,6 +19,13 @@
 #include "Azr_ExplainWidget.h"
 #include "Azr_ActionWidget.h"
 #include "Azr_LabelWidget.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "TimerManager.h"
+#include "Engine/StaticMesh.h"
+#include "Sound/SoundBase.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameterCollection.h"
+#include "Haptics/HapticFeedbackEffect_Base.h"
 
 UAzr_Latch::UAzr_Latch()
 {

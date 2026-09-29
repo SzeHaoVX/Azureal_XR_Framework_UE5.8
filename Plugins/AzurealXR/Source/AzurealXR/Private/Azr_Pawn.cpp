@@ -26,6 +26,7 @@
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "IXRTrackingSystem.h"
 #include "TimerManager.h"
+#include "Engine/StaticMesh.h"
 
 AAzr_Pawn::AAzr_Pawn() {
     PrimaryActorTick.bCanEverTick = true;

@@ -17,6 +17,11 @@
 #include "Materials/MaterialParameterCollection.h"
 #include "Sound/SoundBase.h"
 #include "UObject/ConstructorHelpers.h"
+#include "TimerManager.h"
+#include "GameFramework/Pawn.h"
+#include "Engine/World.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Components/StaticMeshComponent.h"
 
 
 UAzr_Explain::UAzr_Explain() {

@@ -19,6 +19,12 @@
 #include "Azr_ExplainWidget.h"
 #include "Azr_ActionWidget.h" 
 #include "Azr_LabelWidget.h" 
+#include "GameFramework/Pawn.h"
+#include "Sound/SoundBase.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInterface.h"
+#include "Materials/MaterialParameterCollection.h"
+#include "Haptics/HapticFeedbackEffect_Base.h"
 
 static int32 GlobalHighlightCount = 0;
 

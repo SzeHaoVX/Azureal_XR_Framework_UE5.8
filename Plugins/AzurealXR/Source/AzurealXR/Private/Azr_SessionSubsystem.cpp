@@ -6,6 +6,7 @@
 #include "Dom/JsonObject.h"
 #include "Dom/JsonValue.h"
 #include "Serialization/JsonSerializer.h"
+#include "Engine/World.h"
 
 void UAzr_SessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {

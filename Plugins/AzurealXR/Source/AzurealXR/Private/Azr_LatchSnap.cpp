@@ -2,6 +2,7 @@
 
 #include "Azr_LatchSnap.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Engine/StaticMesh.h"
 
 UAzr_LatchSnap::UAzr_LatchSnap()
 {

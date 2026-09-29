@@ -21,6 +21,9 @@
 #include "Azr_Indicator.h" 
 #include "Engine/BlueprintGeneratedClass.h" 
 #include "GameFramework/PlayerController.h" 
+#include "Components/MeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
 
 // --------------------
 

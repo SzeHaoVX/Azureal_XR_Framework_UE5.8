@@ -10,6 +10,9 @@
 #include "Components/WidgetComponent.h"
 #include "UObject/ConstructorHelpers.h"
 #include "TimerManager.h"
+#include "GameFramework/Pawn.h"
+#include "Engine/World.h"
+#include "Engine/StaticMesh.h"
 
 // A hand capsule counts if it is a normal hand (Left/Right), or a DISTANCE hand
 // (DistanceLeft/DistanceRight) but only when this object has opted into distance grab.

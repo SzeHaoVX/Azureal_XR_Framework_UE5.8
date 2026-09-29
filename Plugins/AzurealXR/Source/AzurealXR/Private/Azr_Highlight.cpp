@@ -9,6 +9,9 @@
 #include "Kismet/KismetMaterialLibrary.h"
 #include "UObject/ConstructorHelpers.h"
 #include "Azr_Interactable.h" // <--- Required for Hive Mind Access
+#include "Engine/World.h"
+#include "Components/StaticMeshComponent.h"
+#include "Sound/SoundBase.h"
 
 UAzr_Highlight::UAzr_Highlight()
 {

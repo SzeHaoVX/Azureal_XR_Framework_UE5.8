@@ -14,6 +14,9 @@ class UAzr_Pointer;
 class UMaterialParameterCollection;
 class AAzr_Indicator;
 class UAzr_Gaze; // Forward declaration needed for the delegate
+class UMeshComponent;
+class UStaticMeshComponent;
+class USoundBase;
 
 // We added the UAzr_Gaze* parameter so the Manager knows WHICH zone triggered
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGazeEvent, UAzr_Gaze*, TriggeredZone);
