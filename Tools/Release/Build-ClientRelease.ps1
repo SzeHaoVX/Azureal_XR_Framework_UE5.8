@@ -14,12 +14,14 @@
                     content, the way RunUAT BuildPlugin does.
       4. Strip    - removes every .cpp and Private folder, the .pdb files (archived separately for
                     crash symbolication), UHT's .gen.cpp files, and all comments from the shipped
-                    headers and Build.cs files; marks every module bUsePrecompiled.
+                    headers and Build.cs files; marks every module bUsePrecompiled, and keeps a copy
+                    of the build products in Precompiled/ that each module restores after a Clean.
       5. Assemble - the project template: uproject, Config, Content, Source and the stripped plugins.
       6. Audit    - refuses the release if anything that should not ship is still present.
       7. Verify   - builds a throwaway copy the way a client would, with C++ that subclasses and links
-                    against the framework, in every configuration; confirms nothing in the shipped
-                    plugins changes when it does; opens the editor once, unattended.
+                    against the framework, in every configuration; runs a Rebuild and a Clean and
+                    confirms the framework restores itself byte for byte; opens the editor once,
+                    unattended; packages a Shipping game and starts it (skip with -SkipPackage).
       8. Publish  - mirrors into the Azureal_Framework clone. Commits only with -Commit, pushes only
                     with -Push.
 
@@ -50,6 +52,7 @@ param(
 
     [switch]$SkipBuild,
     [switch]$SkipVerify,
+    [switch]$SkipPackage,
     [switch]$Commit,
     [switch]$Push,
     [switch]$AllowDirty
@@ -485,6 +488,35 @@ Write-Stage 'Strip'
 $SymbolDir = Join-Path $StageRoot "symbols\$DevShort"
 Reset-Dir $SymbolDir
 
+# Added to every shipped module's rules constructor, after bUsePrecompiled. System.IO only: the rules
+# compiler does not reference System.IO.Compression, which is why the copy is not a zip.
+$RestoreBlock = @'
+
+		// Clean and Rebuild treat a project plugin's Binaries and Intermediate folders as build output and
+		// delete them, and this plugin cannot be rebuilt from source. Put back anything missing from the
+		// copy kept in Precompiled/, which they never touch. This runs before UBT looks for those files.
+		string PrecompiledCopy = System.IO.Path.Combine(PluginDirectory, "Precompiled");
+		if (System.IO.Directory.Exists(PrecompiledCopy))
+		{
+			foreach (string CopyFile in System.IO.Directory.GetFiles(PrecompiledCopy, "*", System.IO.SearchOption.AllDirectories))
+			{
+				string LiveFile = System.IO.Path.Combine(PluginDirectory, System.IO.Path.GetRelativePath(PrecompiledCopy, CopyFile));
+				if (!System.IO.File.Exists(LiveFile))
+				{
+					try
+					{
+						System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(LiveFile));
+						System.IO.File.Copy(CopyFile, LiveFile);
+					}
+					catch (System.IO.IOException)
+					{
+						// Another module of this plugin restored it first.
+					}
+				}
+			}
+		}
+'@
+
 foreach ($plugin in $Plugins) {
     $root = Join-Path $PackageDir "Plugins\$plugin"
 
@@ -505,6 +537,21 @@ foreach ($plugin in $Plugins) {
         Move-Item $_.FullName $dst -Force
     }
 
+    # A copy of every build product a Clean or Rebuild can delete, in Precompiled/, where UBT's clean
+    # never looks. It deletes a project plugin's Binaries/<Platform> products and its
+    # Intermediate/Build/<Platform>/x64/<App>/<Config> folders (CleanMode.cs), because only engine
+    # plugins count as read-only. The restore code added to each Build.cs below puts them back.
+    foreach ($sub in 'Binaries', 'Intermediate\Build\Win64\x64') {
+        $src = Join-Path $root $sub
+        if (Test-Path $src) {
+            Get-ChildItem $src -Recurse -File | ForEach-Object {
+                $dst = Join-Path $root ('Precompiled\' + (Get-RelativePath $root $_.FullName))
+                New-Item -ItemType Directory -Path (Split-Path $dst -Parent) -Force | Out-Null
+                Copy-Item $_.FullName $dst -Force
+            }
+        }
+    }
+
     # Comments: headers keep their line numbers (see AzrCommentStripper); Build.cs is C#.
     $headerComments = 0
     Get-ChildItem (Join-Path $root 'Source') -Recurse -File -Filter '*.h' | ForEach-Object {
@@ -518,12 +565,18 @@ foreach ($plugin in $Plugins) {
         # whole PROJECT is installed (RulesCompiler: bReadOnly = Unreal.IsProjectInstalled()), and
         # "Installed": true in the .uplugin does not change that. Without this flag a client's build
         # tries to compile source that is not there.
+        #
+        # The restore block is for the same reason: nothing marks these binaries read-only, so Clean
+        # and Rebuild delete them. The module rules constructor runs in every build after any clean and
+        # before UBT reads the precompiled manifests, so restoring here heals a Rebuild in the same run.
         $module = $buildCs.Name -replace '\.Build\.cs$', ''
         $text = [System.IO.File]::ReadAllText($buildCs.FullName)
         $pattern = "(public\s+$module\s*\(\s*ReadOnlyTargetRules\s+Target\s*\)\s*:\s*base\s*\(\s*Target\s*\)\s*\{)"
         $ctorMatches = [regex]::Matches($text, $pattern)
         if ($ctorMatches.Count -ne 1) { Fail "could not find exactly one constructor in $($buildCs.FullName)" }
-        $text = [regex]::Replace($text, $pattern, "`$1`r`n`t`tbUsePrecompiled = true;")
+        $injected = "`r`n`t`tbUsePrecompiled = true;`r`n" + ($RestoreBlock -replace "`r?`n", "`r`n")
+        $ctorEnd = $ctorMatches[0].Index + $ctorMatches[0].Length
+        $text = $text.Substring(0, $ctorEnd) + $injected + $text.Substring($ctorEnd)
         [System.IO.File]::WriteAllText($buildCs.FullName, $text, (New-Object System.Text.UTF8Encoding($false)))
     }
 
@@ -616,6 +669,7 @@ foreach ($plugin in $Plugins) {
     $root = Join-Path $ReleaseOut "Plugins\$plugin"
     foreach ($buildCs in Get-ChildItem (Join-Path $root 'Source') -Recurse -File -Filter '*.Build.cs') {
         if ((Get-Content $buildCs.FullName -Raw) -notmatch 'bUsePrecompiled\s*=\s*true') { $problems.Add("not marked precompiled: $($buildCs.Name)") }
+        if ((Get-Content $buildCs.FullName -Raw) -notmatch 'PrecompiledCopy') { $problems.Add("no Clean/Rebuild restore code in $($buildCs.Name)") }
 
         $module = $buildCs.Name -replace '\.Build\.cs$', ''
         $moduleType = ((Get-Content (Join-Path $root "$plugin.uplugin") -Raw | ConvertFrom-Json).Modules | Where-Object { $_.Name -eq $module }).Type
@@ -637,6 +691,21 @@ foreach ($plugin in $Plugins) {
         $n = 0; [void][AzrCommentStripper]::Strip([System.IO.File]::ReadAllText($h.FullName), $false, [ref]$n)
         if ($n -ne 0) { $problems.Add("comments left in $($h.Name)") }
     }
+
+    # The Precompiled/ copy must match the live build products exactly, both ways: a stale or partial
+    # copy would "restore" the wrong binaries after a client's Clean.
+    $live = @{}; $copy = @{}
+    foreach ($sub in 'Binaries', 'Intermediate\Build\Win64\x64') {
+        $d = Join-Path $root $sub
+        if (Test-Path $d) { Get-ChildItem $d -Recurse -File | ForEach-Object { $live[(Get-RelativePath $root $_.FullName)] = $_.FullName } }
+    }
+    $copyRoot = Join-Path $root 'Precompiled'
+    if (Test-Path $copyRoot) { Get-ChildItem $copyRoot -Recurse -File | ForEach-Object { $copy[(Get-RelativePath $copyRoot $_.FullName)] = $_.FullName } }
+    foreach ($k in $live.Keys) {
+        if (-not $copy.ContainsKey($k)) { $problems.Add("$plugin build product has no Precompiled copy: $k") }
+        elseif ((Get-FileHash $live[$k] -Algorithm SHA1).Hash -ne (Get-FileHash $copy[$k] -Algorithm SHA1).Hash) { $problems.Add("$plugin Precompiled copy differs: $k") }
+    }
+    foreach ($k in $copy.Keys) { if (-not $live.ContainsKey($k)) { $problems.Add("$plugin Precompiled copy has an extra file: $k") } }
 }
 
 # Absolute paths from this machine inside text that ships.
@@ -724,17 +793,32 @@ if (-not $SkipVerify) {
         [void](Invoke-Build -Name "verify-$($v.Target)-$($v.Config)-$tcName" -Arguments "$($v.Target) Win64 $($v.Config) -Project=`"$verifyProject`" $tcArg -WaitMutex")
     }
 
-    $changed = New-Object System.Collections.Generic.List[string]
-    $after = @{}
-    Get-ChildItem (Join-Path $VerifyDir 'Plugins') -Recurse -File | ForEach-Object {
-        $rel = Get-RelativePath $VerifyDir $_.FullName
-        $after[$rel] = $true
-        if (-not $before.ContainsKey($rel)) { $changed.Add("added by a client build: $rel") }
-        elseif ($before[$rel] -ne (Get-FileHash $_.FullName -Algorithm SHA1).Hash) { $changed.Add("rewritten by a client build: $rel") }
+    function Assert-PluginsUnchanged([string]$After) {
+        $changed = New-Object System.Collections.Generic.List[string]
+        $now = @{}
+        Get-ChildItem (Join-Path $VerifyDir 'Plugins') -Recurse -File | ForEach-Object {
+            $rel = Get-RelativePath $VerifyDir $_.FullName
+            $now[$rel] = $true
+            if (-not $before.ContainsKey($rel)) { $changed.Add("added: $rel") }
+            elseif ($before[$rel] -ne (Get-FileHash $_.FullName -Algorithm SHA1).Hash) { $changed.Add("rewritten: $rel") }
+        }
+        foreach ($rel in $before.Keys) { if (-not $now.ContainsKey($rel)) { $changed.Add("deleted: $rel") } }
+        if ($changed.Count) { $changed | Select-Object -First 20 | ForEach-Object { Write-Host "  FAIL  $_" -ForegroundColor Red }; Fail "shipped plugins changed after $After" }
+        Write-Ok "shipped plugins byte-identical after $After"
     }
-    foreach ($rel in $before.Keys) { if (-not $after.ContainsKey($rel)) { $changed.Add("deleted by a client build: $rel") } }
-    if ($changed.Count) { $changed | Select-Object -First 20 | ForEach-Object { Write-Host "  FAIL  $_" -ForegroundColor Red }; Fail "client builds modified the shipped plugins" }
-    Write-Ok 'shipped plugins untouched by every client build'
+    Assert-PluginsUnchanged 'every client build'
+
+    # Clean and Rebuild, from Visual Studio or the command line, delete the framework's build products
+    # (see the Strip stage). A Rebuild must heal itself in the same run, and after a plain Clean the
+    # next build must put everything back.
+    [void](Invoke-Build -Name 'verify-rebuild-editor' -Arguments "Azureal_XR_V2Editor Win64 Development -Project=`"$verifyProject`" -Rebuild -WaitMutex")
+    Assert-PluginsUnchanged 'an editor Rebuild'
+    [void](Invoke-Build -Name 'verify-clean-game' -Arguments "Azureal_XR_V2 Win64 Shipping -Project=`"$verifyProject`" -Clean -WaitMutex")
+    $cleaned = @($before.Keys | Where-Object { -not (Test-Path (Join-Path $VerifyDir $_)) }).Count
+    if ($cleaned -eq 0) { Write-Note 'a Clean deleted no framework files this time, so the restore was not exercised' }
+    else { Write-Ok "a Shipping Clean deleted $cleaned framework files" }
+    [void](Invoke-Build -Name 'verify-build-after-clean' -Arguments "Azureal_XR_V2 Win64 Shipping -Project=`"$verifyProject`" -WaitMutex")
+    Assert-PluginsUnchanged 'a Clean and the build after it'
 
     # One unattended editor launch: a module the editor cannot load fails here instead of prompting.
     $smokeLog = Join-Path $LogDir 'verify-editor-smoke.log'
@@ -759,6 +843,29 @@ if (-not $SkipVerify) {
         if (-not (Select-String -Path $smokeLog -Pattern "InternalLoadLibrary: '$m'" -Quiet)) { Fail "no sign of $m loading in the editor log" }
     }
     Write-Ok "editor launched unattended and loaded every framework module (exit $($p.ExitCode))"
+
+    if (-not $SkipPackage) {
+        # Package Project the way a client ships a build: compile, cook, stage and pak a Shipping game.
+        $packageDir = Join-Path $StageRoot 'package-test'
+        Reset-Dir $packageDir
+        $uat = Join-Path $EngineDir 'Engine\Build\BatchFiles\RunUAT.bat'
+        $packageLog = Join-Path $LogDir 'verify-package-shipping.log'
+        $u = Start-Process $uat -NoNewWindow -Wait -PassThru -RedirectStandardOutput $packageLog -RedirectStandardError "$packageLog.err" `
+            -ArgumentList "BuildCookRun -project=`"$verifyProject`" -platform=Win64 -clientconfig=Shipping -build -cook -stage -pak -archive -archivedirectory=`"$packageDir`" -unattended -utf8output -nop4"
+        if ($u.ExitCode -ne 0) { Fail "Package Project (Shipping) failed (exit $($u.ExitCode)). Log: $packageLog`n$((Get-Content $packageLog -Tail 25) -join "`n")" }
+        $shippingExe = Get-ChildItem $packageDir -Recurse -Filter '*-Win64-Shipping.exe' | Select-Object -First 1
+        if (-not $shippingExe) { Fail "Package Project produced no Shipping executable in $packageDir" }
+
+        # Launch it once. A framework module that cannot initialise in a packaged game ends the process
+        # at startup; a healthy one is still running when we stop it.
+        $g = Start-Process $shippingExe.FullName -ArgumentList '-nullrhi -nosound -unattended' -PassThru
+        $null = $g.Handle
+        if ($g.WaitForExit(30000)) { Fail "the packaged Shipping game exited within 30 s (exit $($g.ExitCode))" }
+        Stop-Process -Id $g.Id -Force
+        $packageMB = [math]::Round((Get-ChildItem $packageDir -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
+        Write-Ok "packaged a Shipping game ($packageMB MB) and it started"
+        Assert-PluginsUnchanged 'Package Project'
+    }
 }
 
 # --- 8. Publish ------------------------------------------------------------------------------------

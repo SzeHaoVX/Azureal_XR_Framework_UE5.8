@@ -11,6 +11,7 @@
 *.sdf
 *.VC.db
 *.opensdf
+.vsconfig
 
 # Plugins you add build locally too...
 /Plugins/*/Binaries/

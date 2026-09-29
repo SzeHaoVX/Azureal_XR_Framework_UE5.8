@@ -27,6 +27,11 @@ implementation source is not included and they cannot be modified.
 These live in `Plugins/`. Do not edit, move or delete them — they are the compiled framework, and a
 change there cannot be rebuilt.
 
+A **Clean** or **Rebuild** (from Visual Studio or the command line) deletes the framework's binaries
+along with your own build output; the next build puts them back from the copy each plugin keeps in its
+`Precompiled/` folder. Keep those folders. After a Clean, build once (or accept the editor's offer to
+rebuild missing modules) before opening the editor.
+
 ## Building your own code
 
 Write game code in `Source/Azureal_XR_V2`, or add your own plugin under `Plugins/`. To use the
