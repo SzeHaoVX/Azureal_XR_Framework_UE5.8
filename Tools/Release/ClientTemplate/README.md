@@ -15,6 +15,14 @@ implementation source is not included and they cannot be modified.
 - **Windows (Win64) only.** Android and Quest builds are not supported by this release; packaging for
   them will leave the framework out.
 
+## Getting started
+
+1. Clone this repository.
+2. Open `Azureal_Framework.uproject`. The first time, Unreal reports that the `Azureal_XR_V2` module is
+   missing and offers to rebuild it: choose **Yes**. That compiles the project's C++ module, which
+   takes about a minute. Unreal asks again whenever the C++ code has changed since the last build —
+   after pulling a teammate's C++ changes, for example, or after a Clean.
+
 ## Included plugins
 
 | Plugin | Purpose |
@@ -34,6 +42,9 @@ rebuild missing modules) before opening the editor.
 
 ## Building your own code
 
+The project file is `Azureal_Framework.uproject`, but its C++ module, its build targets and the
+packaged executable are named `Azureal_XR_V2`; Unreal does not require the two to match.
+
 Write game code in `Source/Azureal_XR_V2`, or add your own plugin under `Plugins/`. To use the
 framework from C++, add its module to your `Build.cs`:
 
@@ -46,7 +57,7 @@ and the packaged game. The **Test** configuration is not supported.
 
 ## Version control
 
-The repository is about 1.5 GB, most of it demo-scene textures; no file exceeds GitHub's 100 MB
+The repository is about 1.3 GB, most of it demo-scene textures; no file exceeds GitHub's 100 MB
 limit, so Git LFS is not required.
 
 The included `.gitignore` keeps the framework's precompiled binaries under version control while

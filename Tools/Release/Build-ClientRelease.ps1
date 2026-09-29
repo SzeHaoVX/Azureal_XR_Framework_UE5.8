@@ -92,6 +92,11 @@ $PluginSourceDirs = @('Source', 'Content', 'Resources', 'Config', 'Shaders')
 # including CLAUDE.md, .claude, .mcp.json, Tools and the dev README.
 $TemplateRoots = @('Azureal_XR_V2.uproject', 'Config', 'Content', 'Source')
 
+# Clients get the project under the product name; Azureal_XR_V2 is the dev harness. Only the file is
+# renamed: the C++ module, its targets and the packaged executable keep the Azureal_XR_V2 name, which
+# Unreal does not tie to the .uproject's.
+$ReleaseProjectFile = 'Azureal_Framework.uproject'
+
 # Tracked template files that never ship. DefaultEditorPerProjectUserSettings.ini is per-user editor
 # state, and it is where the ElevenLabs API key for Generate Narration got committed -- shipped, every
 # client editor would load that key and spend our credits.
@@ -613,7 +618,8 @@ Reset-Dir $ReleaseOut
 $templateFiles = Invoke-Git $DevRepo (@("ls-files", "--") + $TemplateRoots) | ForEach-Object { $_.ToString() } |
     Where-Object { $TemplateExclude -notcontains $_ }
 Copy-RelativeFiles -FromRoot $DevRepo -ToRoot $ReleaseOut -RelativePaths $templateFiles
-Write-Ok "project files ($(@($templateFiles).Count); left out: $($TemplateExclude -join ', '))"
+Move-Item (Join-Path $ReleaseOut 'Azureal_XR_V2.uproject') (Join-Path $ReleaseOut $ReleaseProjectFile)
+Write-Ok "project files ($(@($templateFiles).Count); left out: $($TemplateExclude -join ', '); project file shipped as $ReleaseProjectFile)"
 
 foreach ($ini in Get-ChildItem (Join-Path $ReleaseOut 'Config') -Filter '*.ini') {
     $lines = [System.IO.File]::ReadAllLines($ini.FullName)
@@ -781,7 +787,7 @@ if (-not $SkipVerify) {
     if ($b -notmatch '"AzurealXR"') { Fail 'could not add framework modules to the probe Build.cs' }
     [System.IO.File]::WriteAllText($buildCsPath, $b)
 
-    $verifyProject = Join-Path $VerifyDir 'Azureal_XR_V2.uproject'
+    $verifyProject = Join-Path $VerifyDir $ReleaseProjectFile
     # The minimum supported toolchain is the strict case; anything newer is allowed by UBT.
     $verifyBuilds = @(
         @{ Target = 'Azureal_XR_V2Editor'; Config = 'Development'; Tc = $CompilerVersion },
