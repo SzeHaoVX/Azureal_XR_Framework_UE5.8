@@ -52,5 +52,3 @@ limit, so Git LFS is not required.
 The included `.gitignore` keeps the framework's precompiled binaries under version control while
 ignoring your own build output. Keep its `!/Plugins/...` lines: without them git silently drops the
 framework from every commit.
-
-<!-- Release details are recorded in RELEASE.json. -->

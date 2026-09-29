@@ -644,8 +644,10 @@ $release = [ordered]@{
     configurations  = @('Development', 'DebugGame', 'Shipping')
     plugins         = $Plugins
 }
-$release | ConvertTo-Json | Set-Content (Join-Path $ReleaseOut 'RELEASE.json') -Encoding UTF8
-Write-Ok 'plugins, README, .gitignore, .gitattributes, RELEASE.json'
+# The record of what built this release goes with the symbols, not to clients: nothing in the project
+# reads it, and the release commit message carries the same dev commit, build time and compiler.
+$release | ConvertTo-Json | Set-Content (Join-Path $SymbolDir 'RELEASE.json') -Encoding UTF8
+Write-Ok 'plugins, README, .gitignore, .gitattributes'
 
 # --- 6. Audit --------------------------------------------------------------------------------------
 
@@ -922,4 +924,4 @@ if ($Push) {
 
 Write-Host ''
 Write-Host "Release ready in $OutputRepo$(if (-not $Commit) { ' (staged, not committed)' })." -ForegroundColor Green
-Write-Host "Symbols for crash reports: $SymbolDir  - archive these; they are NOT in the release."
+Write-Host "Symbols for crash reports and RELEASE.json: $SymbolDir  - archive these; they are NOT in the release."
