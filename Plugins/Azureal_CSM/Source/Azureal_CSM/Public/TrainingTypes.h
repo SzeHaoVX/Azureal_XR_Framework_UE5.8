@@ -92,16 +92,16 @@ struct FRuntimeStep
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadOnly, Category = "Data")
-    EMasterStepType StepType;
+    EMasterStepType StepType = EMasterStepType::Standard;
 
     UPROPERTY(BlueprintReadOnly, Category = "Data")
-    int32 DisplayNumber;
+    int32 DisplayNumber = 0;
 
     UPROPERTY(BlueprintReadOnly, Category = "Data")
     FAzr_MultiLangText StepTitle;
 
     UPROPERTY(BlueprintReadOnly, Category = "Data")
-    int32 CorrectAnswerIndex;
+    int32 CorrectAnswerIndex = 0;
 
     UPROPERTY(BlueprintReadOnly, Category = "Data")
     TArray<FSubStepData> ActiveSubSteps;

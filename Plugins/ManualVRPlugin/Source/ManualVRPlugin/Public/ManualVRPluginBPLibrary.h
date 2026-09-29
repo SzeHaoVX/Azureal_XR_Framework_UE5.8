@@ -23,10 +23,10 @@ struct FSop {
 	FString sopCode;
 
 	UPROPERTY()
-	int32 duration;
+	int32 duration = 0;
 
 	UPROPERTY()
-	int32 outcome;
+	int32 outcome = 0;
 };
 
 UCLASS()

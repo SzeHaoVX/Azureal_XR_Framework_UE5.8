@@ -21,7 +21,7 @@ struct FChapterDef
     TSoftObjectPtr<UWorld> ChapterLevel;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Content")
-    UTrainingCurriculum* StepData;
+    UTrainingCurriculum* StepData = nullptr;
 
     // --- NEW: The Manager Class for this specific chapter ---
     // You must place an Actor of this class in the actual Level file!
