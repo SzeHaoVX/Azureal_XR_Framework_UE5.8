@@ -92,10 +92,13 @@ $PluginSourceDirs = @('Source', 'Content', 'Resources', 'Config', 'Shaders')
 # including CLAUDE.md, .claude, .mcp.json, Tools and the dev README.
 $TemplateRoots = @('Azureal_XR_V2.uproject', 'Config', 'Content', 'Source')
 
-# Clients get the project under the product name; Azureal_XR_V2 is the dev harness. Only the file is
-# renamed: the C++ module, its targets and the packaged executable keep the Azureal_XR_V2 name, which
-# Unreal does not tie to the .uproject's.
-$ReleaseProjectFile = 'Azureal_Framework.uproject'
+# Clients get the project as Azureal_Framework throughout -- project file, C++ module, build targets,
+# and so the packaged executable. The dev harness keeps Azureal_XR_V2. Nothing the plugins ship refers
+# to the game module, and it has no classes, so no asset refers to /Script/Azureal_XR_V2 either; the
+# audit fails if the old name survives anywhere.
+$DevProjectName     = 'Azureal_XR_V2'
+$ReleaseProjectName = 'Azureal_Framework'
+$ReleaseProjectFile = "$ReleaseProjectName.uproject"
 
 # Tracked template files that never ship. DefaultEditorPerProjectUserSettings.ini is per-user editor
 # state, and it is where the ElevenLabs API key for Generate Narration got committed -- shipped, every
@@ -618,8 +621,26 @@ Reset-Dir $ReleaseOut
 $templateFiles = Invoke-Git $DevRepo (@("ls-files", "--") + $TemplateRoots) | ForEach-Object { $_.ToString() } |
     Where-Object { $TemplateExclude -notcontains $_ }
 Copy-RelativeFiles -FromRoot $DevRepo -ToRoot $ReleaseOut -RelativePaths $templateFiles
-Move-Item (Join-Path $ReleaseOut 'Azureal_XR_V2.uproject') (Join-Path $ReleaseOut $ReleaseProjectFile)
-Write-Ok "project files ($(@($templateFiles).Count); left out: $($TemplateExclude -join ', '); project file shipped as $ReleaseProjectFile)"
+Write-Ok "project files ($(@($templateFiles).Count); left out: $($TemplateExclude -join ', '))"
+
+# Rename the project: the .uproject, the module folder and every file named after it, then every
+# mention inside Source, the .uproject and Config (module class, targets, IMPLEMENT_PRIMARY_GAME_MODULE,
+# the template's ActiveGameNameRedirects).
+Move-Item (Join-Path $ReleaseOut "$DevProjectName.uproject") (Join-Path $ReleaseOut $ReleaseProjectFile)
+$releaseSource = Join-Path $ReleaseOut 'Source'
+Rename-Item (Join-Path $releaseSource $DevProjectName) $ReleaseProjectName
+Get-ChildItem $releaseSource -Recurse -File | Where-Object { $_.Name.StartsWith($DevProjectName) } | ForEach-Object {
+    Rename-Item $_.FullName ($_.Name.Replace($DevProjectName, $ReleaseProjectName))
+}
+$renameTargets = @(Get-ChildItem $releaseSource -Recurse -File) + @(Get-Item (Join-Path $ReleaseOut $ReleaseProjectFile)) +
+    @(Get-ChildItem (Join-Path $ReleaseOut 'Config') -Filter '*.ini')
+foreach ($f in $renameTargets) {
+    $t = [System.IO.File]::ReadAllText($f.FullName)
+    if ($t.Contains($DevProjectName)) {
+        [System.IO.File]::WriteAllText($f.FullName, $t.Replace($DevProjectName, $ReleaseProjectName), (New-Object System.Text.UTF8Encoding($false)))
+    }
+}
+Write-Ok "project renamed $DevProjectName -> $ReleaseProjectName (file, module, targets)"
 
 foreach ($ini in Get-ChildItem (Join-Path $ReleaseOut 'Config') -Filter '*.ini') {
     $lines = [System.IO.File]::ReadAllLines($ini.FullName)
@@ -718,10 +739,13 @@ foreach ($plugin in $Plugins) {
     foreach ($k in $copy.Keys) { if (-not $live.ContainsKey($k)) { $problems.Add("$plugin Precompiled copy has an extra file: $k") } }
 }
 
-# Absolute paths from this machine inside text that ships.
-foreach ($f in $all | Where-Object { $_ -match '\.(h|cs|uplugin|uproject|ini|json|precompiled|modules|md)$' }) {
-    if ((Get-Content (Join-Path $ReleaseOut $f) -Raw) -match '(?i)C:[\\/](GitHub|AzrRel|Users)[\\/]') { $problems.Add("local path inside $f") }
+# Absolute paths from this machine inside text that ships, and the dev harness's name after the rename.
+foreach ($f in $all | Where-Object { $_ -match '\.(h|cpp|cs|uplugin|uproject|ini|json|precompiled|modules|md)$' }) {
+    $content = Get-Content (Join-Path $ReleaseOut $f) -Raw
+    if ($content -match '(?i)C:[\\/](GitHub|AzrRel|Users)[\\/]') { $problems.Add("local path inside $f") }
+    if ($content -and $content.Contains($DevProjectName)) { $problems.Add("old project name $DevProjectName inside $f") }
 }
+foreach ($f in $all | Where-Object { $_.Contains($DevProjectName) }) { $problems.Add("old project name in a file name: $f") }
 
 foreach ($f in Get-ChildItem $ReleaseOut -Recurse -File | Where-Object { $_.Length -gt 95MB }) {
     $problems.Add("over GitHub's 100 MB file limit: $(Get-RelativePath $ReleaseOut $_.FullName)")
@@ -779,9 +803,9 @@ if (-not $SkipVerify) {
         $before[(Get-RelativePath $VerifyDir $_.FullName)] = (Get-FileHash $_.FullName -Algorithm SHA1).Hash
     }
 
-    $module = Join-Path $VerifyDir 'Source\Azureal_XR_V2'
+    $module = Join-Path $VerifyDir "Source\$ReleaseProjectName"
     Copy-Item (Join-Path $ProbeDir '*') $module -Force
-    $buildCsPath = Join-Path $module 'Azureal_XR_V2.Build.cs'
+    $buildCsPath = Join-Path $module "$ReleaseProjectName.Build.cs"
     $b = [System.IO.File]::ReadAllText($buildCsPath)
     $b = $b -replace '(PublicDependencyModuleNames\.AddRange\(new string\[\] \{)', '$1 "AzurealXR", "Azureal_CSM", "AzurealForceExit", "ManualVRPlugin",'
     if ($b -notmatch '"AzurealXR"') { Fail 'could not add framework modules to the probe Build.cs' }
@@ -790,12 +814,12 @@ if (-not $SkipVerify) {
     $verifyProject = Join-Path $VerifyDir $ReleaseProjectFile
     # The minimum supported toolchain is the strict case; anything newer is allowed by UBT.
     $verifyBuilds = @(
-        @{ Target = 'Azureal_XR_V2Editor'; Config = 'Development'; Tc = $CompilerVersion },
-        @{ Target = 'Azureal_XR_V2Editor'; Config = 'DebugGame';   Tc = $CompilerVersion },
-        @{ Target = 'Azureal_XR_V2';       Config = 'Development'; Tc = $CompilerVersion },
-        @{ Target = 'Azureal_XR_V2';       Config = 'DebugGame';   Tc = $CompilerVersion },
-        @{ Target = 'Azureal_XR_V2';       Config = 'Shipping';    Tc = $CompilerVersion },
-        @{ Target = 'Azureal_XR_V2Editor'; Config = 'Development'; Tc = '' }
+        @{ Target = "${ReleaseProjectName}Editor"; Config = 'Development'; Tc = $CompilerVersion },
+        @{ Target = "${ReleaseProjectName}Editor"; Config = 'DebugGame';   Tc = $CompilerVersion },
+        @{ Target = $ReleaseProjectName;       Config = 'Development'; Tc = $CompilerVersion },
+        @{ Target = $ReleaseProjectName;       Config = 'DebugGame';   Tc = $CompilerVersion },
+        @{ Target = $ReleaseProjectName;       Config = 'Shipping';    Tc = $CompilerVersion },
+        @{ Target = "${ReleaseProjectName}Editor"; Config = 'Development'; Tc = '' }
     )
     foreach ($v in $verifyBuilds) {
         $tcArg  = if ($v.Tc) { "-CompilerVersion=$($v.Tc)" } else { '' }
@@ -821,13 +845,13 @@ if (-not $SkipVerify) {
     # Clean and Rebuild, from Visual Studio or the command line, delete the framework's build products
     # (see the Strip stage). A Rebuild must heal itself in the same run, and after a plain Clean the
     # next build must put everything back.
-    [void](Invoke-Build -Name 'verify-rebuild-editor' -Arguments "Azureal_XR_V2Editor Win64 Development -Project=`"$verifyProject`" -Rebuild -WaitMutex")
+    [void](Invoke-Build -Name 'verify-rebuild-editor' -Arguments "${ReleaseProjectName}Editor Win64 Development -Project=`"$verifyProject`" -Rebuild -WaitMutex")
     Assert-PluginsUnchanged 'an editor Rebuild'
-    [void](Invoke-Build -Name 'verify-clean-game' -Arguments "Azureal_XR_V2 Win64 Shipping -Project=`"$verifyProject`" -Clean -WaitMutex")
+    [void](Invoke-Build -Name 'verify-clean-game' -Arguments "$ReleaseProjectName Win64 Shipping -Project=`"$verifyProject`" -Clean -WaitMutex")
     $cleaned = @($before.Keys | Where-Object { -not (Test-Path (Join-Path $VerifyDir $_)) }).Count
     if ($cleaned -eq 0) { Write-Note 'a Clean deleted no framework files this time, so the restore was not exercised' }
     else { Write-Ok "a Shipping Clean deleted $cleaned framework files" }
-    [void](Invoke-Build -Name 'verify-build-after-clean' -Arguments "Azureal_XR_V2 Win64 Shipping -Project=`"$verifyProject`" -WaitMutex")
+    [void](Invoke-Build -Name 'verify-build-after-clean' -Arguments "$ReleaseProjectName Win64 Shipping -Project=`"$verifyProject`" -WaitMutex")
     Assert-PluginsUnchanged 'a Clean and the build after it'
 
     # One unattended editor launch: a module the editor cannot load fails here instead of prompting.

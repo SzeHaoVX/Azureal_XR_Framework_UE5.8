@@ -9,7 +9,7 @@ implementation source is not included and they cannot be modified.
 - **Unreal Engine 5.8**, installed from the Epic Games Launcher. The plugins are built against it and
   will not load in any other engine version.
 - **Visual Studio 2022 or newer, with the MSVC 14.44 toolchain or a newer one** — needed by everyone,
-  including Blueprint-only teams. The project has a C++ game module (`Source/Azureal_XR_V2`), which
+  including Blueprint-only teams. The project has a C++ game module (`Source/Azureal_Framework`), which
   Unreal compiles the first time the project is opened and every time you package. An older
   toolchain is refused when Unreal links the framework.
 - **Windows (Win64) only.** Android and Quest builds are not supported by this release; packaging for
@@ -18,8 +18,8 @@ implementation source is not included and they cannot be modified.
 ## Getting started
 
 1. Clone this repository.
-2. Open `Azureal_Framework.uproject`. The first time, Unreal reports that the `Azureal_XR_V2` module is
-   missing and offers to rebuild it: choose **Yes**. That compiles the project's C++ module, which
+2. Open `Azureal_Framework.uproject`. The first time, Unreal reports that the `Azureal_Framework` module
+   is missing and offers to rebuild it: choose **Yes**. That compiles the project's C++ module, which
    takes about a minute. Unreal asks again whenever the C++ code has changed since the last build —
    after pulling a teammate's C++ changes, for example, or after a Clean.
 
@@ -42,10 +42,7 @@ rebuild missing modules) before opening the editor.
 
 ## Building your own code
 
-The project file is `Azureal_Framework.uproject`, but its C++ module, its build targets and the
-packaged executable are named `Azureal_XR_V2`; Unreal does not require the two to match.
-
-Write game code in `Source/Azureal_XR_V2`, or add your own plugin under `Plugins/`. To use the
+Write game code in `Source/Azureal_Framework`, or add your own plugin under `Plugins/`. To use the
 framework from C++, add its module to your `Build.cs`:
 
 ```csharp
