@@ -1,0 +1,29 @@
+# Built locally from this project's own code -- never committed.
+/Binaries/
+/Intermediate/
+/Saved/
+/DerivedDataCache/
+/.vs/
+/.vscode/
+*.sln
+*.slnx
+*.suo
+*.sdf
+*.VC.db
+*.opensdf
+
+# Plugins you add build locally too...
+/Plugins/*/Binaries/
+/Plugins/*/Intermediate/
+
+# ...except the Azureal plugins. They ship precompiled: their Binaries and Intermediate folders ARE
+# the plugin, because the source is not included. Ignoring them would silently drop the framework
+# from every commit. Do not remove these lines.
+!/Plugins/AzurealXR/Binaries/
+!/Plugins/AzurealXR/Intermediate/
+!/Plugins/Azureal_CSM/Binaries/
+!/Plugins/Azureal_CSM/Intermediate/
+!/Plugins/AzurealForceExit/Binaries/
+!/Plugins/AzurealForceExit/Intermediate/
+!/Plugins/ManualVRPlugin/Binaries/
+!/Plugins/ManualVRPlugin/Intermediate/

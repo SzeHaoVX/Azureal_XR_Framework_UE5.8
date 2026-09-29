@@ -1,0 +1,20 @@
+# Normalise line endings in text files...
+* text=auto
+
+# ...but never treat Unreal's binary formats, or the precompiled framework, as text. Git guesses
+# "binary" from the first few kilobytes of a file; these lines make it certain.
+*.uasset      binary
+*.umap        binary
+*.uexp        binary
+*.ubulk       binary
+*.dll         binary
+*.lib         binary
+*.obj         binary
+*.pdb         binary
+*.exe         binary
+*.png         binary
+*.jpg         binary
+*.tga         binary
+*.ico         binary
+*.wav         binary
+*.fbx         binary
