@@ -580,7 +580,7 @@ void UAzr_Touch::ToggleHighlight(bool bState)
 		Meshes.AddUnique(WidgetMesh);
 	}
 
-	for (UMeshComponent* Mesh : Meshes) { if (Mesh) { Mesh->SetRenderCustomDepth(bState); Mesh->SetCustomDepthStencilValue(StencilID); } }
+	for (UMeshComponent* Mesh : Meshes) { Azr::SetMeshHighlight(Mesh, bState, StencilID); }
 }
 
 void UAzr_Touch::UpdatePointer()

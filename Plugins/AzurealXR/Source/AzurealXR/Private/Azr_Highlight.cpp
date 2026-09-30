@@ -153,11 +153,7 @@ void UAzr_Highlight::ToggleVisuals(bool bState)
 
 	for (UMeshComponent* Mesh : MeshesToHighlight)
 	{
-		if (Mesh)
-		{
-			Mesh->SetRenderCustomDepth(bState);
-			Mesh->SetCustomDepthStencilValue(StencilID);
-		}
+		Azr::SetMeshHighlight(Mesh, bState, StencilID);
 	}
 }
 

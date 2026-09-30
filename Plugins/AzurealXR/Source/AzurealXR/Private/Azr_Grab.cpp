@@ -1064,11 +1064,7 @@ void UAzr_Grab::ToggleHighlight(bool bState, EAzr_HighlightMode Mode)
 
 	for (UMeshComponent* Mesh : MeshesToHighlight)
 	{
-		if (Mesh)
-		{
-			Mesh->SetRenderCustomDepth(bState);
-			Mesh->SetCustomDepthStencilValue(StencilID);
-		}
+		Azr::SetMeshHighlight(Mesh, bState, StencilID);
 	}
 }
 

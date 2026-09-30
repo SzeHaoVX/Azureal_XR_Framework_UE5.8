@@ -8,9 +8,22 @@
 #include "Misc/SecureHash.h"
 #include "Azr_Types.generated.h"
 
+class UActorComponent;
+class UPrimitiveComponent;
 
 namespace Azr
 {
+	/** True if the component, or the actor that owns it, is tagged SkipHighlight. */
+	AZUREALXR_API bool IsHighlightSkipped(const UActorComponent* Component);
+
+	/**
+	 * Turn the framework's custom-depth outline on or off for one mesh. Every component that highlights
+	 * (Grab, Latch, Touch, Gaze, Explain, Action, Highlight) applies it through here, so this is the one
+	 * place the SkipHighlight tag is honoured: a mesh tagged SkipHighlight, or on an actor tagged
+	 * SkipHighlight, is left as it is, and a project's own use of custom depth on it survives.
+	 */
+	AZUREALXR_API void SetMeshHighlight(UPrimitiveComponent* Mesh, bool bOn, int32 StencilID);
+
 	/**
 	 * Resolve one of an actor's components by name, the way every Azureal component expects:
 	 * an EXACT name match always wins, and a substring match is only accepted when nothing matches

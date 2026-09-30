@@ -599,8 +599,7 @@ void UAzr_Action::ToggleHighlight(bool bState)
 	{
 		if (Mesh && Mesh != StartAnchor && Mesh != EndAnchor)
 		{
-			Mesh->SetRenderCustomDepth(bState);
-			Mesh->SetCustomDepthStencilValue(StencilID);
+			Azr::SetMeshHighlight(Mesh, bState, StencilID);
 		}
 	}
 }

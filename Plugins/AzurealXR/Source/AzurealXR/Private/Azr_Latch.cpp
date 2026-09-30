@@ -1169,7 +1169,7 @@ void UAzr_Latch::ToggleHighlight(bool bState)
 		Meshes.AddUnique(WidgetMesh);
 	}
 
-	for (UMeshComponent* Mesh : Meshes) if (Mesh) { Mesh->SetRenderCustomDepth(bState); Mesh->SetCustomDepthStencilValue(StencilID); }
+	for (UMeshComponent* Mesh : Meshes) Azr::SetMeshHighlight(Mesh, bState, StencilID);
 }
 
 // --- MATH & UTILS ---
