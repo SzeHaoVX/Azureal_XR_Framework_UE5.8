@@ -23,7 +23,8 @@
                     confirms the framework restores itself byte for byte; opens the editor once,
                     unattended; packages a Shipping game and starts it (skip with -SkipPackage).
       8. Publish  - mirrors into the Azureal_Framework clone. Commits only with -Commit, pushes only
-                    with -Push.
+                    with -Push. The commit message is -Changes as a bullet list: what changed for
+                    the people using the framework, and nothing about the dev repo.
 
     Why not RunUAT BuildPlugin as-is: it cannot pin the compiler version, it never builds DebugGame,
     it builds the plugin as an engine plugin rather than the project plugin a client will have, and it
@@ -35,7 +36,7 @@
     Builds, strips, audits and verifies, then stages the result in the output repo without committing.
 
 .EXAMPLE
-    ... -File Tools\Release\Build-ClientRelease.ps1 -Commit -Push
+    ... -File Tools\Release\Build-ClientRelease.ps1 -Commit -Push -Changes 'New SkipHighlight tag', 'Fixed ...'
 #>
 [CmdletBinding()]
 param(
@@ -55,6 +56,9 @@ param(
     [switch]$SkipPackage,
     [switch]$Commit,
     [switch]$Push,
+
+    # What this release changes, one point each. Becomes the commit message as a bullet list.
+    [string[]]$Changes,
     [switch]$AllowDirty
 )
 
@@ -354,6 +358,9 @@ function Remove-Comments {
 # --- 0. Preconditions ----------------------------------------------------------------------------
 
 Write-Stage 'Preconditions'
+
+# Checked here rather than at publish, which is an hour of building away.
+if ($Commit -and -not ($Changes | Where-Object { $_ -and $_.Trim() })) { Fail '-Commit needs -Changes: the points this release changes' }
 
 if (-not (Test-Path $BuildBat)) { Fail "no engine at $EngineDir" }
 
@@ -942,7 +949,9 @@ $staged = @(Invoke-Git $OutputRepo @("diff", "--cached", "--name-only"))
 Write-Ok "$($staged.Count) file(s) changed in $OutputRepo"
 
 if ($Commit -and $staged.Count) {
-    $message = "Release from dev $DevShort`n`nBuilt $($release.builtUtc) against UE 5.8 with MSVC $CompilerVersion.`nPrecompiled for Development, DebugGame and Shipping; implementation source not included."
+    # Only what changed, in points. The dev commit this was built from is recorded in RELEASE.json
+    # beside the symbols, which is where a crash report gets matched to its build.
+    $message = (@($Changes | Where-Object { $_ -and $_.Trim() }) | ForEach-Object { "- $($_.Trim())" }) -join "`n"
     [void](Invoke-Git $OutputRepo @("commit", "-q", "-m", $message))
     Write-Ok "committed: $((Invoke-Git $OutputRepo @("log", "--oneline", "-1") | Select-Object -First 1))"
 }
