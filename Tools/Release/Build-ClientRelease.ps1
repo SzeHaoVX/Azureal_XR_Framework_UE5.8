@@ -375,6 +375,21 @@ if (-not ($msvcRoots | Where-Object { Test-Path (Join-Path $_ $CompilerVersion) 
 }
 Write-Ok "MSVC $CompilerVersion present"
 
+# Publishing mirrors the dev repo over the output repo, so anything committed straight into the output
+# repo since the last release would be wiped. Release commits only list what changed, so they cannot
+# be told apart by their message; the last one is recorded here at publish instead.
+$LastReleaseFile = Join-Path $StageRoot 'LAST_RELEASE'
+if ((Test-Path $LastReleaseFile) -and (Test-Path (Join-Path $OutputRepo '.git'))) {
+    $lastRelease = (Get-Content $LastReleaseFile -Raw).Trim()
+    $changedSince = @(Invoke-Git $OutputRepo @("diff", "--name-only", $lastRelease, "HEAD"))
+    if ($changedSince.Count) {
+        Invoke-Git $OutputRepo @("log", "--oneline", "$lastRelease..HEAD") | ForEach-Object { Write-Host "        $_" }
+        $changedSince | Select-Object -First 20 | ForEach-Object { Write-Host "        $_" }
+        Fail "$($changedSince.Count) file(s) were committed to $OutputRepo since the last release. Move them into the dev repo first, or this release removes them."
+    }
+    Write-Ok 'nothing committed to the output repo since the last release'
+}
+
 $shippedPaths = @($TemplateRoots) + ($Plugins | ForEach-Object { "Plugins/$_" })
 # Files the template leaves out cannot make the release unreproducible, so their edits do not count.
 $dirty = Invoke-Git $DevRepo (@("status", "--porcelain", "--") + $shippedPaths) |
@@ -954,6 +969,7 @@ if ($Commit -and $staged.Count) {
     $message = (@($Changes | Where-Object { $_ -and $_.Trim() }) | ForEach-Object { "- $($_.Trim())" }) -join "`n"
     [void](Invoke-Git $OutputRepo @("commit", "-q", "-m", $message))
     Write-Ok "committed: $((Invoke-Git $OutputRepo @("log", "--oneline", "-1") | Select-Object -First 1))"
+    (Invoke-Git $OutputRepo @("rev-parse", "HEAD") | Select-Object -First 1).ToString().Trim() | Set-Content -Path $LastReleaseFile -Encoding ASCII
 }
 if ($Push) {
     if (-not $Commit) { Fail '-Push needs -Commit' }
