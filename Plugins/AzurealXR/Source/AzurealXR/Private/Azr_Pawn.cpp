@@ -933,7 +933,10 @@ void AAzr_Pawn::ProcessGazeTrace() {
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
-    FCollisionObjectQueryParams ObjectParams(FCollisionObjectQueryParams::AllObjects);
+    // Only Azr_Interactable (ECC_GameTraceChannel1): an enabled gaze box is always on Azr_Collision,
+    // whose object type that is, and a disabled one is NoCollision. Asking for all object types made
+    // every frame test the walls, floor and props along the line of sight just to throw them away.
+    FCollisionObjectQueryParams ObjectParams(ECC_GameTraceChannel1);
 
     bool bHit = GetWorld()->OverlapMultiByObjectType(OverlapResults, CenterLoc, CapsuleRot, ObjectParams, Capsule, Params);
 

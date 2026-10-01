@@ -257,7 +257,11 @@ void UAzr_Animation::EvaluateAtAlpha(float Alpha)
 
 	// Visibility folds in exactly like the transform: start from rest, let steps override. Without the
 	// reset a step that hides something would leave it hidden after scrubbing back to zero.
-	Target->SetVisibility(bRestVisible, true);
+	//
+	// Folded into a local and applied once, only if it changed. SetVisibility with propagation marks the
+	// render state of every attached child dirty on every call, changed or not, so calling it each
+	// evaluation rebuilt the whole subtree's render proxies every frame of a play or a latch drag.
+	bool bVisible = bRestVisible;
 
 	const float Time = Alpha * TotalDuration;
 
@@ -295,12 +299,17 @@ void UAzr_Animation::EvaluateAtAlpha(float Alpha)
 
 		if (Raw > 0.f && Step.Visibility != EAzr_AnimVisibility::NoChange)
 		{
-			Target->SetVisibility(Step.Visibility == EAzr_AnimVisibility::Show, true);
+			bVisible = (Step.Visibility == EAzr_AnimVisibility::Show);
 		}
 
 		HandleStepSound(i, Raw, bMoved);
 
 		if (Raw >= 1.f) HighestComplete = i;
+	}
+
+	if (Target->GetVisibleFlag() != bVisible)
+	{
+		Target->SetVisibility(bVisible, true);
 	}
 
 	Target->SetRelativeTransform(Pose);

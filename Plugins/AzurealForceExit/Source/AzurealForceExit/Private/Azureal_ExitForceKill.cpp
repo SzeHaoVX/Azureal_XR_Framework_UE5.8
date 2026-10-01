@@ -16,8 +16,10 @@ void UAzureal_ExitForceKill::ForceKillGame()
     // 0 = Exit Code Success
     ::TerminateProcess(::GetCurrentProcess(), 0);
 #else
-    // Fallback: Standard Engine Request (Quest/Android)
-    FGenericPlatformMisc::RequestExit(true);
+    // Fallback (Quest/Android): the platform's own forced exit, which on Android quits through the Java
+    // activity with code 0. FGenericPlatformMisc::RequestExit(true) called abort(), so every quit was
+    // recorded as a crash.
+    FPlatformMisc::RequestExit(true, TEXT("UAzureal_ExitForceKill::ForceKillGame"));
 #endif
 }
 

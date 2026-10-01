@@ -57,6 +57,10 @@ UAzr_Explain::UAzr_Explain() {
     TetherCable->NumSegments = 20;
     TetherCable->SolverIterations = 4;
     TetherCable->CableLength = 0.0f;
+    // Asleep until shown, see Azr::WakeTether. Auto-activation is off as well, because activating a
+    // component switches its tick on whatever bStartWithTickEnabled says.
+    TetherCable->PrimaryComponentTick.bStartWithTickEnabled = false;
+    TetherCable->bAutoActivate = false;
 
     // --- ASSET INITIALIZATION ---
     static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> MPCAsset(TEXT("/AzurealXR/Interaction/Highlight/MPC_Highlight"));
@@ -907,6 +911,11 @@ void UAzr_Explain::ToggleTether(bool bState) {
         StartAnchor->SetVisibility(false);
         EndAnchor->SetVisibility(false);
         TetherCable->SetVisibility(false);
+        if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TetherSettleTimer);
+
+        // Every show below lays the cable out afresh and settles it hidden, so it can sleep on any hide,
+        // between steps included.
+        Azr::SleepTether(TetherCable);
         return;
     }
 
@@ -989,25 +998,6 @@ void UAzr_Explain::ToggleTether(bool bState) {
         TetherCable->SolverIterations = 16;
     }
 
-    // Re-register, rather than RecreatePhysicsState, because the cable keeps no physics state to
-    // recreate -- it simulates a particle array of its own in TickComponent, and that array is both
-    // sized (NumSegments + 1) and laid out along the line between the anchors in OnRegister, and
-    // nowhere else in the component.
-    //
-    // So the old call did nothing, and each step of an Explain+ chain inherited the previous step's
-    // particles: settled at the previous step's mesh and widget, and counted for the previous step's
-    // segment count, which the lines above have just changed between 1 and 20 whenever two steps
-    // hang by different amounts. The solver then has to drag that stale, wrong-sized set across to
-    // anchors that may be metres away, and with stiffness enabled it knots on the way instead of
-    // falling straight -- the zig-zag.
-    //
-    // Attachment, visibility and AttachEndTo are all UPROPERTYs and survive the round trip. The
-    // particle positions do not, which is the entire point.
-    if (TetherCable->IsRegistered()) {
-        TetherCable->UnregisterComponent();
-        TetherCable->RegisterComponent();
-    }
-
     // Turn on the Anchors immediately
     StartAnchor->SetVisibility(true);
     EndAnchor->SetVisibility(true);
@@ -1016,9 +1006,21 @@ void UAzr_Explain::ToggleTether(bool bState) {
     // Keep the cable hidden while the physics solver settles the initial teleport momentum
     TetherCable->SetVisibility(false);
 
+    // Re-registers the cable, rather than RecreatePhysicsState, because the cable keeps no physics
+    // state to recreate -- it simulates a particle array of its own in TickComponent, and that array is
+    // both sized (NumSegments + 1) and laid out along the line between the anchors in OnRegister, and
+    // nowhere else in the component.
+    //
+    // So the old call did nothing, and each step of an Explain+ chain inherited the previous step's
+    // particles: settled at the previous step's mesh and widget, and counted for the previous step's
+    // segment count, which the lines above have just changed between 1 and 20 whenever two steps
+    // hang by different amounts. The solver then has to drag that stale, wrong-sized set across to
+    // anchors that may be metres away, and with stiffness enabled it knots on the way instead of
+    // falling straight -- the zig-zag.
+    Azr::WakeTether(TetherCable);
+
     if (UWorld* World = GetWorld()) {
-        FTimerHandle SettleTimer;
-        World->GetTimerManager().SetTimer(SettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
+        World->GetTimerManager().SetTimer(TetherSettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
             // Only turn it on if the Explain UI is still active (prevents bugs if player closed it instantly)
             if (bIsActive && TetherCable) {
                 TetherCable->SetVisibility(true);

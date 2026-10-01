@@ -83,6 +83,10 @@ UAzr_Latch::UAzr_Latch()
 	TetherCable->NumSegments = 20;
 	TetherCable->SolverIterations = 4;
 	TetherCable->CableLength = 0.0f;
+	// Asleep until shown, see Azr::WakeTether. Auto-activation is off as well, because activating a
+	// component switches its tick on whatever bStartWithTickEnabled says.
+	TetherCable->PrimaryComponentTick.bStartWithTickEnabled = false;
+	TetherCable->bAutoActivate = false;
 
 	// --- ASSET INITIALIZATION ---
 	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> MPCAsset(TEXT("/AzurealXR/Interaction/Highlight/MPC_Highlight"));
@@ -315,6 +319,11 @@ void UAzr_Latch::DisableLatch()
 	// 2. Kill Visuals
 	ToggleHighlight(false);
 	ToggleTether(false);
+
+	// Only here, not when the tether hides while the latch is held: the cable has to keep up with the
+	// moving handle or it whips on release. bHasTetherSettled was cleared above, so the next enable
+	// re-settles it.
+	Azr::SleepTether(TetherCable);
 
 	// 3. Unregister Pointer
 	if (UAzr_Pointer* Pointer = FindPlayerPointer()) Pointer->DisablePointer();
@@ -1070,7 +1079,9 @@ void UAzr_Latch::ToggleTether(bool bState)
 {
 	if (!bState || !TetherSettings.bEnableTether)
 	{
-		StartAnchor->SetVisibility(false); EndAnchor->SetVisibility(false); TetherCable->SetVisibility(false); return;
+		StartAnchor->SetVisibility(false); EndAnchor->SetVisibility(false); TetherCable->SetVisibility(false);
+		if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TetherSettleTimer);
+		return;
 	}
 
 	USceneComponent* MeshTarget = TargetHandleMesh ? Cast<USceneComponent>(TargetHandleMesh) : AutoDetectedMesh;
@@ -1138,10 +1149,10 @@ void UAzr_Latch::ToggleTether(bool bState)
 		// First time ever: Hide it and wait 0.2s for physics to settle
 		bHasTetherSettled = true;
 		TetherCable->SetVisibility(false);
+		Azr::WakeTether(TetherCable);
 
 		if (UWorld* World = GetWorld()) {
-			FTimerHandle SettleTimer;
-			World->GetTimerManager().SetTimer(SettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
+			World->GetTimerManager().SetTimer(TetherSettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
 				// Only show if the player hasn't already latched during this 0.2s window
 				if (TetherSettings.bEnableTether && TetherCable) {
 					TetherCable->SetVisibility(true);

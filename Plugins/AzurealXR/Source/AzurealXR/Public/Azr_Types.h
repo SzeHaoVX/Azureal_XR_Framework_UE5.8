@@ -9,6 +9,7 @@
 #include "Azr_Types.generated.h"
 
 class UActorComponent;
+class UCableComponent;
 class UPrimitiveComponent;
 
 namespace Azr
@@ -23,6 +24,21 @@ namespace Azr
 	 * SkipHighlight, is left as it is, and a project's own use of custom depth on it survives.
 	 */
 	AZUREALXR_API void SetMeshHighlight(UPrimitiveComponent* Mesh, bool bOn, int32 StencilID);
+
+	/**
+	 * Start a guidance tether's cable simulating, laid out afresh. A cable runs its simulation on its own
+	 * tick whether or not it can be seen, so every tether (Grab, Latch, Touch, AttachTarget, Explain,
+	 * Action) is built asleep and only runs between being woken here and SleepTether.
+	 *
+	 * Waking re-registers the cable, which lays its particles out straight between its current ends and
+	 * sizes them for the current NumSegments. Asleep, they stay frozen wherever they were, and a cable
+	 * resumed from there would whip across to its new ends. So wake a cable only where it then stays
+	 * hidden for the 0.2 s settle, and call this after NumSegments and the end attachment are set.
+	 */
+	AZUREALXR_API void WakeTether(UCableComponent* Cable);
+
+	/** Stop a tether's cable simulating. The next show must go through WakeTether and the hidden settle. */
+	AZUREALXR_API void SleepTether(UCableComponent* Cable);
 
 	/**
 	 * Resolve one of an actor's components by name, the way every Azureal component expects:

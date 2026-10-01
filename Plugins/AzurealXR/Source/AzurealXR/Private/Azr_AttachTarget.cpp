@@ -71,6 +71,10 @@ UAzr_AttachTarget::UAzr_AttachTarget()
 	TetherCable->CableLength = 0.0f;
 	TetherCable->EndLocation = FVector::ZeroVector;
 	TetherCable->CableWidth = TetherSettings.CableWidth;
+	// Asleep until shown, see Azr::WakeTether. Auto-activation is off as well, because activating a
+	// component switches its tick on whatever bStartWithTickEnabled says.
+	TetherCable->PrimaryComponentTick.bStartWithTickEnabled = false;
+	TetherCable->bAutoActivate = false;
 
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/AzurealXR/Interaction/Cable_System/CableHead"));
 	if (SphereMesh.Succeeded()) TetherSettings.AnchorMesh = SphereMesh.Object;
@@ -367,6 +371,17 @@ void UAzr_AttachTarget::UpdateTetherVisuals()
 		StartAnchor->SetVisibility(false);
 		EndAnchor->SetVisibility(false);
 		TetherCable->SetVisibility(false);
+		if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TetherSettleTimer);
+
+		// The cable keeps running between pickups while the attach step is live (its ghost is up and the
+		// slot is empty), so a re-grab shows it at once. Once the step is over it sleeps, and the next
+		// show re-settles it from a fresh layout. Grab puts the ghost away from DisableGrab, and the slot
+		// fills on attach, so both ends of a step come through here.
+		if (!bRequestedVisibility || bIsFilled)
+		{
+			Azr::SleepTether(TetherCable);
+			bHasTetherSettled = false;
+		}
 		return;
 	}
 
@@ -444,10 +459,10 @@ void UAzr_AttachTarget::UpdateTetherVisuals()
 	{
 		bHasTetherSettled = true;
 		TetherCable->SetVisibility(false);
+		Azr::WakeTether(TetherCable);
 
 		if (UWorld* World = GetWorld()) {
-			FTimerHandle SettleTimer;
-			World->GetTimerManager().SetTimer(SettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
+			World->GetTimerManager().SetTimer(TetherSettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
 				// Only show if the slot hasn't been filled during this 0.2s window
 				if (!bIsFilled && bForceShowTether && TetherCable) {
 					TetherCable->SetVisibility(true);
@@ -608,11 +623,10 @@ void UAzr_AttachTarget::GenerateGhostFromClass()
 			{
 				NewGhost->CreationMethod = EComponentCreationMethod::Instance;
 				NewGhost->SetFlags(RF_Transient);
-				NewGhost->RegisterComponent();
-				NewGhost->AttachToComponent(this, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-				NewGhost->SetRelativeTransform(RelativeTransform);
 
-				// Replicate the cable's physical profile exactly
+				// Replicate the cable's physical profile exactly. This has to come before RegisterComponent:
+				// OnRegister sizes the particle array from NumSegments, so a profile copied afterwards left a
+				// cable of more than the default 10 segments simulating past the end of its own array.
 				NewGhost->CableLength = OriginalCable->CableLength;
 				NewGhost->NumSegments = OriginalCable->NumSegments;
 				NewGhost->CableWidth = OriginalCable->CableWidth;
@@ -620,6 +634,10 @@ void UAzr_AttachTarget::GenerateGhostFromClass()
 				NewGhost->bEnableStiffness = OriginalCable->bEnableStiffness;
 				NewGhost->SolverIterations = OriginalCable->SolverIterations;
 				NewGhost->CableGravityScale = OriginalCable->CableGravityScale;
+
+				NewGhost->RegisterComponent();
+				NewGhost->AttachToComponent(this, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+				NewGhost->SetRelativeTransform(RelativeTransform);
 
 				if (GhostMaterial)
 				{

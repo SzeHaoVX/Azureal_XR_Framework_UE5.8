@@ -231,6 +231,11 @@ private:
 	UStaticMeshComponent* EndAnchor;
 	UPROPERTY()
 	UCableComponent* TetherCable;
+
+	// The 0.2 s settle reveal, held so every hide can cancel it. Left running, it could show a
+	// cable that had been put back to sleep since.
+	FTimerHandle TetherSettleTimer;
+
 	UPROPERTY()
 	UMaterialParameterCollection* HighlightMPC;
 	UPROPERTY()

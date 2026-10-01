@@ -57,6 +57,10 @@ UAzr_Action::UAzr_Action()
 	TetherCable->NumSegments = 20;
 	TetherCable->SolverIterations = 4;
 	TetherCable->CableLength = 0.0f;
+	// Asleep until shown, see Azr::WakeTether. Auto-activation is off as well, because activating a
+	// component switches its tick on whatever bStartWithTickEnabled says.
+	TetherCable->PrimaryComponentTick.bStartWithTickEnabled = false;
+	TetherCable->bAutoActivate = false;
 
 	// --- ASSET INITIALIZATION ---
 	static ConstructorHelpers::FObjectFinder<UMaterialParameterCollection> MPCAsset(TEXT("/AzurealXR/Interaction/Highlight/MPC_Highlight"));
@@ -472,6 +476,8 @@ void UAzr_Action::ToggleTether(bool bState)
 		StartAnchor->SetVisibility(false);
 		EndAnchor->SetVisibility(false);
 		TetherCable->SetVisibility(false);
+		if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TetherSettleTimer);
+		Azr::SleepTether(TetherCable); // Every show below lays the cable out afresh and settles it hidden
 		return;
 	}
 
@@ -563,12 +569,12 @@ void UAzr_Action::ToggleTether(bool bState)
 	StartAnchor->SetVisibility(true);
 	EndAnchor->SetVisibility(true);
 
-	
+
 	TetherCable->SetVisibility(false);
+	Azr::WakeTether(TetherCable);
 
 	if (UWorld* World = GetWorld()) {
-		FTimerHandle SettleTimer;
-		World->GetTimerManager().SetTimer(SettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
+		World->GetTimerManager().SetTimer(TetherSettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
 			// Only turn it on if the Action UI is still active
 			if (bIsActive && TetherCable) {
 				TetherCable->SetVisibility(true);

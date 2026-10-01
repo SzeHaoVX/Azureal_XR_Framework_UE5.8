@@ -28,6 +28,24 @@
 
 static int32 GlobalHighlightCount = 0;
 
+namespace
+{
+	// The hand a Grab is given is the UAzr_HandScanner itself. Code only tags the scanner's capsules
+	// (CreateScanCapsules); the scanner carries a Left/Right tag only because BP_Azr_Pawn adds one, so a
+	// pawn without those tags got every haptic on the left controller. The scanner's own flag is the
+	// answer; the tag stays as the fallback for any other component passed in as a hand.
+	bool IsHandOnSide(const USceneComponent* Hand, bool bRight)
+	{
+		if (const UAzr_HandScanner* Scanner = Cast<UAzr_HandScanner>(Hand)) return Scanner->bIsRightHand == bRight;
+		return Hand && Hand->ComponentHasTag(bRight ? FName("Right") : FName("Left"));
+	}
+
+	EControllerHand ControllerOf(const USceneComponent* Hand)
+	{
+		return IsHandOnSide(Hand, true) ? EControllerHand::Right : EControllerHand::Left;
+	}
+}
+
 UAzr_Grab::UAzr_Grab()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -85,6 +103,10 @@ UAzr_Grab::UAzr_Grab()
 	TetherCable->NumSegments = 20;
 	TetherCable->SolverIterations = 4;
 	TetherCable->CableLength = 0.0f;
+	// Asleep until shown, see Azr::WakeTether. Auto-activation is off as well, because activating a
+	// component switches its tick on whatever bStartWithTickEnabled says.
+	TetherCable->PrimaryComponentTick.bStartWithTickEnabled = false;
+	TetherCable->bAutoActivate = false;
 
 	// --- RESTORED: HARDCODED TETHER ASSETS ---
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/AzurealXR/Interaction/Cable_System/CableHead"));
@@ -487,6 +509,10 @@ void UAzr_Grab::DisableGrab()
 	ToggleTether(false, GrabRemove);
 	ToggleTether(false, GrabTrigger);
 
+	// Only here, not when the tether hides for a hold: the cable has to keep up with the carried object
+	// or it whips on release. bHasTetherSettled was cleared above, so the next enable re-settles it.
+	Azr::SleepTether(TetherCable);
+
 	if (CurrentTargetWidget)
 	{
 		CurrentTargetWidget->SetVisibility(false);
@@ -637,8 +663,7 @@ void UAzr_Grab::SnapActorToHand(USceneComponent* Hand, USceneComponent* SnapPoin
 	{
 		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 		{
-			bool bIsRight = Hand->ComponentHasTag(FName("Right"));
-			EControllerHand TargetHand = bIsRight ? EControllerHand::Right : EControllerHand::Left;
+			EControllerHand TargetHand = ControllerOf(Hand);
 			PC->PlayHapticEffect(HapticOnGrab, TargetHand, 1.0f, false);
 		}
 	}
@@ -707,8 +732,7 @@ void UAzr_Grab::ReleaseHand()
 	{
 		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 		{
-			bool bIsRight = CurrentHand->ComponentHasTag(FName("Right"));
-			EControllerHand TargetHand = bIsRight ? EControllerHand::Right : EControllerHand::Left;
+			EControllerHand TargetHand = ControllerOf(CurrentHand);
 			PC->PlayHapticEffect(HapticOnRelease, TargetHand, 1.0f, false);
 		}
 	}
@@ -799,8 +823,7 @@ void UAzr_Grab::NotifyAttached(int32 ID, UAzr_AttachTarget* Target)
 	{
 		if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 		{
-			bool bIsRight = CurrentHand->ComponentHasTag(FName("Right"));
-			EControllerHand TargetHand = bIsRight ? EControllerHand::Right : EControllerHand::Left;
+			EControllerHand TargetHand = ControllerOf(CurrentHand);
 			PC->PlayHapticEffect(HapticOnAttach, TargetHand, 1.0f, false);
 		}
 	}
@@ -832,8 +855,7 @@ void UAzr_Grab::HandleTriggerInput(float Value)
 			{
 				if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 				{
-					bool bIsRight = CurrentHand->ComponentHasTag(FName("Right"));
-					EControllerHand TargetHand = bIsRight ? EControllerHand::Right : EControllerHand::Left;
+					EControllerHand TargetHand = ControllerOf(CurrentHand);
 					PC->PlayHapticEffect(HapticOnTrigger, TargetHand, 1.0f, false);
 				}
 			}
@@ -892,8 +914,7 @@ void UAzr_Grab::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompon
 			{
 				if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 				{
-					bool bIsRight = CurrentHand->ComponentHasTag(FName("Right"));
-					EControllerHand TargetHand = bIsRight ? EControllerHand::Right : EControllerHand::Left;
+					EControllerHand TargetHand = ControllerOf(CurrentHand);
 					PC->PlayHapticEffect(HapticOnRemove, TargetHand, 1.0f, false);
 				}
 			}
@@ -1072,7 +1093,9 @@ void UAzr_Grab::ToggleTether(bool bState, const FAzr_GrabConfig& Config)
 {
 	if (!bState || !Config.TetherSettings.bEnableTether)
 	{
-		StartAnchor->SetVisibility(false); EndAnchor->SetVisibility(false); TetherCable->SetVisibility(false); return;
+		StartAnchor->SetVisibility(false); EndAnchor->SetVisibility(false); TetherCable->SetVisibility(false);
+		if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(TetherSettleTimer);
+		return;
 	}
 
 	USceneComponent* MeshTarget = CurrentTargetMesh;
@@ -1153,10 +1176,10 @@ void UAzr_Grab::ToggleTether(bool bState, const FAzr_GrabConfig& Config)
 		// First time ever: Hide it and wait 0.2s for physics to settle
 		bHasTetherSettled = true;
 		TetherCable->SetVisibility(false);
+		Azr::WakeTether(TetherCable);
 
 		if (UWorld* World = GetWorld()) {
-			FTimerHandle SettleTimer;
-			World->GetTimerManager().SetTimer(SettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
+			World->GetTimerManager().SetTimer(TetherSettleTimer, FTimerDelegate::CreateWeakLambda(this, [this]() {
 				// Only show if the player hasn't already grabbed it during this 0.2s window
 				if (bIsGrabEnabled && TetherCable) {
 					TetherCable->SetVisibility(true);
@@ -1176,12 +1199,8 @@ bool UAzr_Grab::IsHandCompatible(USceneComponent* Hand) const
 	if (!Hand) return false;
 	if (GrabTrigger.TriggerHand == EAzr_HandType::Both) return true;
 
-	// Optimized Tag Check
-	bool bIsLeft = Hand->ComponentHasTag(FName("Left"));
-	bool bIsRight = Hand->ComponentHasTag(FName("Right"));
-
-	if (GrabTrigger.TriggerHand == EAzr_HandType::Left) return bIsLeft;
-	if (GrabTrigger.TriggerHand == EAzr_HandType::Right) return bIsRight;
+	if (GrabTrigger.TriggerHand == EAzr_HandType::Left) return IsHandOnSide(Hand, false);
+	if (GrabTrigger.TriggerHand == EAzr_HandType::Right) return IsHandOnSide(Hand, true);
 
 	return false;
 }

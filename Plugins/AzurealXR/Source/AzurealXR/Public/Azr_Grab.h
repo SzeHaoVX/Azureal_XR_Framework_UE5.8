@@ -294,6 +294,9 @@ private:
 	bool bIsGrabEnabled = false;
 	bool bIsAttachMode = false;
 	bool bHasTetherSettled = false;
+	// The 0.2 s settle reveal, held so every hide can cancel it. Left running, it could show a
+	// cable that had been put back to sleep since.
+	FTimerHandle TetherSettleTimer;
 	int32 ActiveAttachID = 0;
 
 	bool bIsGrabRemoveMode = false;
