@@ -980,7 +980,13 @@ if ($Commit -and $staged.Count) {
     # Only what changed, in points. The dev commit this was built from is recorded in RELEASE.json
     # beside the symbols, which is where a crash report gets matched to its build.
     $message = (@($Changes | Where-Object { $_ -and $_.Trim() }) | ForEach-Object { "- $($_.Trim())" }) -join "`n"
-    [void](Invoke-Git $OutputRepo @("commit", "-q", "-m", $message))
+
+    # From a file, not -m. Windows PowerShell passes a double quote inside an argument to a native
+    # program unescaped, so a point that quotes a name ("Explanation Mode") splits the message and git
+    # reads the rest as pathspecs. No BOM, or it lands at the start of the commit message.
+    $messageFile = Join-Path $StageRoot 'COMMIT_MESSAGE.txt'
+    [IO.File]::WriteAllText($messageFile, $message + "`n", (New-Object System.Text.UTF8Encoding($false)))
+    [void](Invoke-Git $OutputRepo @("commit", "-q", "-F", $messageFile))
     Write-Ok "committed: $((Invoke-Git $OutputRepo @("log", "--oneline", "-1") | Select-Object -First 1))"
     (Invoke-Git $OutputRepo @("rev-parse", "HEAD") | Select-Object -First 1).ToString().Trim() | Set-Content -Path $BranchReleaseFile -Encoding ASCII
 }
