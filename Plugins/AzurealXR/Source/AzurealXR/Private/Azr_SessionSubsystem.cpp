@@ -80,6 +80,7 @@ void UAzr_SessionSubsystem::LoadLauncherContext()
 
 	FString IsExplainedStr = FPlatformMisc::GetEnvironmentVariable(TEXT("AZUREAL_IS_EXPLAINED")).TrimStartAndEnd();
 	bIsExplained = IsExplainedStr.Equals(TEXT("true"), ESearchCase::IgnoreCase);
+	bExplainedSet = !IsExplainedStr.IsEmpty();
 
 	// Note the asymmetry with the line above: explained is opt-IN ("true" or it is off), online is
 	// opt-OUT ("false" or it is on). A typo in one disables explanations; the same typo in the other

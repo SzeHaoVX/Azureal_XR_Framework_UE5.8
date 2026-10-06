@@ -100,8 +100,13 @@ void UMainMenuPage::RestartWholeModule()
     {
         Subsystem->ResetAllModuleProgress();
 
-        // Auto-Select Chapter 1 (Index 0)
-        FName HomeLevelName = Subsystem->SelectChapter(0);
+        // Auto-select the first chapter the learner can actually see. With progress just wiped that is
+        // what GetNextUnplayedChapterIndex returns, and it is index 0 only while nothing is filtered
+        // out -- restarting into a hidden chapter would drop them on an empty one.
+        int32 FirstIndex = Subsystem->GetNextUnplayedChapterIndex();
+        if (FirstIndex < 0) FirstIndex = 0;
+
+        FName HomeLevelName = Subsystem->SelectChapter(FirstIndex);
         if (HomeLevelName != NAME_None)
         {
             UGameplayStatics::OpenLevel(this, HomeLevelName);
@@ -175,7 +180,7 @@ FText UMainMenuPage::GetCurrentChapterRestartText() const
 
     if (Subsystem)
     {
-        int32 CurrentNum = Subsystem->GetCurrentChapterIndex() + 1;
+        const int32 CurrentNum = Subsystem->GetCurrentChapterDisplayNumber();
         FText TranslatedBaseText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(const_cast<UMainMenuPage*>(this), Text_CurrentChapterRestart);
         return FText::Format(TranslatedBaseText, CurrentNum);
     }
@@ -218,7 +223,11 @@ bool UMainMenuPage::IsStartScreenActive() const
         // passing the start screen clears the flag and the ordinary rule resumes.
         if (Subsystem->WasOpenedByChapterJump() && !Subsystem->HasPassedStartScreen()) return true;
 
-        if (Subsystem->GetCurrentChapterIndex() > 0) return false;
+        // "Past the opening chapter" asked of the list the learner is shown, not of the bundle. Once a
+        // chapter is filtered out the first visible one is no longer index 0, and a raw > 0 test would
+        // read the opening chapter as proof they had already been through the menu -- skipping the
+        // start screen on every fresh boot. A hidden current chapter reports 0 and falls through here.
+        if (Subsystem->GetChapterDisplayNumber(Subsystem->GetCurrentChapterIndex()) > 1) return false;
         return !Subsystem->HasPassedStartScreen();
     }
     return true;
@@ -265,8 +274,18 @@ void UMainMenuPage::GenerateChapterList(UChapterBundle* DataAsset)
 
     CurrentProgressionIndex = (Subsystem) ? Subsystem->GetCurrentChapterIndex() : 0;
 
+    // Position in the list as shown, which only advances for chapters that survive the filter. This is
+    // what closes the gap the learner would otherwise see: chapter 2 becomes "1" when chapter 1 goes.
+    int32 DisplaySlot = 0;
+
     for (int32 i = 0; i < DataAsset->AllChapters.Num(); i++)
     {
+        // Asked of the bundle being generated rather than of the subsystem's own, so a menu handed a
+        // different bundle still filters the one it was actually given. Same rule either way.
+        if (!UChapterSubsystem::IsChapterDefVisible(DataAsset->AllChapters[i])) continue;
+
+        DisplaySlot++;
+
         UChapterSelectRow* NewRow = CreateWidget<UChapterSelectRow>(this, ChapterRowClass);
         if (NewRow)
         {
@@ -278,7 +297,7 @@ void UMainMenuPage::GenerateChapterList(UChapterBundle* DataAsset)
             }
             bool bIsHere = (i == CurrentProgressionIndex);
 
-            NewRow->SetupSpecificRow(i, DataAsset->AllChapters[i].ChapterTitle, CurStep, MaxStep, bComplete, bIsHere);
+            NewRow->SetupSpecificRow(i, DataAsset->AllChapters[i].ChapterTitle, CurStep, MaxStep, bComplete, bIsHere, DisplaySlot);
             NewRow->OnRowClicked.AddDynamic(this, &UMainMenuPage::HandleRowClicked);
 
             UPanelSlot* NewSlot = ChapterListContainer->AddChild(NewRow);
@@ -330,7 +349,8 @@ void UMainMenuPage::ProceedToSelectedChapter()
         if (RestartChapterCompletedPanel) RestartChapterCompletedPanel->SetVisibility(ESlateVisibility::Visible);
         if (RestartMessageText) {
             FText TranslatedBaseText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, Text_SelectedChapterRestart);
-            FText FormattedMsg = FText::Format(TranslatedBaseText, SelectedChapterIndex + 1);
+            const int32 SelDisplay = Subsystem->GetChapterDisplayNumber(SelectedChapterIndex);
+            FText FormattedMsg = FText::Format(TranslatedBaseText, (SelDisplay > 0) ? SelDisplay : SelectedChapterIndex + 1);
             RestartMessageText->SetText(FormattedMsg);
         }
     }

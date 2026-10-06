@@ -97,6 +97,18 @@ struct FRuntimeStep
     UPROPERTY(BlueprintReadOnly, Category = "Data")
     int32 DisplayNumber = 0;
 
+    /**
+     * Where this step sits in the authored MasterSteps array, 1-based, before any filtering.
+     *
+     * DisplayNumber is what the learner is shown; this is what the Chapter Game Manager dispatches on.
+     * The two are the same number right up until an explanation-only step is filtered out -- and that
+     * difference is the entire reason this field exists. A Game Manager left to count its own firings
+     * counts the FILTERED position, so the moment a step disappears it runs the previous step's logic
+     * for every page that follows, silently.
+     */
+    UPROPERTY(BlueprintReadOnly, Category = "Data")
+    int32 AuthoredNumber = 0;
+
     UPROPERTY(BlueprintReadOnly, Category = "Data")
     FAzr_MultiLangText StepTitle;
 

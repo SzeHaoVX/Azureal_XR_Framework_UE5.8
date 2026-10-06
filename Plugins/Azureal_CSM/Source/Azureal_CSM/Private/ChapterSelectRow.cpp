@@ -3,12 +3,17 @@
 #include "ChapterSelectRow.h"
 #include "MyBlueprintFunctionLibrary.h" // Language resolver
 
-void UChapterSelectRow::SetupSpecificRow(int32 Index, FAzr_MultiLangText Title, int32 CurrentSteps, int32 MaxSteps, bool bIsComplete, bool bIsCurrentLocation)
+void UChapterSelectRow::SetupSpecificRow(int32 Index, FAzr_MultiLangText Title, int32 CurrentSteps, int32 MaxSteps, bool bIsComplete, bool bIsCurrentLocation, int32 DisplayNumber)
 {
     AssignedIndex = Index;
 
     // 1. Setup Texts
-    if (ChapterNumberText) ChapterNumberText->SetText(FText::AsNumber(Index + 1));
+    // The number printed on the row and the index behind it stop being the same thing once a chapter is
+    // filtered out: the row reads "1" while the click still has to open bundle entry 1. AssignedIndex
+    // therefore stays raw, and only the caption moves. 0 means the caller did not care -- which is
+    // every caller written before chapter filtering existed.
+    const int32 NumberToShow = (DisplayNumber > 0) ? DisplayNumber : Index + 1;
+    if (ChapterNumberText) ChapterNumberText->SetText(FText::AsNumber(NumberToShow));
     if (ChapterTitleText)
     {
         FText TranslatedText = UMyBlueprintFunctionLibrary::GetActiveLanguageText(this, Title);

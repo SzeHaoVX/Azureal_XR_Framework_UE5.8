@@ -44,7 +44,7 @@ public:
 
     // --- SETUP ---
     UFUNCTION(BlueprintCallable, Category = "Setup")
-    void SetupSpecificRow(int32 Index, FAzr_MultiLangText Title, int32 CurrentSteps, int32 MaxSteps, bool bIsComplete, bool bIsCurrentLocation);
+    void SetupSpecificRow(int32 Index, FAzr_MultiLangText Title, int32 CurrentSteps, int32 MaxSteps, bool bIsComplete, bool bIsCurrentLocation, int32 DisplayNumber = 0);
 
     // --- INTERACTION ---
     UFUNCTION(BlueprintCallable, Category = "Interaction")

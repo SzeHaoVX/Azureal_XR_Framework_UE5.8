@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "Engine/TimerHandle.h"
 #include "ChapterBundle.h"
 #include "ChapterSubsystem.generated.h"
 
@@ -103,8 +104,48 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Chapter System")
     bool TryOpenRequestedChapter();
 
+    /**
+     * Leaves the boot map when it turns out to be a chapter the explanation filter hides, opening the
+     * nearest visible chapter instead (later ones first). Returns true when it travelled.
+     *
+     * A module whose GameDefaultMap doubles as its opening chapter drops the player into that chapter's
+     * world no matter what the filter says -- the engine loads it before any of this code runs, and the
+     * menu that sits on top of it is then offering chapters while the player stands in one that is not
+     * on the list. This is the correction.
+     *
+     * Three things it deliberately does not do. It does not touch a boot map that is not a chapter at
+     * all, which is what a dedicated menu map is. It does not run after the platform's chapter jump has
+     * been taken, since that destination was chosen on purpose. And it runs ONCE, because the menu
+     * initialises again every time the player opens it and this is a question about where the module
+     * booted, not about where they are now.
+     *
+     * InitializeChapters calls this itself when bAutoOpenRequestedChapter is ticked and no chapter jump
+     * happened. A module that unticks it and drives the jump on its own should call this whenever it
+     * does not jump.
+     */
+    UFUNCTION(BlueprintCallable, Category = "Chapter System")
+    bool TryLeaveHiddenBootChapter();
+
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     int32 GetCurrentChapterIndex() const;
+
+    /**
+     * The current chapter as AUTHORED in the bundle, 1-based. The number the platform and the server
+     * exchange, and the one AZUREAL_START_CHAPTER counts in. Same number as GetCurrentChapterInfo gives.
+     *
+     * Report progress with this and never with the display number. The display number shifts the moment
+     * a chapter is filtered out, so a session played with explanations off would file its results
+     * against a different chapter of the module than the one the learner actually played.
+     */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    int32 GetCurrentAuthoredChapterNumber() const { return GetCurrentChapterIndex() + 1; }
+
+    /**
+     * The current chapter's place in the list the learner is shown, 1-based. For headers and captions
+     * only; it shifts when an earlier chapter is filtered out, so never report it.
+     */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    int32 GetCurrentChapterDisplayNumber() const;
 
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     int32 GetNextUnplayedChapterIndex();
@@ -127,12 +168,50 @@ public:
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     bool IsChapterComplete(int32 Index) const;
 
-    /** Returns TRUE if every single chapter in the bundle has been completed. */
+    /**
+     * Returns TRUE once every VISIBLE chapter has been completed. A chapter the explanation filter hides
+     * cannot be played, so it cannot be required.
+     */
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     bool IsModuleFullyComplete() const;
 
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     void GetChapterProgress(int32 Index, int32& OutCurrent, int32& OutMax) const;
+
+    // --- CHAPTER VISIBILITY (EXPLANATION FILTERING) ---
+
+    /**
+     * The survivor rule for a chapter, in one place: a chapter disappears only when explanations are off
+     * and the filter removed every step it had. That is the step rule applied one level up, which is why
+     * this asks CountFilteredSteps rather than deciding anything for itself.
+     *
+     * With explanations on, every chapter is visible. A chapter with no curriculum, or an empty one,
+     * stays visible either way: an unauthored chapter is a mistake worth seeing, not something to
+     * quietly hide.
+     *
+     * Static and taking the chapter outright, so a menu handed a bundle other than the active one can
+     * filter the bundle it was actually given without a second copy of this rule existing.
+     */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    static bool IsChapterDefVisible(const FChapterDef& Chapter);
+
+    /** The same question asked of a chapter in the active bundle. False for an index that is not one. */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    bool IsChapterVisible(int32 Index) const;
+
+    /**
+     * Where this chapter sits in the list the learner is shown, 1-based. 0 when it is hidden.
+     *
+     * The raw bundle index stays the identity used everywhere else -- progress, completion, which level
+     * to open, the number the platform asks for. This is presentation only, and the two part company
+     * the moment a chapter ahead of this one is filtered out.
+     */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    int32 GetChapterDisplayNumber(int32 Index) const;
+
+    /** Raw bundle indices of the surviving chapters, in authored order. */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    TArray<int32> GetVisibleChapterIndices() const;
 
     // --- DATA HELPERS ---
     UFUNCTION(BlueprintPure, Category = "Chapter System")
@@ -141,22 +220,57 @@ public:
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     UTrainingCurriculum* GetStepDataForIndex(int32 Index) const;
 
+    /**
+     * Turns a 0-based page index on the current chapter into the 1-based AUTHORED step number.
+     * Returns 0 when there is no curriculum, or when the index does not name a surviving step.
+     *
+     * Asks GetFilteredSteps, the call the page list itself is built with, so the index lands in the
+     * same list. Which steps survive is decided once, in UTrainingCurriculum::DoesStepSurvive.
+     */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    int32 GetAuthoredStepNumber(int32 FilteredStepIndex) const;
+
+    /**
+     * The authored step number of the page that most recently started the Chapter Game Manager. 0 after
+     * a chapter change, until the step page starts the manager again.
+     *
+     * A Game Manager switches on this instead of counting its own dispatches. Counting works only while
+     * nothing is filtered; this is correct either way.
+     */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    int32 GetCurrentAuthoredStepNumber() const { return CurrentAuthoredStepNumber; }
+
+    /** Published by the step page immediately before it fires RunStepsOrder. Not exposed to Blueprint on purpose. */
+    void SetCurrentAuthoredStepNumber(int32 AuthoredNumber) { CurrentAuthoredStepNumber = AuthoredNumber; }
+
     // --- NEW: MANAGER HELPER ---
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     TSubclassOf<AActor> GetCurrentChapterGameManagerClass() const;
 
     // --- INFO HELPERS ---
+    /**
+     * Chapter number and title. OutChapterNumber is the AUTHORED number, safe to report to the server.
+     *
+     * A header shown to the learner wants GetCurrentChapterDisplayNumber instead, which closes the gap
+     * a filtered-out chapter leaves. This one deliberately kept its old meaning: Blueprints written
+     * before chapters could be hidden feed it into Quiz Update, and they keep reporting correctly.
+     */
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     void GetCurrentChapterInfo(int32& OutChapterNumber, FAzr_MultiLangText& OutChapterTitle) const;
 
     // --- STATISTICS ---
+    /** Every chapter in the bundle, hidden ones included. A loop over the bundle wants this one. */
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     int32 GetTotalChapterCount() const;
+
+    /** How many chapters the learner can see, for "of how many" captions. */
+    UFUNCTION(BlueprintPure, Category = "Chapter System")
+    int32 GetVisibleChapterCount() const;
 
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     int32 GetTotalMasterStepCount() const;
 
-    /** Returns current progress for the whole module (e.g. 3 out of 5 chapters completed). */
+    /** Returns current progress for the whole module (e.g. 3 out of 5 chapters completed), counted over visible chapters. */
     UFUNCTION(BlueprintPure, Category = "Chapter System")
     void GetModuleCompletionStatus(int32& OutCompletedCount, int32& OutTotalCount) const;
 
@@ -191,13 +305,51 @@ private:
     void HoldBlack(UWorld* World);
     void FadeIn(UWorld* World, float Duration);
 
+    /**
+     * Raises the fade for a jump that is about to happen, with a timer that lifts it again if the jump
+     * never does. Shared by the platform chapter jump and by leaving a hidden boot chapter: both black
+     * the screen on the assumption of a travel that has not been committed to yet.
+     */
+    void HoldBlackWithTimeout(UWorld* World);
+
+    /** Fades the held black back out and forgets it was held. */
+    void LiftHeldFade(UWorld* World);
+
+    /**
+     * Decides explanation mode once, at startup, and applies it to UExplanationFlowLibrary.
+     *
+     * The platform decides when AZUREAL_IS_EXPLAINED is set. Otherwise the GameInstance's
+     * "Explanation Mode" bool is the default (a PIE run or a desktop launch). Whichever wins is written
+     * back into that bool, so every reader agrees with the value in force.
+     *
+     * Done here, before any world exists, because the library's flag is a module-scope static that
+     * survives PIE stop, PIE start, OpenLevel and GameInstance teardown. Left to the menu, anything that
+     * read it earlier in a new session would read whatever the previous session left behind.
+     */
+    void LatchExplanationFlag();
+
+    /** The visible chapter nearest Index, later ones first. INDEX_NONE when no chapter is visible. */
+    int32 FindNearestVisibleChapter(int32 Index) const;
+
     FDelegateHandle PostLoadMapHandle;
 
     /** True between raising the fade over the boot map and lowering it in the destination. */
     bool bHoldingChapterJumpFade = false;
 
+    /**
+     * The world the fade was raised in. A map load only counts as arriving when it is a different world:
+     * a menu built during BeginPlay raises the fade before its own map's load broadcast comes through.
+     */
+    TWeakObjectPtr<UWorld> FadeRaisedInWorld;
+
+    /** Lifts a held fade whose jump never happened. Cleared whenever the fade is lifted. */
+    FTimerHandle ChapterJumpFadeTimer;
+
     /** Set when a jump resolves; cleared when the player passes the start screen. */
     bool bOpenedByChapterJump = false;
+
+    /** The hidden-boot-chapter question is asked once per run, on the map the module actually booted into. */
+    bool bCheckedBootChapter = false;
 
 private:
     UPROPERTY()
@@ -207,4 +359,7 @@ private:
     TSet<int32> CompletedChapterIndexes;
     TMap<int32, int32> ChapterStepProgress;
     bool bHasPassedStartScreen = false;
+
+    /** 1-based authored step number of the page that last started the Game Manager. 0 before the first. */
+    int32 CurrentAuthoredStepNumber = 0;
 };

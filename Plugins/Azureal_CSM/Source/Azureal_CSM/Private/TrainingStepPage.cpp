@@ -85,8 +85,51 @@ void UTrainingStepPage::StartGM()
     AActor* GMActor = FindChapterGameManager();
     if (GMActor && GMActor->Implements<UStepSequencerInterface>())
     {
+        // Publish which AUTHORED step this is before handing over.
+        //
+        // RunStepsOrder carries no index, so left to itself a Game Manager can only count its own
+        // firings -- and that count is the FILTERED position, not the authored one. They agree right
+        // up until an explanation-only step is filtered out, after which every page runs the previous
+        // step's logic and the last step never runs at all. Nothing downstream of the manager's own
+        // Switch can correct a miscount that happened before it.
+        //
+        // This is the single choke point both entry paths share -- the chapter's Start button and
+        // TryFireNextStepEvent -- so publishing here covers page 0 and every page after it.
+        const int32 Authored = GetAuthoredStepNumberForPage(CurrentViewingIndex);
+
+        // The curriculum has no step on this page, which is what a chapter with nothing left after the
+        // filter looks like. Firing anyway would hand the manager a step the learner was never shown.
+        if (Authored <= 0)
+        {
+            UE_LOG(LogTemp, Warning, TEXT("CSM: page %d has no step in this chapter's curriculum, so the Game Manager was not started."),
+                CurrentViewingIndex + 1);
+            return;
+        }
+
+        if (UGameInstance* GI = GetGameInstance())
+        {
+            if (UChapterSubsystem* Subsystem = GI->GetSubsystem<UChapterSubsystem>())
+            {
+                Subsystem->SetCurrentAuthoredStepNumber(Authored);
+            }
+        }
+
         IStepSequencerInterface::Execute_RunStepsOrder(GMActor);
     }
+}
+
+int32 UTrainingStepPage::GetAuthoredStepNumberForPage(int32 PageIndex) const
+{
+    UGameInstance* GI = GetGameInstance();
+    UChapterSubsystem* Subsystem = GI ? GI->GetSubsystem<UChapterSubsystem>() : nullptr;
+
+    // No curriculum to ask, so the page position is the only number there is -- and it is what a
+    // self-counting manager would have arrived at anyway.
+    if (!Subsystem || !Subsystem->GetCurrentStepData()) return PageIndex + 1;
+
+    // Asked of the subsystem rather than read from SessionSteps: the shipped WBP_StepPage builds its page
+    // list on the GameInstance and never calls InitializePageData, so SessionSteps is empty in practice.
+    return Subsystem->GetAuthoredStepNumber(PageIndex);
 }
 
 AActor* UTrainingStepPage::FindChapterGameManager()
@@ -179,13 +222,11 @@ void UTrainingStepPage::ConfirmQuizAnswer()
     if (bCorrect && QuizCorrectSound) UGameplayStatics::PlaySound2D(this, QuizCorrectSound);
     else if (!bCorrect && QuizWrongSound) UGameplayStatics::PlaySound2D(this, QuizWrongSound);
 
-    // ---> THE VERSION THAT WORKED PERFECTLY <---
-    int32 StepNum = CurrentViewingIndex + 1;
-
-    if (SessionSteps.IsValidIndex(CurrentViewingIndex))
-    {
-        StepNum = SessionSteps[CurrentViewingIndex].DisplayNumber;
-    }
+    // The AUTHORED step number, because this goes to the server. The page position matches it only
+    // while nothing is filtered: with explanations off, a quiz after a hidden step would be filed as
+    // the step before it.
+    int32 StepNum = GetAuthoredStepNumberForPage(CurrentViewingIndex);
+    if (StepNum <= 0) StepNum = CurrentViewingIndex + 1;
 
     int32 OptionNum = SelectedQuizAnswerIndex + 1;
 
@@ -645,11 +686,9 @@ bool UTrainingStepPage::GetQuizAnswerForAPI(int32& OutStepNumber, int32& OutSele
     // ---> NEW: Use our reliable tracker! <---
     if (bIsCurrentPageAQuiz)
     {
-        // Safely grab the step number
-        if (SessionSteps.IsValidIndex(CurrentViewingIndex))
-        {
-            OutStepNumber = SessionSteps[CurrentViewingIndex].DisplayNumber;
-        }
+        // Authored, for the same reason as in ConfirmQuizAnswer: this number is for the server.
+        OutStepNumber = GetAuthoredStepNumberForPage(CurrentViewingIndex);
+        if (OutStepNumber <= 0) OutStepNumber = CurrentViewingIndex + 1;
 
         // Grab the Option
         if (SelectedQuizAnswerIndex != -1)

@@ -65,6 +65,25 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Azureal|Session")
 	bool IsExplainedMode() const { return bIsExplained; }
 
+	/**
+	 * Whether the platform said anything about explanations at all, i.e. AZUREAL_IS_EXPLAINED was set.
+	 *
+	 * As parsed, IsExplainedMode cannot tell "the platform turned explanations off" from "nobody launched
+	 * this through the platform", since both read false. Anything that applies the platform's choice needs
+	 * the difference, so that a plain PIE run or a desktop launch keeps the project's own default instead
+	 * of silently losing every explanation.
+	 */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Session")
+	bool HasExplainedSetting() const { return bExplainedSet; }
+
+	/**
+	 * Records the explanation mode actually in force, which is what StartSession files as isExplained.
+	 * Called by the curriculum module when it decides the mode at startup. When the platform said
+	 * nothing, that is the project's default rather than "off". Not for Blueprint: the value it records
+	 * has to be the one the game plays with.
+	 */
+	void SetExplainedModeInForce(bool bExplained) { bIsExplained = bExplained; }
+
 	UFUNCTION(BlueprintPure, Category = "Azureal|Session")
 	bool IsOnlineMode() const { return bIsOnline; }
 
@@ -137,6 +156,10 @@ private:
 	bool bStartChapterRequested = false;
 
 	bool bIsExplained;
+
+	/** True when AZUREAL_IS_EXPLAINED was present, whatever it said. */
+	bool bExplainedSet = false;
+
 	bool bIsOnline;
 	EAzr_SessionType DeterminedSessionType;
 

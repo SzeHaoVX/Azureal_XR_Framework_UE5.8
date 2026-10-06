@@ -20,6 +20,7 @@ class AZUREAL_CSM_API UTrainingStepPage : public UUserWidget
 
 public:
     // --- SETUP ---
+    /** OutStepNumber is the AUTHORED step number, the one the server expects, not the page position. */
     UFUNCTION(BlueprintPure, Category = "Quiz Logic")
     bool GetQuizAnswerForAPI(int32& OutStepNumber, int32& OutSelectedOption);
 
@@ -175,7 +176,7 @@ protected:
     UPROPERTY(BlueprintReadWrite, Category = "Quiz Internal")
     TArray<UQuizAnswerRow*> SpawnedQuizRows;
 
-   
+    /** StepNumber is the AUTHORED step number, safe to send to the server as it is. */
     UFUNCTION(BlueprintImplementableEvent, Category = "Quiz Events")
     void OnQuizAnswerSubmitted(int32 StepNumber, int32 SelectedOption);
 
@@ -213,7 +214,17 @@ protected:
     AActor* FindChapterGameManager();
     void EvaluateCurrentPageType();
 
+    /**
+     * The 1-based AUTHORED step number of a page. The page position plus one when the chapter has no
+     * curriculum, and 0 when it has one but no step on that page.
+     */
+    int32 GetAuthoredStepNumberForPage(int32 PageIndex) const;
+
     // --- EVENTS ---
+    // The three index-carrying events below pass the 0-based PAGE index, which counts only the steps
+    // that survived the explanation filter. Never report it to the server: pass it through the Chapter
+    // Subsystem's GetAuthoredStepNumber(PageIndex) first. GetCurrentAuthoredStepNumber is not a substitute
+    // here -- it is published just before RunStepsOrder and still holds the previous step in these events.
     UFUNCTION(BlueprintImplementableEvent, Category = "Training Events")
     void OnPageChanged(int32 NewPageIndex);
 

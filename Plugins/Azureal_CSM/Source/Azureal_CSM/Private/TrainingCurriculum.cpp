@@ -2,13 +2,33 @@
 
 #include "TrainingCurriculum.h"
 
+bool UTrainingCurriculum::DoesStepSurvive(const FStepData& Step, bool bShowExplanations)
+{
+    if (Step.StepType == EMasterStepType::Quiz) return Step.QuizAnswers.Num() > 0;
+
+    for (const FSubStepData& Sub : Step.SubSteps)
+    {
+        if (Sub.Type == EStepType::Explanation && !bShowExplanations) continue;
+        return true;
+    }
+    return false;
+}
+
 TArray<FRuntimeStep> UTrainingCurriculum::GetFilteredSteps(bool bShowExplanations)
 {
     TArray<FRuntimeStep> Result;
     int32 CurrentStepIndex = 1;
 
+    // Counts EVERY authored step, surviving or not, so a step that lives through the filter can still
+    // say where it started.
+    int32 AuthoredIndex = 0;
+
     for (const FStepData& RawStep : MasterSteps)
     {
+        AuthoredIndex++; // 1-based, to match the numbering a Game Manager's Switch is authored against
+
+        if (!DoesStepSurvive(RawStep, bShowExplanations)) continue;
+
         FRuntimeStep NewRuntimeStep;
         NewRuntimeStep.StepType = RawStep.StepType;
 
@@ -43,13 +63,10 @@ TArray<FRuntimeStep> UTrainingCurriculum::GetFilteredSteps(bool bShowExplanation
             }
         }
 
-        // Only commit the step if it has content
-        if (NewRuntimeStep.ActiveSubSteps.Num() > 0)
-        {
-            NewRuntimeStep.DisplayNumber = CurrentStepIndex;
-            Result.Add(NewRuntimeStep);
-            CurrentStepIndex++;
-        }
+        NewRuntimeStep.DisplayNumber = CurrentStepIndex;
+        NewRuntimeStep.AuthoredNumber = AuthoredIndex;
+        Result.Add(NewRuntimeStep);
+        CurrentStepIndex++;
     }
     return Result;
 }
@@ -60,21 +77,7 @@ int32 UTrainingCurriculum::CountFilteredSteps(bool bShowExplanations) const
 
     for (const FStepData& RawStep : MasterSteps)
     {
-        if (RawStep.StepType == EMasterStepType::Quiz)
-        {
-            if (RawStep.QuizAnswers.Num() > 0) Count++;
-            continue;
-        }
-
-        bool bHasValidContent = false;
-        for (const FSubStepData& Sub : RawStep.SubSteps)
-        {
-            if (Sub.Type == EStepType::Explanation && !bShowExplanations) continue;
-            bHasValidContent = true;
-            break;
-        }
-
-        if (bHasValidContent) Count++;
+        if (DoesStepSurvive(RawStep, bShowExplanations)) Count++;
     }
     return Count;
 }
