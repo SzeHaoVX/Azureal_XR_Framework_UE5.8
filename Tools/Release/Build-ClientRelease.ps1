@@ -378,9 +378,22 @@ Write-Ok "MSVC $CompilerVersion present"
 # Publishing mirrors the dev repo over the output repo, so anything committed straight into the output
 # repo since the last release would be wiped. Release commits only list what changed, so they cannot
 # be told apart by their message; the last one is recorded here at publish instead.
+#
+# One record per output-repo branch, since a release goes onto whichever branch the clone has checked
+# out. main keeps the original LAST_RELEASE; any other branch gets LAST_RELEASE-<branch>. A branch with
+# no record yet was cut from main, so main's record is what it is checked against.
 $LastReleaseFile = Join-Path $StageRoot 'LAST_RELEASE'
-if ((Test-Path $LastReleaseFile) -and (Test-Path (Join-Path $OutputRepo '.git'))) {
-    $lastRelease = (Get-Content $LastReleaseFile -Raw).Trim()
+$OutputBranch = 'main'
+if (Test-Path (Join-Path $OutputRepo '.git')) {
+    $OutputBranch = (Invoke-Git $OutputRepo @("rev-parse", "--abbrev-ref", "HEAD") | Select-Object -First 1).ToString().Trim()
+    if ($OutputBranch -eq 'HEAD') { Fail "$OutputRepo is on a detached HEAD. Check out the branch the release is for." }
+    Write-Ok "publishing onto output-repo branch '$OutputBranch'"
+}
+$BranchFileSuffix = $OutputBranch -replace '[^A-Za-z0-9._-]', '_'
+$BranchReleaseFile = if ($OutputBranch -eq 'main') { $LastReleaseFile } else { Join-Path $StageRoot "LAST_RELEASE-$BranchFileSuffix" }
+$GuardFile = if (Test-Path $BranchReleaseFile) { $BranchReleaseFile } else { $LastReleaseFile }
+if ((Test-Path $GuardFile) -and (Test-Path (Join-Path $OutputRepo '.git'))) {
+    $lastRelease = (Get-Content $GuardFile -Raw).Trim()
     $changedSince = @(Invoke-Git $OutputRepo @("diff", "--name-only", $lastRelease, "HEAD"))
     if ($changedSince.Count) {
         Invoke-Git $OutputRepo @("log", "--oneline", "$lastRelease..HEAD") | ForEach-Object { Write-Host "        $_" }
@@ -969,7 +982,7 @@ if ($Commit -and $staged.Count) {
     $message = (@($Changes | Where-Object { $_ -and $_.Trim() }) | ForEach-Object { "- $($_.Trim())" }) -join "`n"
     [void](Invoke-Git $OutputRepo @("commit", "-q", "-m", $message))
     Write-Ok "committed: $((Invoke-Git $OutputRepo @("log", "--oneline", "-1") | Select-Object -First 1))"
-    (Invoke-Git $OutputRepo @("rev-parse", "HEAD") | Select-Object -First 1).ToString().Trim() | Set-Content -Path $LastReleaseFile -Encoding ASCII
+    (Invoke-Git $OutputRepo @("rev-parse", "HEAD") | Select-Object -First 1).ToString().Trim() | Set-Content -Path $BranchReleaseFile -Encoding ASCII
 }
 if ($Push) {
     if (-not $Commit) { Fail '-Push needs -Commit' }
