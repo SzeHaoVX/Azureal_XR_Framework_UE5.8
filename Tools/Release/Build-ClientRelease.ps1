@@ -856,10 +856,16 @@ if (-not $SkipVerify) {
         @{ Target = $ReleaseProjectName;       Config = 'Shipping';    Tc = $CompilerVersion },
         @{ Target = "${ReleaseProjectName}Editor"; Config = 'Development'; Tc = '' }
     )
+    # UBT refuses an editor build while ANY editor on this engine has Live Coding open: the guard is a
+    # mutex named after the target's executable, and on a Launcher engine every project's editor target
+    # is the same UnrealEditor.exe. An editor open on an unrelated project would fail the release. The
+    # verify copy is throwaway and nothing live-codes into it, so the guard has nothing to protect here.
+    $noLiveCodingGuard = '-NoHotReloadFromIDE'
+
     foreach ($v in $verifyBuilds) {
         $tcArg  = if ($v.Tc) { "-CompilerVersion=$($v.Tc)" } else { '' }
         $tcName = if ($v.Tc) { $v.Tc } else { 'default' }
-        [void](Invoke-Build -Name "verify-$($v.Target)-$($v.Config)-$tcName" -Arguments "$($v.Target) Win64 $($v.Config) -Project=`"$verifyProject`" $tcArg -WaitMutex")
+        [void](Invoke-Build -Name "verify-$($v.Target)-$($v.Config)-$tcName" -Arguments "$($v.Target) Win64 $($v.Config) -Project=`"$verifyProject`" $tcArg -WaitMutex $noLiveCodingGuard")
     }
 
     function Assert-PluginsUnchanged([string]$After) {
@@ -880,13 +886,13 @@ if (-not $SkipVerify) {
     # Clean and Rebuild, from Visual Studio or the command line, delete the framework's build products
     # (see the Strip stage). A Rebuild must heal itself in the same run, and after a plain Clean the
     # next build must put everything back.
-    [void](Invoke-Build -Name 'verify-rebuild-editor' -Arguments "${ReleaseProjectName}Editor Win64 Development -Project=`"$verifyProject`" -Rebuild -WaitMutex")
+    [void](Invoke-Build -Name 'verify-rebuild-editor' -Arguments "${ReleaseProjectName}Editor Win64 Development -Project=`"$verifyProject`" -Rebuild -WaitMutex $noLiveCodingGuard")
     Assert-PluginsUnchanged 'an editor Rebuild'
-    [void](Invoke-Build -Name 'verify-clean-game' -Arguments "$ReleaseProjectName Win64 Shipping -Project=`"$verifyProject`" -Clean -WaitMutex")
+    [void](Invoke-Build -Name 'verify-clean-game' -Arguments "$ReleaseProjectName Win64 Shipping -Project=`"$verifyProject`" -Clean -WaitMutex $noLiveCodingGuard")
     $cleaned = @($before.Keys | Where-Object { -not (Test-Path (Join-Path $VerifyDir $_)) }).Count
     if ($cleaned -eq 0) { Write-Note 'a Clean deleted no framework files this time, so the restore was not exercised' }
     else { Write-Ok "a Shipping Clean deleted $cleaned framework files" }
-    [void](Invoke-Build -Name 'verify-build-after-clean' -Arguments "$ReleaseProjectName Win64 Shipping -Project=`"$verifyProject`" -WaitMutex")
+    [void](Invoke-Build -Name 'verify-build-after-clean' -Arguments "$ReleaseProjectName Win64 Shipping -Project=`"$verifyProject`" -WaitMutex $noLiveCodingGuard")
     Assert-PluginsUnchanged 'a Clean and the build after it'
 
     # One unattended editor launch: a module the editor cannot load fails here instead of prompting.
