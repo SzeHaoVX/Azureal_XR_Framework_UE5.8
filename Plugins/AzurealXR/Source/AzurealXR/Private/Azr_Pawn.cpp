@@ -524,6 +524,20 @@ void AAzr_Pawn::ApplyDesktopScroll(float Direction) {
         // held object further out or draws it closer.
         DesktopCarryDistance = FMath::Clamp(
             DesktopCarryDistance + Direction * DesktopCarryStepPerScroll, 30.0f, DesktopReach);
+        return;
+    }
+
+    // An empty hand pointing at a widget: the wheel scrolls it. VR reaches this through the
+    // thumbstick in ProcessStickInput; desktop had no path to it at all, so any scrolling list in a
+    // world-space widget was simply unreachable without a headset -- the wheel was bound, but every
+    // branch above it needed a hand that was already busy.
+    //
+    // Last, deliberately. A hand working a latch or carrying something keeps the wheel's existing
+    // meaning even when the crosshair happens to cross a panel.
+    if (UWidgetInteractionComponent* WIC = bDesktopUsingRightHand ? RightWidgetInteraction : LeftWidgetInteraction) {
+        if (WIC->IsOverHitTestVisibleWidget()) {
+            WIC->ScrollWheel(Direction * DesktopWidgetScrollStep);
+        }
     }
 }
 
@@ -1064,15 +1078,20 @@ bool AAzr_Pawn::IsBackwardDestinationAllowed(const FVector& TargetLocation) cons
 }
 
 void AAzr_Pawn::ProcessStickInput(FVector2D AxisInput, UMotionControllerComponent* HandController, bool bIsLeftHand) {
-    if (!bIsLocomotionEnabled || !bIsVRMode) return;
+    if (!bIsVRMode) return;
 
     // --- NEW: THE UI SOFT-LOCK & SCROLLING ---
     // If either hand is currently pointing at a Hit-Test Visible UI Widget, block new locomotion inputs!
+    //
+    // This block sits ABOVE the bIsLocomotionEnabled gate on purpose. Scrolling a panel is not
+    // locomotion, and it used to share the gate -- so a chapter that disabled locomotion while its
+    // board was up silently took the scroll wheel with it, and the symptom (a list that will not
+    // move) looks nothing like the cause.
     if (bLeftWasHoveringWidget || bRightWasHoveringWidget)
     {
         // 1. Safety Check: If they are mid-teleport while hovering UI, let them release the stick to complete it.
         // If we don't do this, they could get stuck with a teleport arc permanently drawn!
-        if (AxisInput.Y > -0.5f && AxisInput.Y < 0.5f && ForwardInput == EForwardBehavior::Teleport && CachedTeleportComp)
+        if (bIsLocomotionEnabled && AxisInput.Y > -0.5f && AxisInput.Y < 0.5f && ForwardInput == EForwardBehavior::Teleport && CachedTeleportComp)
         {
             CachedTeleportComp->HandleTeleportInput(0.0f, HandController);
         }
@@ -1096,6 +1115,9 @@ void AAzr_Pawn::ProcessStickInput(FVector2D AxisInput, UMotionControllerComponen
         // 3. Consume the input. Stop processing movement math.
         return;
     }
+
+    // Everything past here IS locomotion, so the gate the scroll block no longer shares applies here.
+    if (!bIsLocomotionEnabled) return;
 
     // --- 1. THE MASTER GATE ---
     // If the joystick being pushed does not match the Dev Setting, kill it instantly!

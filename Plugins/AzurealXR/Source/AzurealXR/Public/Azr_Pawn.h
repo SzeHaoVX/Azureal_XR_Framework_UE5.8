@@ -333,6 +333,15 @@ protected:
     float DesktopCarryStepPerScroll = 15.0f;
 
     /**
+     * Wheel delta handed to a hovered widget per notch, when the hand is otherwise empty.
+     *
+     * One notch of a real mouse wheel is 1.0, which is what a ScrollBox is tuned around, so this is
+     * a multiplier on that rather than a distance.
+     */
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Azureal|Desktop", meta = (ClampMin = "0.1"))
+    float DesktopWidgetScrollStep = 1.0f;
+
+    /**
      * How far the hand travels per unit of mouse movement while dragging a latch.
      *
      * A latch is worked by moving the hand through an arc or along a rail, so with the hand welded to

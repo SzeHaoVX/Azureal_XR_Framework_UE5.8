@@ -84,6 +84,9 @@ public:
     bool IsAllChaptersCompleted() const;
 
 protected:
+    /** A wheel anywhere on the menu scrolls the chapter list while it is on screen, not only one aimed at the list. */
+    virtual FReply NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
     // --- WIDGET BINDINGS (MUST HAVE CATEGORY) ---
 
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget), Category = "Components")

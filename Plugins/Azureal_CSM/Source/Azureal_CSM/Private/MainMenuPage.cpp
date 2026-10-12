@@ -8,6 +8,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Kismet/GameplayStatics.h"
 #include "Engine/GameInstance.h"
+#include "CsmWheelFallback.h"
 
 // --- BINDINGS ---
 
@@ -67,6 +68,15 @@ void UMainMenuPage::NativeDestruct()
         Subsystem->OnChapterDataUpdated.RemoveDynamic(this, &UMainMenuPage::RefreshChapterRows);
     }
     Super::NativeDestruct();
+}
+
+FReply UMainMenuPage::NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+    // Reached only by a wheel the page's own lists did not take, including one that bubbled out of the
+    // embedded step page. The chapter list answers it only while it is the list on screen.
+    if (CsmWheel::ScrollShownList(ChapterListContainer, InMouseEvent)) return FReply::Handled();
+
+    return Super::NativeOnMouseWheel(InGeometry, InMouseEvent);
 }
 
 void UMainMenuPage::OnStartButtonClicked()

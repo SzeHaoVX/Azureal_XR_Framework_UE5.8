@@ -12,6 +12,7 @@
 #include "TimerManager.h" 
 #include "QuizAnswerRow.h"
 #include "Engine/GameInstance.h"
+#include "CsmWheelFallback.h"
 
 // --- SETUP ---
 
@@ -82,6 +83,18 @@ void UTrainingStepPage::TryInitializeData()
 
 void UTrainingStepPage::StartGM()
 {
+    // A chapter being started means the learner is past the start screen, however they got here. The
+    // shipped WBP_MainMenu's START button only swaps panel visibility and never tells the subsystem, so
+    // this is where it gets recorded. Left unrecorded, a learner who arrived by a chapter jump was shown
+    // the start screen again after every Next.
+    if (UGameInstance* GI = GetGameInstance())
+    {
+        if (UChapterSubsystem* Subsystem = GI->GetSubsystem<UChapterSubsystem>())
+        {
+            Subsystem->SetHasPassedStartScreen(true);
+        }
+    }
+
     AActor* GMActor = FindChapterGameManager();
     if (GMActor && GMActor->Implements<UStepSequencerInterface>())
     {
@@ -396,6 +409,11 @@ void UTrainingStepPage::GoNextPage()
             int32 NextIndex = Subsystem->GetNextUnplayedChapterIndex();
             if (NextIndex != -1)
             {
+                // Moving on from a finished chapter is past the start screen by definition. Recorded here
+                // too, for a module whose page never calls StartGM, so the next chapter's menu does not
+                // greet the learner with the start screen again.
+                Subsystem->SetHasPassedStartScreen(true);
+
                 FName LevelName = Subsystem->SelectChapter(NextIndex);
                 if (LevelName != NAME_None) UGameplayStatics::OpenLevel(this, LevelName);
             }
@@ -640,6 +658,16 @@ FString UTrainingStepPage::GetSessionTimeText() const {
 
 bool UTrainingStepPage::IsBackButtonEnabled() const { return CurrentViewingIndex > 0; }
 bool UTrainingStepPage::IsFlipButtonVisible() const { return CurrentViewingIndex < FurthestVisitedIndex; }
+
+FReply UTrainingStepPage::NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+    // Reached only by a wheel the lists did not take. The checklist first, then the quiz answers for a
+    // quiz page that keeps them in a list of their own.
+    if (CsmWheel::ScrollShownList(MainScrollBox, InMouseEvent)) return FReply::Handled();
+    if (CsmWheel::ScrollShownList(QuizContainerBox, InMouseEvent)) return FReply::Handled();
+
+    return Super::NativeOnMouseWheel(InGeometry, InMouseEvent);
+}
 
 void UTrainingStepPage::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {

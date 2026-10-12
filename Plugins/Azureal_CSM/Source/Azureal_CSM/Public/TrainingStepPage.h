@@ -128,6 +128,9 @@ protected:
 
     virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
+    /** A wheel anywhere on the page scrolls the page's list, not only one aimed at the list itself. */
+    virtual FReply NativeOnMouseWheel(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+
     // --- WIDGET BINDINGS ---
     UPROPERTY(BlueprintReadWrite, meta = (BindWidget), Category = "Components")
     UScrollBox* MainScrollBox;
