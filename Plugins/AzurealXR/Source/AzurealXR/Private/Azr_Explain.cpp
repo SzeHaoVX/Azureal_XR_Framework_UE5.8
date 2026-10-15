@@ -363,7 +363,7 @@ void UAzr_Explain::LoadStep(const FAzr_ExplainStep& StepData, EAzr_ExplainStepTy
     CurrentActiveStep = StepData;
 
     // 3. Dynamically update the Target Mesh for this specific step
-    TargetMesh = FindMeshByName(CurrentActiveStep.TargetMeshName);
+    TargetMesh = FindStepMesh(CurrentActiveStep);
     AAzr_Interactable::SetGlobalHiveSpeed(CurrentActiveStep.HighlightSpeed);
 
     // 4. Teardown old widget
@@ -1029,6 +1029,82 @@ void UAzr_Explain::ToggleTether(bool bState) {
     }
 }
 
+#if WITH_EDITOR
+void UAzr_Explain::GetTetherPreviews(TArray<FAzr_TetherPreview>& Out) {
+    if (!GetOwner()) return;
+
+    // Each step is drawn with its own anchors. In play, a step shown on the same mesh and widget as
+    // the one before it keeps the earlier mesh-side anchor, because ToggleTether places both
+    // anchors only when it has to re-parent one of them.
+    auto AddPreview = [&](const FAzr_ExplainStep& Step, const FString& Label) {
+        const FAzr_TetherConfig& Tether = Step.TetherSettings;
+        if (!Tether.bEnableTether) return;
+
+        // The choice LoadStep and ToggleTether make: the step's mesh, else the owner's root. A mesh name
+        // that matches nothing is therefore not an error here -- play draws from the owner's root, so
+        // the preview does too.
+        USceneComponent* Mesh = FindStepMesh(Step);
+        if (!Mesh) Mesh = GetOwner()->GetRootComponent();
+        UWidgetComponent* Widget = FindWidgetByName(Step.WidgetName);
+
+        FAzr_TetherPreview& Preview = Out.AddDefaulted_GetRef();
+        Preview.Label = Label;
+        Preview.CableHang = Tether.CableHang;
+
+        if (!Mesh || !Widget) {
+            Preview.Start = GetOwner()->GetActorLocation();
+            Preview.Problem = !Mesh
+                ? FString::Printf(TEXT("no mesh '%s'"), *Step.TargetMeshName.ToString())
+                : FString::Printf(TEXT("no widget '%s'"), *Step.WidgetName.ToString());
+            return;
+        }
+
+        // LoadStep shows nothing for a step, tether included, unless the widget component holds an
+        // Explain widget. Like LoadStep, test the widget object when there is one (a construction
+        // script may have set it with SetWidget); the editor need not have created it, so fall back
+        // to the widget class.
+        const UUserWidget* LiveWidget = Widget->GetUserWidgetObject();
+        UClass* WidgetClass = Widget->GetWidgetClass();
+        const bool bExplainWidget = LiveWidget
+            ? LiveWidget->IsA<UAzr_ExplainWidget>()
+            : (WidgetClass && WidgetClass->IsChildOf(UAzr_ExplainWidget::StaticClass()));
+        if (!bExplainWidget) {
+            Preview.Start = GetOwner()->GetActorLocation();
+            Preview.Problem = FString::Printf(TEXT("widget '%s' is not an Explain widget"), *Step.WidgetName.ToString());
+            return;
+        }
+
+        Preview.Start = CalculateSurfaceAnchor(Mesh, Tether.MeshAnchorPos, Tether);
+        Preview.End = CalculateSurfaceAnchor(Widget, Tether.WidgetAnchorPos, Tether);
+    };
+
+    // Explain+ steps are numbered the way OnExplainPlusStarted and OnExplainPlusCompleted report them.
+    TArray<TPair<const FAzr_ExplainStep*, FString>> Steps;
+    Steps.Emplace(&SingleExplainStep, TEXT("Normal Explain"));
+    Steps.Emplace(&StartStep, TEXT("Step 1"));
+    for (int32 Index = 0; Index < MiddleSteps.Num(); ++Index) {
+        Steps.Emplace(&MiddleSteps[Index], FString::Printf(TEXT("Step %d"), 2 + Index));
+    }
+    Steps.Emplace(&EndStep, FString::Printf(TEXT("Step %d"), 2 + MiddleSteps.Num()));
+
+    // Only steps in use, meaning ones with text in any language or audio: Start and End Step are on
+    // every component whether Explain Plus is used or not. A component with nothing written yet still
+    // shows its Normal Explain tether, so a freshly added one can be placed.
+    auto IsInUse = [](const FAzr_ExplainStep& Step) {
+        return Step.AudioTrack
+            || !Step.ExplainText.English.IsEmpty() || !Step.ExplainText.Malay.IsEmpty() || !Step.ExplainText.Tamil.IsEmpty();
+    };
+
+    bool bAnyInUse = false;
+    for (const TPair<const FAzr_ExplainStep*, FString>& Step : Steps) {
+        if (!IsInUse(*Step.Key)) continue;
+        AddPreview(*Step.Key, Step.Value);
+        bAnyInUse = true;
+    }
+    if (!bAnyInUse) AddPreview(SingleExplainStep, Steps[0].Value);
+}
+#endif
+
 void UAzr_Explain::ToggleHighlight(bool bState) {
     if (CurrentActiveStep.HighlightMode == EAzr_HighlightMode::None) return;
 
@@ -1114,15 +1190,15 @@ FVector UAzr_Explain::CalculateSurfaceAnchor(USceneComponent* Target, EAzr_Tethe
     return WorldCenter + SurfacePush + (UpVec * Config.MeshOffset_Vertical) + (RightVec * Config.MeshOffset_Horizontal);
 }
 
-UPrimitiveComponent* UAzr_Explain::FindMeshByName(FName Name) {
-    if (Name.IsNone()) return nullptr;
+UPrimitiveComponent* UAzr_Explain::FindStepMesh(const FAzr_ExplainStep& Step) {
+    if (Step.TargetMeshName.IsNone()) return nullptr;
 
     // THE FIX: Use .Get() to resolve the Soft Pointer safely
-    AActor* SearchActor = CurrentActiveStep.ExternalTargetActor.IsValid() ? CurrentActiveStep.ExternalTargetActor.Get() : GetOwner();
+    AActor* SearchActor = Step.ExternalTargetActor.IsValid() ? Step.ExternalTargetActor.Get() : GetOwner();
 
     if (!SearchActor) return nullptr;
 
-    return Azr::FindComponentByName<UPrimitiveComponent>(SearchActor, Name);
+    return Azr::FindComponentByName<UPrimitiveComponent>(SearchActor, Step.TargetMeshName);
 }
 
 UWidgetComponent* UAzr_Explain::FindWidgetByName(FName Name) {

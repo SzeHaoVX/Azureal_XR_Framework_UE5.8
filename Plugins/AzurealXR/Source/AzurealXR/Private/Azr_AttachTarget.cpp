@@ -476,6 +476,34 @@ void UAzr_AttachTarget::UpdateTetherVisuals()
 	}
 }
 
+#if WITH_EDITOR
+void UAzr_AttachTarget::GetTetherPreviews(TArray<FAzr_TetherPreview>& Out)
+{
+	if (!GetOwner()) return;
+
+	// bIsFilled and the show request are play state, so only the setting that turns the tether off
+	// counts here. What is left is the tether as it looks while the step is live and the slot empty.
+	if (!TetherSettings.bEnableTether) return;
+
+	USceneComponent* Widget = FindWidgetByName(TargetWidgetName);
+
+	FAzr_TetherPreview& Preview = Out.AddDefaulted_GetRef();
+	Preview.CableHang = TetherSettings.CableHang;
+
+	if (!Widget)
+	{
+		// The socket rather than the owner: one actor often carries several sockets, and each should
+		// show its own problem where its cable would start.
+		Preview.Start = GetComponentLocation();
+		Preview.Problem = FString::Printf(TEXT("no widget '%s'"), *TargetWidgetName.ToString());
+		return;
+	}
+
+	// The mesh-side end is the socket itself, as in UpdateTetherVisuals, not a mesh.
+	Preview.Start = CalculateSurfaceAnchor(this, TetherSettings.MeshAnchorPos);
+	Preview.End = CalculateSurfaceAnchor(Widget, TetherSettings.WidgetAnchorPos);
+}
+#endif
 
 // --- MASTERPIECE: Fully Upgraded Local Bounds Math ---
 FVector UAzr_AttachTarget::CalculateSurfaceAnchor(USceneComponent* Target, EAzr_TetherPos Pos)

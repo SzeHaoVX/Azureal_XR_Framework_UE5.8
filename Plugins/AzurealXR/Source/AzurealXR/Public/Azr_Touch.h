@@ -38,6 +38,14 @@ public:
 public:
 	UAzr_Touch();
 
+#if WITH_EDITOR
+	/**
+	 * The tether this component would draw in play, resolved against the owner as it stands. Feeds the
+	 * editor's tether preview and changes nothing.
+	 */
+	void GetTetherPreviews(TArray<FAzr_TetherPreview>& Out);
+#endif
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -184,6 +192,13 @@ private:
 	static bool HandRequiresPress(UPrimitiveComponent* HandComp);
 
 	void EnsureInitialized();
+
+	/**
+	 * The mesh used when TargetMeshName finds nothing: the first static mesh that is not a tether
+	 * anchor. Changes nothing.
+	 */
+	UPrimitiveComponent* DetectDefaultMesh();
+
 	void AutoDetectTouchZone();
 	void ToggleTether(bool bState);
 	void ToggleHighlight(bool bState);

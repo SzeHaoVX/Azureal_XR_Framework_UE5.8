@@ -47,6 +47,15 @@ public:
 public:
 	UAzr_Explain();
 
+#if WITH_EDITOR
+	/**
+	 * The tethers this component would draw in play, one per step in use that has one (Normal
+	 * Explain, then the Explain+ chain), resolved against the owner as it stands. Feeds the editor's
+	 * tether preview and changes nothing.
+	 */
+	void GetTetherPreviews(TArray<FAzr_TetherPreview>& Out);
+#endif
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -415,7 +424,12 @@ private:
 	void ToggleHighlight(bool bState);
 	void UpdatePointer(bool bIsActiveMode);
 
-	UPrimitiveComponent* FindMeshByName(FName Name);
+	/**
+	 * A step's TargetMeshName, looked up on its External Target Actor when that is loaded, else on the
+	 * owner. Takes the step rather than reading CurrentActiveStep so the editor preview can resolve
+	 * every step, not only the one LoadStep last made current. Changes nothing.
+	 */
+	UPrimitiveComponent* FindStepMesh(const FAzr_ExplainStep& Step);
 	UWidgetComponent* FindWidgetByName(FName Name);
 	UAzr_Pointer* FindPlayerPointer() const;
 	FVector CalculateSurfaceAnchor(USceneComponent* Target, EAzr_TetherPos Pos, const FAzr_TetherConfig& Config);

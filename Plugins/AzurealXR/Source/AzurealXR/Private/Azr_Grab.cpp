@@ -197,20 +197,7 @@ void UAzr_Grab::EnsureInitialized()
 
 	if (!AutoDetectedMesh)
 	{
-		AutoDetectedMesh = FindMeshByName(FName("Target Mesh"));
-		if (!AutoDetectedMesh)
-		{
-			TArray<UActorComponent*> MeshComps;
-			GetOwner()->GetComponents(UStaticMeshComponent::StaticClass(), MeshComps);
-			for (UActorComponent* Comp : MeshComps)
-			{
-				UStaticMeshComponent* Mesh = Cast<UStaticMeshComponent>(Comp);
-				if (Mesh && Mesh != StartAnchor && Mesh != EndAnchor)
-				{
-					AutoDetectedMesh = Mesh; break;
-				}
-			}
-		}
+		AutoDetectedMesh = DetectDefaultMesh();
 	}
 
 	if (GlobalHighlightCount == 0 && HighlightMPC && GetWorld() && !bIsGrabEnabled)
@@ -218,6 +205,62 @@ void UAzr_Grab::EnsureInitialized()
 		UKismetMaterialLibrary::SetScalarParameterValue(GetWorld(), HighlightMPC, FName("Alpha"), 0.0f);
 	}
 }
+
+UPrimitiveComponent* UAzr_Grab::DetectDefaultMesh()
+{
+	if (!GetOwner()) return nullptr;
+
+	if (UPrimitiveComponent* Named = FindMeshByName(FName("Target Mesh"))) return Named;
+
+	TArray<UStaticMeshComponent*> MeshComps;
+	GetOwner()->GetComponents<UStaticMeshComponent>(MeshComps);
+	for (UStaticMeshComponent* Mesh : MeshComps)
+	{
+		if (Mesh && Mesh != StartAnchor && Mesh != EndAnchor) return Mesh;
+	}
+	return nullptr;
+}
+
+#if WITH_EDITOR
+void UAzr_Grab::GetTetherPreviews(TArray<FAzr_TetherPreview>& Out)
+{
+	if (!GetOwner()) return;
+
+	// Only the mode picked in Grab Mode. An object uses one mode, and the Details panel shows only
+	// that mode's settings, so the other three would be tethers nobody has set up.
+	const FAzr_GrabConfig* Config = &Grab;
+	switch (GrabMode)
+	{
+	case EAzr_GrabMode::Attach:  Config = &GrabAttach;  break;
+	case EAzr_GrabMode::Remove:  Config = &GrabRemove;  break;
+	case EAzr_GrabMode::Trigger: Config = &GrabTrigger; break;
+	default: break;
+	}
+
+	const FAzr_TetherConfig& Tether = Config->TetherSettings;
+	if (!Tether.bEnableTether) return;
+
+	// The choice ApplyConfig makes: the named mesh, else the detected one.
+	USceneComponent* Mesh = FindMeshByName(Config->TargetMeshName);
+	if (!Mesh) Mesh = DetectDefaultMesh();
+	USceneComponent* Widget = FindWidgetByName(Config->TargetWidgetName);
+
+	FAzr_TetherPreview& Preview = Out.AddDefaulted_GetRef();
+	Preview.CableHang = Tether.CableHang;
+
+	if (!Mesh || !Widget)
+	{
+		Preview.Start = GetOwner()->GetActorLocation();
+		Preview.Problem = !Mesh
+			? FString::Printf(TEXT("no mesh '%s'"), *Config->TargetMeshName.ToString())
+			: FString::Printf(TEXT("no widget '%s'"), *Config->TargetWidgetName.ToString());
+		return;
+	}
+
+	Preview.Start = CalculateSurfaceAnchor(Mesh, Tether.MeshAnchorPos, Tether);
+	Preview.End = CalculateSurfaceAnchor(Widget, Tether.WidgetAnchorPos, Tether);
+}
+#endif
 
 // --- ENABLE API ---
 

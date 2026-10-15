@@ -111,20 +111,48 @@ void UAzr_Touch::EnsureInitialized()
 
 	if (!TargetHandleMesh) TargetHandleMesh = FindMeshByName(TargetMeshName);
 
-	if (!AutoDetectedMesh)
-	{
-		TArray<UStaticMeshComponent*> MeshComps;
-		GetOwner()->GetComponents<UStaticMeshComponent>(MeshComps);
-		for (UStaticMeshComponent* Mesh : MeshComps)
-		{
-			if (Mesh && Mesh != StartAnchor && Mesh != EndAnchor)
-			{
-				AutoDetectedMesh = Mesh;
-				break;
-			}
-		}
-	}
+	if (!AutoDetectedMesh) AutoDetectedMesh = DetectDefaultMesh();
 }
+
+UPrimitiveComponent* UAzr_Touch::DetectDefaultMesh()
+{
+	if (!GetOwner()) return nullptr;
+
+	TArray<UStaticMeshComponent*> MeshComps;
+	GetOwner()->GetComponents<UStaticMeshComponent>(MeshComps);
+	for (UStaticMeshComponent* Mesh : MeshComps)
+	{
+		if (Mesh && Mesh != StartAnchor && Mesh != EndAnchor) return Mesh;
+	}
+	return nullptr;
+}
+
+#if WITH_EDITOR
+void UAzr_Touch::GetTetherPreviews(TArray<FAzr_TetherPreview>& Out)
+{
+	if (!GetOwner() || !TetherSettings.bEnableTether) return;
+
+	// The choice ToggleTether makes: the named mesh, else the detected one.
+	USceneComponent* Mesh = FindMeshByName(TargetMeshName);
+	if (!Mesh) Mesh = DetectDefaultMesh();
+	USceneComponent* Widget = FindWidgetByName(TargetWidgetName);
+
+	FAzr_TetherPreview& Preview = Out.AddDefaulted_GetRef();
+	Preview.CableHang = TetherSettings.CableHang;
+
+	if (!Mesh || !Widget)
+	{
+		Preview.Start = GetOwner()->GetActorLocation();
+		Preview.Problem = !Mesh
+			? FString::Printf(TEXT("no mesh '%s'"), *TargetMeshName.ToString())
+			: FString::Printf(TEXT("no widget '%s'"), *TargetWidgetName.ToString());
+		return;
+	}
+
+	Preview.Start = CalculateSurfaceAnchor(Mesh, TetherSettings.MeshAnchorPos, TetherSettings);
+	Preview.End = CalculateSurfaceAnchor(Widget, TetherSettings.WidgetAnchorPos, TetherSettings);
+}
+#endif
 
 void UAzr_Touch::AutoDetectTouchZone()
 {

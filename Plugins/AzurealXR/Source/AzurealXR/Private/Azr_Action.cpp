@@ -196,6 +196,34 @@ void UAzr_Action::EnsureInitialized()
 	}
 }
 
+#if WITH_EDITOR
+void UAzr_Action::GetTetherPreviews(TArray<FAzr_TetherPreview>& Out)
+{
+	if (!GetOwner() || !TetherSettings.bEnableTether) return;
+
+	// The choice ToggleTether makes: the mesh EnableAction found by name, else the owner's root. A
+	// misnamed mesh is therefore not an error -- play draws from the root, so the preview does too.
+	USceneComponent* Mesh = FindMeshByName(TargetMeshName);
+	if (!Mesh) Mesh = GetOwner()->GetRootComponent();
+	USceneComponent* Widget = FindWidgetByName(WidgetName);
+
+	FAzr_TetherPreview& Preview = Out.AddDefaulted_GetRef();
+	Preview.CableHang = TetherSettings.CableHang;
+
+	if (!Mesh || !Widget)
+	{
+		Preview.Start = GetOwner()->GetActorLocation();
+		Preview.Problem = !Mesh
+			? FString::Printf(TEXT("no mesh '%s'"), *TargetMeshName.ToString())
+			: FString::Printf(TEXT("no widget '%s'"), *WidgetName.ToString());
+		return;
+	}
+
+	Preview.Start = CalculateSurfaceAnchor(Mesh, TetherSettings.MeshAnchorPos, TetherSettings);
+	Preview.End = CalculateSurfaceAnchor(Widget, TetherSettings.WidgetAnchorPos, TetherSettings);
+}
+#endif
+
 // --- CORE TICK ---
 
 void UAzr_Action::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)

@@ -59,6 +59,14 @@ public:
 public:
 	UAzr_Action();
 
+#if WITH_EDITOR
+	/**
+	 * The tether this component would draw in play, resolved against the owner as it stands. Feeds
+	 * the editor's tether preview and changes nothing.
+	 */
+	void GetTetherPreviews(TArray<FAzr_TetherPreview>& Out);
+#endif
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

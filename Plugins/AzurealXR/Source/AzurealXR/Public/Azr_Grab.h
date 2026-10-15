@@ -120,6 +120,14 @@ public:
 public:
 	UAzr_Grab();
 
+#if WITH_EDITOR
+	/**
+	 * The tether this component would draw in play for the mode picked in Grab Mode, resolved
+	 * against the owner as it stands. Feeds the editor's tether preview and changes nothing.
+	 */
+	void GetTetherPreviews(TArray<FAzr_TetherPreview>& Out);
+#endif
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -315,6 +323,13 @@ private:
 	void ToggleHighlight(bool bState, EAzr_HighlightMode Mode);
 	void ToggleTether(bool bState, const FAzr_GrabConfig& Config);
 	void EnsureInitialized();
+
+	/**
+	 * The mesh used when a config names none, or names one that is missing: "Target Mesh", else the
+	 * first static mesh that is not a tether anchor. Changes nothing.
+	 */
+	UPrimitiveComponent* DetectDefaultMesh();
+
 	void FindAndShowGhost();
 	void UpdatePointer(bool bIsGrabbing);
 	bool IsHandCompatible(USceneComponent* Hand) const;

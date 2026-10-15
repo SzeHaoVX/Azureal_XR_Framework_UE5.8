@@ -69,6 +69,14 @@ public:
 public:
 	UAzr_Latch();
 
+#if WITH_EDITOR
+	/**
+	 * The tether this latch would draw in play, resolved against the owner as it stands. Feeds the
+	 * editor's tether preview and changes nothing.
+	 */
+	void GetTetherPreviews(TArray<FAzr_TetherPreview>& Out);
+#endif
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -319,6 +327,13 @@ private:
 
 	// --- HELPERS ---
 	void EnsureInitialized();
+
+	/**
+	 * The mesh used when HandleMeshName finds none: the first static mesh that is not a tether
+	 * anchor. Changes nothing.
+	 */
+	UPrimitiveComponent* DetectDefaultMesh();
+
 	void AutoDetectLatchZone();
 	void ToggleTether(bool bState);
 	void ToggleHighlight(bool bState);

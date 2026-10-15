@@ -17,6 +17,14 @@ class AZUREALXR_API UAzr_AttachTarget : public USceneComponent
 public:
 	UAzr_AttachTarget();
 
+#if WITH_EDITOR
+	/**
+	 * The tether this socket would draw in play while its attach step is live and the slot is empty,
+	 * resolved against the owner as it stands. Feeds the editor's tether preview and changes nothing.
+	 */
+	void GetTetherPreviews(TArray<FAzr_TetherPreview>& Out);
+#endif
+
 protected:
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

@@ -240,6 +240,39 @@ struct FAzr_TetherConfig
 	class UMaterialInterface* CableMaterial = nullptr;
 };
 
+/**
+ * One tether as play would draw it, for the editor's tether preview. Each tethered component fills
+ * these from GetTetherPreviews() through the lookups and CalculateSurfaceAnchor that play uses, and
+ * repeats only play's choice of mesh and widget, under a comment naming the play function it copies.
+ *
+ * Deliberately not a USTRUCT: nothing stores it, it only carries points from a component to the viewport.
+ */
+struct FAzr_TetherPreview
+{
+	/** Mesh-side anchor, in world space. Where the problem text is drawn when Problem is set. */
+	FVector Start = FVector::ZeroVector;
+
+	/** Widget-side anchor, in world space. */
+	FVector End = FVector::ZeroVector;
+
+	/**
+	 * FAzr_TetherConfig::CableHang as authored. In play it is the cable's extra length in cm (see
+	 * the tick in any tethered component).
+	 */
+	float CableHang = 0.0f;
+
+	/**
+	 * Which of the component's tethers this is (Explain's steps), printed after the component's name
+	 * when the component draws more than one. Left empty by a component that has only one tether.
+	 */
+	FString Label;
+
+	/**
+	 * Why play would draw no tether: no mesh or widget by that name, or, for Explain, a widget that
+	 * holds no Explain widget. Start then only marks where to show it, and End is not set.
+	 */
+	FString Problem;
+};
 
 UENUM(BlueprintType)
 enum class EAzr_ExplainMode : uint8

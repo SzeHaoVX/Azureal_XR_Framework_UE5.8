@@ -1030,21 +1030,51 @@ void UAzr_Latch::EnsureInitialized()
 	if (!AutoDetectedMesh)
 	{
 		if (TargetHandleMesh) AutoDetectedMesh = TargetHandleMesh;
-		else
-		{
-			TArray<UStaticMeshComponent*> MeshComps;
-			GetOwner()->GetComponents<UStaticMeshComponent>(MeshComps);
-			for (UStaticMeshComponent* Mesh : MeshComps)
-			{
-				if (Mesh && Mesh != StartAnchor && Mesh != EndAnchor)
-				{
-					AutoDetectedMesh = Mesh;
-					break;
-				}
-			}
-		}
+		else AutoDetectedMesh = DetectDefaultMesh();
 	}
 }
+
+UPrimitiveComponent* UAzr_Latch::DetectDefaultMesh()
+{
+	if (!GetOwner()) return nullptr;
+
+	TArray<UStaticMeshComponent*> MeshComps;
+	GetOwner()->GetComponents<UStaticMeshComponent>(MeshComps);
+	for (UStaticMeshComponent* Mesh : MeshComps)
+	{
+		if (Mesh && Mesh != StartAnchor && Mesh != EndAnchor) return Mesh;
+	}
+	return nullptr;
+}
+
+#if WITH_EDITOR
+void UAzr_Latch::GetTetherPreviews(TArray<FAzr_TetherPreview>& Out)
+{
+	if (!GetOwner() || !TetherSettings.bEnableTether) return;
+
+	// The choice ToggleTether makes: the handle mesh by name, else the detected one.
+	USceneComponent* Mesh = FindMeshByName(HandleMeshName);
+	if (!Mesh) Mesh = DetectDefaultMesh();
+	USceneComponent* Widget = FindWidgetByName(TargetWidgetName);
+
+	FAzr_TetherPreview& Preview = Out.AddDefaulted_GetRef();
+	Preview.CableHang = TetherSettings.CableHang;
+
+	if (!Mesh || !Widget)
+	{
+		Preview.Start = GetOwner()->GetActorLocation();
+		Preview.Problem = !Mesh
+			? FString::Printf(TEXT("no mesh '%s'"), *HandleMeshName.ToString())
+			: FString::Printf(TEXT("no widget '%s'"), *TargetWidgetName.ToString());
+		return;
+	}
+
+	// Measured on the latch as it stands. Play moves it to StartValue first, but the start anchor is
+	// worked out in the mesh's own frame, so it lands on the same spot of the mesh either way.
+	Preview.Start = CalculateSurfaceAnchor(Mesh, TetherSettings.MeshAnchorPos, TetherSettings);
+	Preview.End = CalculateSurfaceAnchor(Widget, TetherSettings.WidgetAnchorPos, TetherSettings);
+}
+#endif
 
 void UAzr_Latch::AutoDetectLatchZone()
 {

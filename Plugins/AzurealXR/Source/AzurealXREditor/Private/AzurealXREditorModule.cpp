@@ -3,6 +3,7 @@
 #include "Modules/ModuleManager.h"
 #include "AzrFlowMenus.h"
 #include "AzrHandScannerVisualizer.h"
+#include "AzrTetherVisualizer.h"
 #include "Azr_DebuggerWindow.h"
 #include "Azr_PrefixWindow.h"
 #include "Azr_ExplainCustomization.h"
@@ -17,7 +18,8 @@
 /**
  * Editor-only module for AzurealXR authoring shortcuts.
  *
- * Adds the Azureal authoring tools: the interaction-flow menus and the hand scanner visualizer.
+ * Adds the Azureal authoring tools: the interaction-flow menus, the hand scanner visualizer and the
+ * tether preview.
  */
 class FAzurealXREditorModule : public IModuleInterface
 {
@@ -33,6 +35,9 @@ class FAzurealXREditorModule : public IModuleInterface
 	};
 
 	TArray<FRegisteredSettingsSection> RegisteredSettingsSections;
+
+	/** Captured at startup so shutdown can unregister the tether visualizer without asking a UClass. */
+	TArray<FName> TetherVisualizerClassNames;
 
 public:
 	virtual void StartupModule() override
@@ -128,6 +133,16 @@ public:
 			TSharedPtr<FComponentVisualizer> Visualizer = MakeShareable(new FAzrHandScannerVisualizer());
 			GUnrealEd->RegisterComponentVisualizer(UAzr_HandScanner::StaticClass()->GetFName(), Visualizer);
 			Visualizer->OnRegister();
+
+			// Draw the guidance tether, which otherwise only exists in play. One visualizer serves
+			// every tethered component.
+			TSharedPtr<FComponentVisualizer> TetherVisualizer = MakeShareable(new FAzrTetherVisualizer());
+			for (UClass* TetheredClass : FAzrTetherVisualizer::GetVisualizedClasses())
+			{
+				GUnrealEd->RegisterComponentVisualizer(TetheredClass->GetFName(), TetherVisualizer);
+				TetherVisualizerClassNames.Add(TetheredClass->GetFName());
+			}
+			TetherVisualizer->OnRegister();
 		}
 
 	}
@@ -165,7 +180,13 @@ public:
 		if (GUnrealEd)
 		{
 			GUnrealEd->UnregisterComponentVisualizer(UAzr_HandScanner::StaticClass()->GetFName());
+
+			for (const FName& ClassName : TetherVisualizerClassNames)
+			{
+				GUnrealEd->UnregisterComponentVisualizer(ClassName);
+			}
 		}
+		TetherVisualizerClassNames.Reset();
 
 	}
 
