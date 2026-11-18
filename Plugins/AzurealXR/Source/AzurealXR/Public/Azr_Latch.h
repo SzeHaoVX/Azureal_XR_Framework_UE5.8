@@ -166,6 +166,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup", meta = (DisplayName = "Description"))
 	FAzr_MultiLangText LatchDescription;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup", meta = (DisplayName = "Held Description", ToolTip = "Shown on the tag in place of Description while the player is holding the latch, e.g. Description asks them to grab the handle and this tells them to pull it. The tag and its cable stay up while the latch is held, and Description comes back when they let go. Leave all three boxes empty to hide the tag and its cable while the latch is held instead."))
+	FAzr_MultiLangText LatchHeldDescription;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	float HighlightSpeed = 0.8f;
 
@@ -337,6 +340,9 @@ private:
 	void AutoDetectLatchZone();
 	void ToggleTether(bool bState);
 	void ToggleHighlight(bool bState);
+
+	/** Puts Text on the tag (CurrentTargetWidget), whether it holds an Explain, Action or Label widget. */
+	void SetTagText(const FAzr_MultiLangText& Text);
 	/** Aims the player pointer at this latch. Called while enabled; the pointer follows the handle on its own from there. */
 	void UpdatePointer();
 	FVector CalculateSurfaceAnchor(USceneComponent* Target, EAzr_TetherPos Pos, const FAzr_TetherConfig& TetherConfig);

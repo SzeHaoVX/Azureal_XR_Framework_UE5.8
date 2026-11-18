@@ -1091,8 +1091,7 @@ void UAzr_Explain::GetTetherPreviews(TArray<FAzr_TetherPreview>& Out) {
     // every component whether Explain Plus is used or not. A component with nothing written yet still
     // shows its Normal Explain tether, so a freshly added one can be placed.
     auto IsInUse = [](const FAzr_ExplainStep& Step) {
-        return Step.AudioTrack
-            || !Step.ExplainText.English.IsEmpty() || !Step.ExplainText.Malay.IsEmpty() || !Step.ExplainText.Tamil.IsEmpty();
+        return Step.AudioTrack || !Step.ExplainText.IsEmpty();
     };
 
     bool bAnyInUse = false;

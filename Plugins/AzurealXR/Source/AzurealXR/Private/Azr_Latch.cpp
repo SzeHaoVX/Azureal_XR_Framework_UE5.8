@@ -247,28 +247,7 @@ void UAzr_Latch::EnableLatch()
 	if (CurrentTargetWidget)
 	{
 		CurrentTargetWidget->SetVisibility(true);
-
-		// --- NEW: INJECT DYNAMIC TEXT FOR ANY WIDGET TYPE ---
-		if (UWidgetComponent* WidgetComp = Cast<UWidgetComponent>(CurrentTargetWidget))
-		{
-			UUserWidget* UserUI = WidgetComp->GetUserWidgetObject();
-
-			// 1. Is it an Explain Widget?
-			if (UAzr_ExplainWidget* ExplainUI = Cast<UAzr_ExplainWidget>(UserUI))
-			{
-				ExplainUI->SetExplainText(LatchDescription);
-			}
-			// 2. Is it an Action Widget?
-			else if (UAzr_ActionWidget* ActionUI = Cast<UAzr_ActionWidget>(UserUI))
-			{
-				ActionUI->SetActionDescription(LatchDescription);
-			}
-			// 3. Is it a Label Widget?
-			else if (UAzr_LabelWidget* LabelUI = Cast<UAzr_LabelWidget>(UserUI))
-			{
-				LabelUI->SetLabelText(LatchDescription);
-			}
-		}
+		SetTagText(LatchDescription);
 	}
 
 	// 5. Activate Visuals
@@ -659,8 +638,19 @@ void UAzr_Latch::GrabLatch(USceneComponent* Hand)
 	}
 
 	ToggleHighlight(false);
-	ToggleTether(false);
-	if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(false);
+	if (LatchHeldDescription.IsEmpty())
+	{
+		// No Held Description: the tag and its cable hide while the latch is held, as they always have.
+		ToggleTether(false);
+		if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(false);
+	}
+	else if (ActiveHands.Num() == 1)
+	{
+		// The tag stays up and switches to the Held Description, so it can say what to do with the
+		// handle now it is in hand, and the cable stays on it. The tick keeps the cable's ends on the
+		// moving handle and the turning tag.
+		SetTagText(LatchHeldDescription);
+	}
 	UpdatePointer();
 
 	// --- LEADER LOGIC ---
@@ -761,12 +751,17 @@ void UAzr_Latch::ReleaseSpecificHand(USceneComponent* Hand)
 			ToggleHighlight(true);
 			if (GetWorld()) { LastValue = 0.0f; bWasRising = true; }
 			ToggleTether(true);
-			if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(true);
+			if (CurrentTargetWidget)
+			{
+				CurrentTargetWidget->SetVisibility(true);
+				// Back from the Held Description to the one that asks for a grab.
+				if (!LatchHeldDescription.IsEmpty()) SetTagText(LatchDescription);
+			}
 			UpdatePointer();
 		}
 		else
 		{
-			
+
 			SetComponentTickEnabled(false);
 		}
 
@@ -1103,6 +1098,26 @@ void UAzr_Latch::UpdatePointer()
 	USceneComponent* Target = TargetHandleMesh ? Cast<USceneComponent>(TargetHandleMesh) : AutoDetectedMesh;
 	if (!Target) Target = this;
 	Pointer->EnablePointer_TargetComponent(Target);
+}
+
+void UAzr_Latch::SetTagText(const FAzr_MultiLangText& Text)
+{
+	UWidgetComponent* WidgetComp = Cast<UWidgetComponent>(CurrentTargetWidget);
+	if (!WidgetComp) return;
+
+	UUserWidget* UserUI = WidgetComp->GetUserWidgetObject();
+	if (UAzr_ExplainWidget* ExplainUI = Cast<UAzr_ExplainWidget>(UserUI))
+	{
+		ExplainUI->SetExplainText(Text);
+	}
+	else if (UAzr_ActionWidget* ActionUI = Cast<UAzr_ActionWidget>(UserUI))
+	{
+		ActionUI->SetActionDescription(Text);
+	}
+	else if (UAzr_LabelWidget* LabelUI = Cast<UAzr_LabelWidget>(UserUI))
+	{
+		LabelUI->SetLabelText(Text);
+	}
 }
 
 void UAzr_Latch::ToggleTether(bool bState)

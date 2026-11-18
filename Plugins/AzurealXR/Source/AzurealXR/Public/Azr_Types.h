@@ -181,6 +181,12 @@ struct FAzr_MultiLangText
 		}
 		return English;
 	}
+
+	/** True when all three boxes are blank, i.e. nothing was authored in any language. */
+	bool IsEmpty() const
+	{
+		return English.IsEmpty() && Malay.IsEmpty() && Tamil.IsEmpty();
+	}
 };
 
 // --- SHARED TETHER CONFIGURATION ---
