@@ -19,6 +19,7 @@
 #include "Azr_ExplainWidget.h"
 #include "Azr_ActionWidget.h"
 #include "Azr_LabelWidget.h"
+#include "Azr_ProgressWidget.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "TimerManager.h"
 #include "Engine/StaticMesh.h"
@@ -121,6 +122,12 @@ void UAzr_Latch::BeginPlay()
 
 	EnsureInitialized();
 	AutoDetectLatchZone();
+
+	// The rounds progress bar only shows while the latch is enabled.
+	if (RequiredRounds > 0)
+	{
+		if (USceneComponent* ProgressWidget = FindWidgetByName(ProgressWidgetName)) ProgressWidget->SetVisibility(false);
+	}
 
 	CachedPlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	AAzr_Interactable* Parent = Cast<AAzr_Interactable>(GetOwner());
@@ -250,6 +257,14 @@ void UAzr_Latch::EnableLatch()
 		SetTagText(LatchDescription);
 	}
 
+	// Rounds: show the progress bar and count from where the latch now stands.
+	if (RequiredRounds > 0)
+	{
+		CurrentProgressWidget = FindWidgetByName(ProgressWidgetName);
+		if (CurrentProgressWidget) CurrentProgressWidget->SetVisibility(true);
+		ResetRounds();
+	}
+
 	// 5. Activate Visuals
 	ToggleHighlight(true);
 	ToggleTether(true);
@@ -308,6 +323,7 @@ void UAzr_Latch::DisableLatch()
 	if (UAzr_Pointer* Pointer = FindPlayerPointer()) Pointer->DisablePointer();
 
 	if (CurrentTargetWidget) CurrentTargetWidget->SetVisibility(false);
+	if (CurrentProgressWidget) CurrentProgressWidget->SetVisibility(false);
 
 	// --- FIX: Only kill the tick if no hands are holding it! ---
 	if (ActiveHands.Num() == 0)
@@ -400,6 +416,16 @@ void UAzr_Latch::TickComponent(float DeltaTime, ELevelTick TickType, FActorCompo
 	else if (bUseAutoReturn && !FMath::IsNearlyEqual(CurrentRawValue, ReturnValue, 0.1f))
 	{
 		HandleAutoReturn(DeltaTime);
+	}
+
+	// The rounds progress bar faces the player, like the tag below, unless it is set to keep its own rotation.
+	if (bIsGrabEnabled && CurrentProgressWidget && bProgressFacesPlayer)
+	{
+		if (APlayerCameraManager* CamManager = UGameplayStatics::GetPlayerCameraManager(this, 0))
+		{
+			const FVector BarLoc = CurrentProgressWidget->GetComponentLocation();
+			CurrentProgressWidget->SetWorldRotation(UKismetMathLibrary::FindLookAtRotation(BarLoc, CamManager->GetCameraLocation()));
+		}
 	}
 
 	// Billboard the Widget toward the player
@@ -982,9 +1008,11 @@ void UAzr_Latch::ApplyConstraints(float PrePhysicsRawValue)
 	{
 		AZR_TRACE_EVENT("OnRawValueChanged");
 		OnRawValueChanged.Broadcast(CurrentRawValue);
-		float Norm = (LimitMax - LimitMin) != 0.0f ? (CurrentRawValue - LimitMin) / (LimitMax - LimitMin) : 0.0f;
+		float Norm = GetNormalizedValue();
 		AZR_TRACE_EVENT("OnValueChanged");
 		OnValueChanged.Broadcast(Norm);
+
+		UpdateRounds();
 
 		if (bHapticOnStep && FMath::Abs(CurrentRawValue - LastHapticValue) >= StepSize)
 		{
@@ -1098,6 +1126,75 @@ void UAzr_Latch::UpdatePointer()
 	USceneComponent* Target = TargetHandleMesh ? Cast<USceneComponent>(TargetHandleMesh) : AutoDetectedMesh;
 	if (!Target) Target = this;
 	Pointer->EnablePointer_TargetComponent(Target);
+}
+
+float UAzr_Latch::GetNormalizedValue() const
+{
+	return (LimitMax - LimitMin) != 0.0f ? (CurrentRawValue - LimitMin) / (LimitMax - LimitMin) : 0.0f;
+}
+
+void UAzr_Latch::ResetRounds()
+{
+	CompletedStrokes = 0;
+	// The first stroke heads away from where the latch starts, so one that starts at LimitMax works too.
+	bFirstStrokeUp = GetNormalizedValue() < 0.5f;
+	RoundProgress = 0.0f;
+	SetProgressBar(0.0f);
+	OnRoundProgress.Broadcast(0.0f);
+}
+
+void UAzr_Latch::UpdateRounds()
+{
+	if (RequiredRounds <= 0 || !bIsGrabEnabled) return;
+
+	const int32 TotalStrokes = RequiredRounds * 2;
+	if (CompletedStrokes >= TotalStrokes) return;
+
+	// A stroke runs between the two "close enough" points rather than the true ends, so reaching one
+	// fills that stroke exactly and the next starts from empty, with no jump in the bar.
+	const float Low = FMath::Clamp(RoundEndTolerance, 0.0f, 0.45f);
+	const float High = 1.0f - Low;
+	const float Value = GetNormalizedValue();
+	const bool bHeadingUp = (CompletedStrokes % 2 == 0) == bFirstStrokeUp;
+	float StrokeFraction = FMath::Clamp(bHeadingUp ? (Value - Low) / (High - Low) : (High - Value) / (High - Low), 0.0f, 1.0f);
+
+	// Only a hand on the latch finishes a stroke, so Auto Return cannot do the player's work.
+	const bool bStrokeDone = StrokeFraction >= 1.0f && bIsGrabbed;
+	if (bStrokeDone)
+	{
+		CompletedStrokes++;
+		StrokeFraction = 0.0f;
+	}
+
+	const float NewProgress = FMath::Min((CompletedStrokes + StrokeFraction) / TotalStrokes, 1.0f);
+	if (!FMath::IsNearlyEqual(NewProgress, RoundProgress, 0.0001f))
+	{
+		RoundProgress = NewProgress;
+		SetProgressBar(RoundProgress);
+		AZR_TRACE_EVENT("OnRoundProgress");
+		OnRoundProgress.Broadcast(RoundProgress);
+	}
+
+	if (bStrokeDone && CompletedStrokes % 2 == 0)
+	{
+		AZR_TRACE_EVENT("OnRoundCompleted");
+		OnRoundCompleted.Broadcast(CompletedStrokes / 2);
+
+		if (CompletedStrokes == TotalStrokes)
+		{
+			AZR_TRACE_EVENT("OnRoundsCompleted");
+			OnRoundsCompleted.Broadcast();
+		}
+	}
+}
+
+void UAzr_Latch::SetProgressBar(float Progress)
+{
+	UWidgetComponent* WidgetComp = Cast<UWidgetComponent>(CurrentProgressWidget);
+	if (UAzr_ProgressWidget* Bar = WidgetComp ? Cast<UAzr_ProgressWidget>(WidgetComp->GetUserWidgetObject()) : nullptr)
+	{
+		Bar->SetProgress(Progress);
+	}
 }
 
 void UAzr_Latch::SetTagText(const FAzr_MultiLangText& Text)

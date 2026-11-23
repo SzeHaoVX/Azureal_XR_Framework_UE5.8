@@ -18,6 +18,7 @@ class UAzr_LatchZone;
 // --- EVENTS ---
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLatchEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLatchUpdateEvent, float, Value);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLatchRoundEvent, int32, Round);
 
 // --- ENUMS ---
 UENUM(BlueprintType)
@@ -172,6 +173,19 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	float HighlightSpeed = 0.8f;
 
+	// --- ROUNDS ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Rounds", meta = (ClampMin = "0", ToolTip = "How many times the player must work the latch end to end and back, e.g. strokes of a saw. One round is from one end to the other and back again, so 2 rounds is 4 strokes and each stroke is a quarter of the progress bar. The first stroke heads away from Start Value. 0 turns rounds off."))
+	int32 RequiredRounds = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Rounds", meta = (EditCondition = "RequiredRounds > 0", ClampMin = "0.0", ClampMax = "0.45", ToolTip = "How close to an end, as a fraction of the latch's travel, counts as reaching it. 0.05 means a stroke is done 5% short of the end, since a hand rarely pushes all the way."))
+	float RoundEndTolerance = 0.05f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Rounds", meta = (EditCondition = "RequiredRounds > 0", ToolTip = "Name of the widget component holding the progress bar (an Azr_ProgressWidget, or a Widget Blueprint made from it). It shows while the latch is enabled, fills with the rounds, and hides when the latch is disabled. Leave the component out for rounds without a bar."))
+	FName ProgressWidgetName = "ProgressWidget";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Rounds", meta = (EditCondition = "RequiredRounds > 0", DisplayName = "Progress Faces Player", ToolTip = "Turn the progress bar to face the player every frame, as the tag does. Off, it keeps the rotation it has in the Blueprint."))
+	bool bProgressFacesPlayer = true;
+
 	// --- HAPTICS ---
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Haptics")
 	bool bHapticOnStep = true;
@@ -210,6 +224,26 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
 	FOnLatchEvent OnLatchReleased;
+
+	/** Rounds only: the progress bar's fill, 0 to 1, whenever it changes. */
+	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
+	FOnLatchUpdateEvent OnRoundProgress;
+
+	/** Rounds only: a round has been finished. Round counts from 1. */
+	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
+	FOnLatchRoundEvent OnRoundCompleted;
+
+	/** Rounds only: the last stroke of the last round is done. Fires once per enable. */
+	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
+	FOnLatchEvent OnRoundsCompleted;
+
+	/** Rounds only: how far through all the rounds the player is, 0 to 1, as the progress bar shows. */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	float GetRoundProgress() const { return RoundProgress; }
+
+	/** Rounds only: the number of rounds finished since the latch was enabled. */
+	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
+	int32 GetCompletedRounds() const { return CompletedStrokes / 2; }
 
 	// --- API ---
 	UFUNCTION(BlueprintCallable, Category = "Azureal|Logic")
@@ -327,6 +361,25 @@ private:
 
 	UPROPERTY()
 	USceneComponent* CustomRightSnap;
+
+	// --- ROUNDS ---
+	int32 CompletedStrokes = 0;
+	bool bFirstStrokeUp = true;
+	float RoundProgress = 0.0f;
+
+	UPROPERTY()
+	USceneComponent* CurrentProgressWidget;
+
+	/** Starts the count again from where the latch now stands, and empties the bar. */
+	void ResetRounds();
+
+	/** Follows the latch's value: completes a stroke at the end it was heading for, and fills the bar. */
+	void UpdateRounds();
+
+	void SetProgressBar(float Progress);
+
+	/** The latch's value as 0 at LimitMin to 1 at LimitMax, as OnValueChanged reports it. */
+	float GetNormalizedValue() const;
 
 	// --- HELPERS ---
 	void EnsureInitialized();
