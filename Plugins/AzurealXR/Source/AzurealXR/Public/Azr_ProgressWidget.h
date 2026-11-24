@@ -7,7 +7,8 @@
 class UProgressBar;
 
 /**
- * The progress bar a latch fills as the player works through its rounds (UAzr_Latch::RequiredRounds).
+ * The progress bar a latch fills as the player works it (UAzr_Latch's Show Progress Bar and Required
+ * Rounds).
  *
  * Usable as it is, as a widget component's Widget Class: with no designer layout it builds a plain
  * 400 x 40 light blue bar that fills left to right, so turn on Draw at Desired Size on that

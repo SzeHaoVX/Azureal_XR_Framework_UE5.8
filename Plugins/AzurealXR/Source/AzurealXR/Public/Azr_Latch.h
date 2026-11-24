@@ -173,17 +173,20 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Setup")
 	float HighlightSpeed = 0.8f;
 
-	// --- ROUNDS ---
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Rounds", meta = (ClampMin = "0", ToolTip = "How many times the player must work the latch end to end and back, e.g. strokes of a saw. One round is from one end to the other and back again, so 2 rounds is 4 strokes and each stroke is a quarter of the progress bar. The first stroke heads away from Start Value. 0 turns rounds off."))
+	// --- PROGRESS & ROUNDS ---
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Progress", meta = (DisplayName = "Show Progress Bar", ToolTip = "Show the progress bar while the latch is enabled, filling as the player works it: from Start Value to the other end, or over every stroke when Required Rounds is set. Needs a widget component named Progress Widget Name. Off, that component stays hidden."))
+	bool bShowProgressBar = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Progress", meta = (ClampMin = "0", ToolTip = "How many times the player must work the latch end to end and back, e.g. strokes of a saw. One round is from one end to the other and back again, so 2 rounds is 4 strokes and each stroke is a quarter of the progress. The first stroke heads away from Start Value. 0 is a single stroke, from Start Value to the other end, as for any latch."))
 	int32 RequiredRounds = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Rounds", meta = (EditCondition = "RequiredRounds > 0", ClampMin = "0.0", ClampMax = "0.45", ToolTip = "How close to an end, as a fraction of the latch's travel, counts as reaching it. 0.05 means a stroke is done 5% short of the end, since a hand rarely pushes all the way."))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Progress", meta = (ClampMin = "0.0", ClampMax = "0.45", ToolTip = "How close to an end, as a fraction of the latch's travel, counts as reaching it. 0.05 means a stroke is done 5% short of the end, since a hand rarely pushes all the way."))
 	float RoundEndTolerance = 0.05f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Rounds", meta = (EditCondition = "RequiredRounds > 0", ToolTip = "Name of the widget component holding the progress bar (an Azr_ProgressWidget, or a Widget Blueprint made from it). It shows while the latch is enabled, fills with the rounds, and hides when the latch is disabled. Leave the component out for rounds without a bar."))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Progress", meta = (EditCondition = "bShowProgressBar", ToolTip = "Name of the widget component holding the progress bar (an Azr_ProgressWidget, or a Widget Blueprint made from it). It shows while the latch is enabled and hides when the latch is disabled."))
 	FName ProgressWidgetName = "ProgressWidget";
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Rounds", meta = (EditCondition = "RequiredRounds > 0", DisplayName = "Progress Faces Player", ToolTip = "Turn the progress bar to face the player every frame, as the tag does. Off, it keeps the rotation it has in the Blueprint."))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Latch Configuration|Progress", meta = (EditCondition = "bShowProgressBar", DisplayName = "Progress Faces Player", ToolTip = "Turn the progress bar to face the player every frame, as the tag does. Off, it keeps the rotation it has in the Blueprint."))
 	bool bProgressFacesPlayer = true;
 
 	// --- HAPTICS ---
@@ -225,7 +228,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
 	FOnLatchEvent OnLatchReleased;
 
-	/** Rounds only: the progress bar's fill, 0 to 1, whenever it changes. */
+	/** The progress, 0 to 1, whenever it changes: what the progress bar shows. Needs Show Progress Bar or Required Rounds. */
 	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
 	FOnLatchUpdateEvent OnRoundProgress;
 
@@ -233,11 +236,15 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
 	FOnLatchRoundEvent OnRoundCompleted;
 
-	/** Rounds only: the last stroke of the last round is done. Fires once per enable. */
+	/**
+	 * The progress is full: the last stroke of the last round is done or, with Required Rounds at 0,
+	 * the latch has gone from Start Value to the other end. Fires once per enable. Needs Show Progress
+	 * Bar or Required Rounds.
+	 */
 	UPROPERTY(BlueprintAssignable, Category = "Azureal|Events")
 	FOnLatchEvent OnRoundsCompleted;
 
-	/** Rounds only: how far through all the rounds the player is, 0 to 1, as the progress bar shows. */
+	/** How far through the work the player is, 0 to 1, as the progress bar shows. */
 	UFUNCTION(BlueprintPure, Category = "Azureal|Logic")
 	float GetRoundProgress() const { return RoundProgress; }
 
@@ -362,13 +369,16 @@ private:
 	UPROPERTY()
 	USceneComponent* CustomRightSnap;
 
-	// --- ROUNDS ---
+	// --- PROGRESS & ROUNDS ---
 	int32 CompletedStrokes = 0;
 	bool bFirstStrokeUp = true;
 	float RoundProgress = 0.0f;
 
 	UPROPERTY()
 	USceneComponent* CurrentProgressWidget;
+
+	/** Whether progress is counted at all: for the bar, or for rounds whose events a Game Manager waits on. */
+	bool IsTrackingProgress() const { return bShowProgressBar || RequiredRounds > 0; }
 
 	/** Starts the count again from where the latch now stands, and empties the bar. */
 	void ResetRounds();

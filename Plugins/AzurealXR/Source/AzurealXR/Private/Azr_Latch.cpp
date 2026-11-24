@@ -123,11 +123,8 @@ void UAzr_Latch::BeginPlay()
 	EnsureInitialized();
 	AutoDetectLatchZone();
 
-	// The rounds progress bar only shows while the latch is enabled.
-	if (RequiredRounds > 0)
-	{
-		if (USceneComponent* ProgressWidget = FindWidgetByName(ProgressWidgetName)) ProgressWidget->SetVisibility(false);
-	}
+	// The progress bar only shows while the latch is enabled, and never with Show Progress Bar off.
+	if (USceneComponent* ProgressWidget = FindWidgetByName(ProgressWidgetName)) ProgressWidget->SetVisibility(false);
 
 	CachedPlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
 	AAzr_Interactable* Parent = Cast<AAzr_Interactable>(GetOwner());
@@ -257,13 +254,10 @@ void UAzr_Latch::EnableLatch()
 		SetTagText(LatchDescription);
 	}
 
-	// Rounds: show the progress bar and count from where the latch now stands.
-	if (RequiredRounds > 0)
-	{
-		CurrentProgressWidget = FindWidgetByName(ProgressWidgetName);
-		if (CurrentProgressWidget) CurrentProgressWidget->SetVisibility(true);
-		ResetRounds();
-	}
+	// Progress: show the bar, and count from where the latch now stands.
+	CurrentProgressWidget = bShowProgressBar ? FindWidgetByName(ProgressWidgetName) : nullptr;
+	if (CurrentProgressWidget) CurrentProgressWidget->SetVisibility(true);
+	if (IsTrackingProgress()) ResetRounds();
 
 	// 5. Activate Visuals
 	ToggleHighlight(true);
@@ -1145,9 +1139,10 @@ void UAzr_Latch::ResetRounds()
 
 void UAzr_Latch::UpdateRounds()
 {
-	if (RequiredRounds <= 0 || !bIsGrabEnabled) return;
+	if (!IsTrackingProgress() || !bIsGrabEnabled) return;
 
-	const int32 TotalStrokes = RequiredRounds * 2;
+	// Without rounds the work is the one stroke, from Start Value to the other end.
+	const int32 TotalStrokes = RequiredRounds > 0 ? RequiredRounds * 2 : 1;
 	if (CompletedStrokes >= TotalStrokes) return;
 
 	// A stroke runs between the two "close enough" points rather than the true ends, so reaching one
@@ -1175,16 +1170,18 @@ void UAzr_Latch::UpdateRounds()
 		OnRoundProgress.Broadcast(RoundProgress);
 	}
 
-	if (bStrokeDone && CompletedStrokes % 2 == 0)
+	if (!bStrokeDone) return;
+
+	if (RequiredRounds > 0 && CompletedStrokes % 2 == 0)
 	{
 		AZR_TRACE_EVENT("OnRoundCompleted");
 		OnRoundCompleted.Broadcast(CompletedStrokes / 2);
+	}
 
-		if (CompletedStrokes == TotalStrokes)
-		{
-			AZR_TRACE_EVENT("OnRoundsCompleted");
-			OnRoundsCompleted.Broadcast();
-		}
+	if (CompletedStrokes == TotalStrokes)
+	{
+		AZR_TRACE_EVENT("OnRoundsCompleted");
+		OnRoundsCompleted.Broadcast();
 	}
 }
 
